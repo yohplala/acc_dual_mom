@@ -52,6 +52,24 @@
       font-size: 11px;
       font-weight: 500;
     }
+    /* weight-bracket colored chips for the signal table */
+    .chip {
+      display: inline-block;
+      padding: 2px 8px;
+      margin: 1px 4px 1px 0;
+      border-radius: 4px;
+      font-size: 12px;
+      font-variant-numeric: tabular-nums;
+      border: 1px solid transparent;
+      background: rgba(255, 255, 255, 0.04);
+    }
+    .chip-zero { color: var(--text); opacity: 0.45; }
+    .chip-low  { color: #f0b06b; border-color: rgba(240, 176, 107, 0.35); background: rgba(240, 176, 107, 0.10); }
+    .chip-mid  { color: var(--positive); border-color: rgba(63, 185, 80, 0.40); background: rgba(63, 185, 80, 0.10); }
+    .chip-high { color: #c98aff; border-color: rgba(201, 138, 255, 0.45); background: rgba(201, 138, 255, 0.12); }
+    .chip-row { white-space: nowrap; }
+    .chip-row + .chip-row { margin-top: 2px; }
+    td.chips { vertical-align: top; }
     footer { margin-top: 48px; color: var(--muted); font-size: 12px; text-align: center; }
     @media (max-width: 800px) { .grid-2 { grid-template-columns: 1fr; } }
   </style>
@@ -72,8 +90,8 @@
             <th>Strategy</th>
             <th>Cadence</th>
             <th>Last rebalance</th>
-            <th>Holdings</th>
-            <th class="numeric">Turnover</th>
+            <th>Previous allocation</th>
+            <th>New allocation</th>
           </tr>
         </thead>
         <tbody>
@@ -82,8 +100,28 @@
             <td><span class="pill">{{ s.name }}</span></td>
             <td>{{ s.cadence }}</td>
             <td>{{ s.last_rebalance }}</td>
-            <td>{{ s.holdings_str }}</td>
-            <td class="numeric">{{ "%.1f%%"|format(s.turnover * 100) }}</td>
+            <td class="chips">
+              {% for row in s.previous_rows %}
+              <div class="chip-row">
+                {% for c in row %}
+                <span class="chip chip-{{ c.bracket }}">
+                  {{ c.id }}{% if c.pct > 0 %} {{ c.pct }}%{% endif %}
+                </span>
+                {% endfor %}
+              </div>
+              {% endfor %}
+            </td>
+            <td class="chips">
+              {% for row in s.current_rows %}
+              <div class="chip-row">
+                {% for c in row %}
+                <span class="chip chip-{{ c.bracket }}">
+                  {{ c.id }}{% if c.pct > 0 %} {{ c.pct }}%{% endif %}
+                </span>
+                {% endfor %}
+              </div>
+              {% endfor %}
+            </td>
           </tr>
           {% endfor %}
         </tbody>
