@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
@@ -83,26 +84,82 @@ def _signal_row(result: BacktestResult, config: Config) -> dict[str, object]:
         "monthly_first_sunday": "monthly",
     }
     strategy = next(s for s in config.strategies if s.name == result.strategy_name)
-    if result.rebalances:
-        last = result.rebalances[-1]
-        holdings = ", ".join(
-            f"{a} {int(round(w * 100))}%"
-            for a, w in sorted(last.weights.items(), key=lambda kv: -kv[1])
-        )
-        return {
-            "name": result.strategy_name,
-            "cadence": cadence_map.get(strategy.rebalance, strategy.rebalance),
-            "last_rebalance": last.rebalance_date.isoformat(),
-            "holdings_str": holdings,
-            "turnover": last.turnover,
-        }
+    asset_rows = _asset_rows(strategy, config)
+
+    last = result.rebalances[-1] if result.rebalances else None
+    prev = result.rebalances[-2] if len(result.rebalances) >= 2 else None
+
     return {
         "name": result.strategy_name,
         "cadence": cadence_map.get(strategy.rebalance, strategy.rebalance),
-        "last_rebalance": "—",
-        "holdings_str": "—",
-        "turnover": 0.0,
+        "last_rebalance": last.rebalance_date.isoformat() if last else "—",
+        "previous_rows": _chip_rows(asset_rows, prev.weights if prev else {}),
+        "current_rows": _chip_rows(asset_rows, last.weights if last else {}),
     }
+
+
+# Region groupings, ordered top-to-bottom in the holdings cell. Assets that
+# don't fit a known region get appended below the recognized rows.
+REGION_ORDER = (
+    "us",
+    "world",
+    "europe",
+    "eurozone",
+    "france",
+    "germany",
+    "japan",
+    "em_asia",
+    "em",
+)
+
+
+def _asset_rows(strategy: Any, config: Config) -> list[list[Any]]:
+    """Layout the strategy's asset universe as rows grouped by region,
+    with the safe asset always last on its own row."""
+    by_region: dict[str, list[Any]] = {}
+    for asset_id in strategy.asset_ids:
+        a = config.asset_by_id(asset_id)
+        by_region.setdefault(a.region, []).append(a)
+    rows: list[list[Any]] = []
+    for region in REGION_ORDER:
+        if region in by_region:
+            rows.append(by_region.pop(region))
+    for assets in by_region.values():  # any unknown regions
+        rows.append(assets)
+    rows.append([config.safe_asset])
+    return rows
+
+
+def _chip_rows(
+    asset_rows: list[list[Any]], weights: dict[str, float]
+) -> list[list[dict[str, object]]]:
+    """Convert each row of assets into a row of chip descriptors,
+    each carrying the asset id, weight pct, and color bracket."""
+    out: list[list[dict[str, object]]] = []
+    for row in asset_rows:
+        chips: list[dict[str, object]] = []
+        for asset in row:
+            w = weights.get(asset.id, 0.0)
+            pct = round(w * 100)
+            chips.append(
+                {
+                    "id": asset.id,
+                    "pct": pct,
+                    "bracket": _weight_bracket(pct),
+                }
+            )
+        out.append(chips)
+    return out
+
+
+def _weight_bracket(pct: int) -> str:
+    if pct == 0:
+        return "zero"
+    if pct < 25:
+        return "low"
+    if pct < 50:
+        return "mid"
+    return "high"
 
 
 def _metrics_row(result: BacktestResult) -> dict[str, object]:
