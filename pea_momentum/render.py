@@ -164,7 +164,11 @@ def _weight_bracket(pct: int) -> str:
 
 def _metrics_row(result: BacktestResult) -> dict[str, object]:
     m = compute(result.equity)
-    return {"name": result.strategy_name, **m.to_dict()}
+    # Sum of per-rebalance cost values (each = turnover_l1 * per_trade_pct).
+    # In the same dimensionless unit as the equity multiple: `Final` plus
+    # `total_cost` is roughly the no-cost final equity.
+    total_cost = sum(r.cost for r in result.rebalances)
+    return {"name": result.strategy_name, **m.to_dict(), "total_cost": total_cost}
 
 
 def _equity_figure(results: list[BacktestResult]) -> tuple[list[dict], dict]:
