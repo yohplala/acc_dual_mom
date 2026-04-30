@@ -159,7 +159,10 @@ def cmd_render(ctx: click.Context, site_root: str) -> None:
     if not results:
         raise click.ClickException("No equity histories to render.")
 
-    out = render.render(results, cfg, site_root)
+    prices = store.read_prices(data_root)
+    out = render.render(
+        results, cfg, site_root, prices_long=prices if not prices.is_empty() else None
+    )
     click.echo(f"OK · wrote {out}")
 
 
