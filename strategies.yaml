@@ -76,8 +76,8 @@ universe:
       replication: synthetic
       region: europe
 
-    - id: eu_large
-      name: Amundi Core MSCI EMU
+    - id: eu_emu
+      name: Amundi Core MSCI EMU            # eurozone-only large/mid cap
       isin: LU1646361276
       yahoo: MFEC.PA
       ter_pct: 0.12
@@ -144,8 +144,10 @@ universe:
   # universe — assets not used by a strategy simply don't appear.
   display_layout:
     - [us_large, us_small]
-    - [eu_broad, eu_small]   # NOTE: eu_broad = pan-Europe (MSCI Europe);
-                             # to use eurozone-only Core MSCI EMU, swap for eu_large
+    - [eu_broad, eu_emu, eu_small]   # eu_broad = pan-Europe (MSCI Europe);
+                                     # eu_emu = eurozone-only (Core MSCI EMU).
+                                     # Strategies pick one or the other; render
+                                     # filters out whichever isn't used.
     - [em_asia]
     - [world]
     - [safe]
@@ -170,4 +172,15 @@ strategies:
     description: 6-asset core, weekly Sunday rebalance
     assets: [us_large, us_small, eu_broad, eu_small, em_asia, world]
     rebalance: weekly_sunday
+    top_n: 3
+
+  # Comparative variant of core_monthly: same cadence + same assets EXCEPT
+  # the Europe sleeve is eurozone-only (eu_emu) instead of pan-European
+  # (eu_broad). Lets the backtest empirically settle whether geographic
+  # breadth helps the strategy on our specific universe and period — see
+  # ADM literature for the theoretical case for `eu_broad`.
+  - name: core_monthly_emu
+    description: 6-asset core (eurozone Europe sleeve), monthly first-Sunday rebalance
+    assets: [us_large, us_small, eu_emu, eu_small, em_asia, world]
+    rebalance: monthly_first_sunday
     top_n: 3
