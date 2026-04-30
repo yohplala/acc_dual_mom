@@ -1,0 +1,186 @@
+name: Weekly update
+
+# Cron uses UTC. Sunday 04:00 UTC — runs after Friday's market close is final
+# and before any Monday open, so the produced signals are actionable for the
+# upcoming week. Override timing by editing the cron string below.
+on:
+  schedule:
+    - cron: "0 4 * * 0"
+  workflow_dispatch:
+    inputs:
+      backfill_start:
+        description: "Optional ISO date to refetch from (default: incremental)"
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: weekly-update
+  cancel-in-progress: false
+
+jobs:
+  fetch:
+    name: Fetch prices
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Poetry
+        run: pipx install poetry
+
+      - name: Configure in-project venv
+        run: poetry config virtualenvs.in-project true
+
+      - name: Cache venv
+        uses: actions/cache@v4
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-py311-${{ hashFiles('poetry.lock') }}
+
+      - name: Install
+        run: poetry install --no-interaction
+
+      - name: Restore prices-data branch (if present)
+        run: |
+          set -e
+          mkdir -p data
+          if git ls-remote --exit-code --heads origin prices-data >/dev/null 2>&1; then
+            git fetch origin prices-data:prices-data
+            git --work-tree=data checkout prices-data -- prices.parquet || true
+            git reset HEAD || true
+          else
+            echo "prices-data branch does not exist yet (first run)"
+          fi
+
+      - name: Fetch prices
+        run: |
+          poetry run pea-mom -v fetch ${{ inputs.backfill_start && format('--start {0}', inputs.backfill_start) || '' }}
+
+      - name: Push to prices-data orphan branch
+        env:
+          REMOTE_URL: ${{ format('https://x-access-token:{0}@github.com/{1}.git', secrets.GITHUB_TOKEN, github.repository) }}
+        run: |
+          set -e
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          mkdir -p /tmp/prices-data
+          cp data/prices.parquet /tmp/prices-data/
+          cd /tmp/prices-data
+          git init -q
+          git checkout --orphan prices-data
+          git add prices.parquet
+          git commit -q -m "Prices $(date -u +%Y-%m-%dT%H:%MZ)"
+          git push --force "$REMOTE_URL" prices-data
+
+  backtest:
+    name: Run backtest
+    needs: fetch
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - run: pipx install poetry
+      - run: poetry config virtualenvs.in-project true
+
+      - name: Cache venv
+        uses: actions/cache@v4
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-py311-${{ hashFiles('poetry.lock') }}
+
+      - run: poetry install --no-interaction
+
+      - name: Restore prices-data
+        run: |
+          mkdir -p data
+          git fetch origin prices-data:prices-data
+          git --work-tree=data checkout prices-data -- prices.parquet
+          git reset HEAD
+
+      - name: Run backtest
+        run: poetry run pea-mom -v backtest
+
+      - name: Push to backtest-results orphan branch
+        env:
+          REMOTE_URL: ${{ format('https://x-access-token:{0}@github.com/{1}.git', secrets.GITHUB_TOKEN, github.repository) }}
+        run: |
+          set -e
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          rm -rf /tmp/results
+          mkdir -p /tmp/results
+          cp -r data/history /tmp/results/
+          cp -r data/results /tmp/results/
+          cd /tmp/results
+          git init -q
+          git checkout --orphan backtest-results
+          git add -A
+          git commit -q -m "Backtest $(date -u +%Y-%m-%dT%H:%MZ)"
+          git push --force "$REMOTE_URL" backtest-results
+
+  build-pages:
+    name: Build site
+    needs: backtest
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - run: pipx install poetry
+      - run: poetry config virtualenvs.in-project true
+
+      - name: Cache venv
+        uses: actions/cache@v4
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-py311-${{ hashFiles('poetry.lock') }}
+
+      - run: poetry install --no-interaction
+
+      - name: Restore data branches
+        run: |
+          mkdir -p data
+          git fetch origin prices-data:prices-data backtest-results:backtest-results
+          git --work-tree=data checkout prices-data -- prices.parquet
+          git --work-tree=data checkout backtest-results -- history results
+          git reset HEAD
+
+      - name: Render HTML
+        run: poetry run pea-mom render
+
+      - name: Upload site artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site/
+
+  deploy-pages:
+    name: Deploy to GitHub Pages
+    needs: build-pages
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

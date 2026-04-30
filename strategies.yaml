@@ -1,0 +1,160 @@
+# PEA Accelerated Dual Momentum — strategy configurations.
+#
+# Shared scoring / allocation / cost / execution settings live under `shared`.
+# Per-strategy entries pick a slice of the universe and a rebalance cadence.
+#
+# Yahoo tickers marked "UNVERIFIED" need to be confirmed against actual
+# yfinance data on first fetch. The fetcher fails loudly on invalid symbols.
+
+shared:
+  scoring:
+    # Lookback windows in trading days, averaged with `aggregation`.
+    # 21 ≈ 1 month, 63 ≈ 3 months, 126 ≈ 6 months.
+    lookbacks_days: [21, 63, 126]
+    aggregation: mean
+
+  allocation:
+    rule: score_proportional      # w_i = s_i / sum(s_j) over selected
+    granularity_pct: 10           # round weights to 10% steps
+    min_weight_pct: 0
+    rounding: largest_remainder   # Hare quota for fair rounding
+
+  filter:
+    type: absolute_momentum
+    benchmark: safe_asset         # candidate score must beat safe-asset score
+
+  costs:
+    per_trade_pct: 0.10           # one-way; covers IB tiered + bid-ask
+
+  execution:
+    # Sunday-anchored cadence: signal uses preceding Friday close,
+    # fill at following Monday close (one trading-day lag, no lookahead).
+    signal_close: friday
+    fill_close: monday
+
+universe:
+  assets:
+    - id: us_large
+      name: Amundi PEA S&P 500
+      isin: FR0011871128
+      yahoo: PE500.PA
+      ter_pct: 0.12
+      replication: synthetic
+      region: us
+
+    - id: us_tech
+      name: Amundi PEA Nasdaq-100
+      isin: FR0011871110
+      yahoo: PANX.PA              # UNVERIFIED
+      ter_pct: 0.30
+      replication: synthetic
+      region: us
+
+    - id: us_small
+      name: Amundi Russell 2000
+      isin: LU1681038672
+      yahoo: RS2K.PA
+      ter_pct: 0.35
+      replication: synthetic
+      region: us
+
+    - id: world
+      name: Amundi PEA Monde (MSCI World)
+      isin: FR001400U5Q4
+      yahoo: WLD.PA               # UNVERIFIED
+      ter_pct: 0.20
+      replication: synthetic
+      region: world
+
+    - id: eu_broad
+      name: Amundi PEA MSCI Europe
+      isin: FR0013412038
+      yahoo: PCEU.PA              # UNVERIFIED
+      ter_pct: 0.15
+      replication: synthetic
+      region: europe
+
+    - id: eu_large
+      name: Amundi Core MSCI EMU
+      isin: LU1646361276
+      yahoo: CEMU.PA              # UNVERIFIED
+      ter_pct: 0.12
+      replication: physical
+      region: eurozone
+
+    - id: eu_small
+      name: Amundi MSCI EMU Small Cap ESG Broad Transition
+      isin: LU1598689153
+      yahoo: MMS.PA               # was Lyxor pre-merger; UNVERIFIED post-rebrand
+      ter_pct: 0.40
+      replication: physical
+      region: eurozone
+
+    - id: japan
+      name: Amundi PEA Japon (TOPIX)
+      isin: FR0013411980
+      yahoo: PTPXE.PA             # UNVERIFIED
+      ter_pct: 0.20
+      replication: synthetic
+      region: japan
+
+    - id: em_asia
+      name: Amundi PEA Asie Emergente (MSCI Emerging Asia)
+      isin: FR0013412012
+      yahoo: AASI.PA
+      ter_pct: 0.30
+      replication: synthetic
+      region: em_asia
+
+    - id: em_broad
+      name: Amundi PEA Emergent (MSCI Emerging) ESG Transition
+      isin: FR0013412020
+      yahoo: PAEEM.PA             # UNVERIFIED
+      ter_pct: 0.30
+      replication: synthetic
+      region: em
+
+    - id: france
+      name: Amundi CAC 40
+      isin: FR0013380607
+      yahoo: CAC.PA               # UNVERIFIED
+      ter_pct: 0.25
+      replication: physical
+      region: france
+
+    - id: germany
+      name: Amundi ETF DAX
+      isin: FR0010655712
+      yahoo: CD8.PA               # UNVERIFIED
+      ter_pct: 0.10
+      replication: physical
+      region: germany
+
+  safe_asset:
+    id: safe
+    name: Amundi PEA Euro Court Terme
+    isin: FR0013346681
+    proxy: estr                   # synthetic price compounded from ECB €STR
+    ter_pct: 0.25
+
+# Three strategies sharing the same 6-asset universe to isolate the
+# rebalance-frequency effect (weekly vs. biweekly vs. monthly).
+strategies:
+  - name: core_monthly
+    description: 6-asset core, monthly first-Sunday rebalance
+    assets: [us_large, us_small, eu_broad, eu_small, em_asia, world]
+    rebalance: monthly_first_sunday
+    top_n: 3
+
+  - name: core_biweekly
+    description: 6-asset core, biweekly Sunday rebalance
+    assets: [us_large, us_small, eu_broad, eu_small, em_asia, world]
+    rebalance: biweekly_sunday
+    reference_date: 2020-01-05    # anchors the biweekly cycle
+    top_n: 3
+
+  - name: core_weekly
+    description: 6-asset core, weekly Sunday rebalance
+    assets: [us_large, us_small, eu_broad, eu_small, em_asia, world]
+    rebalance: weekly_sunday
+    top_n: 3
