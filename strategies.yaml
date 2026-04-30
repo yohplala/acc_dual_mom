@@ -182,6 +182,14 @@ universe:
       replication: synthetic
       region: europe
 
+    - id: eu_50
+      name: Amundi Core EURO STOXX 50
+      isin: LU1681047236
+      yahoo: C50.PA                 # verified via Boursorama
+      ter_pct: 0.09
+      replication: synthetic
+      region: eurozone
+
   safe_asset:
     id: safe
     name: Amundi PEA Euro Court Terme
@@ -195,7 +203,8 @@ universe:
   display_layout:
     - [us_large, us_small]
     - [world]
-    - [eu_broad, eu_emu, eu_small, eu_banks]    # broad + sector tilt
+    - [eu_broad, eu_emu, eu_50]                 # broad-cap Europe alternatives
+    - [eu_small, eu_banks]                      # eurozone sub-exposures
     - [france, germany, italy, spain]           # eurozone single-country
     - [japan, japan_hedged]                     # FX hedging A/B
     - [em_asia, em_broad, china, india]         # emerging markets
@@ -263,5 +272,18 @@ strategies:
   - name: sector_satellite_monthly
     description: 6-asset core + EU banks sector tilt, monthly first-Sunday rebalance
     assets: [us_large, us_small, eu_broad, eu_small, em_asia, world, eu_banks]
+    rebalance: monthly_first_sunday
+    top_n: 3
+
+  # Concentrated 6-asset rotation with explicit theme structure:
+  #   US:     us_large + us_small (cap-size split)
+  #   Europe: eu_50 (eurozone large-cap broad) + eu_banks (sector tilt)
+  #   Japan:  japan_hedged
+  #   EM:     em_asia
+  # Note: eu_banks is ~17% of EURO STOXX 50 — they're not orthogonal, but
+  # momentum picks the stronger of the two when both clear the absolute filter.
+  - name: core_concentrated_monthly
+    description: 6-asset concentrated rotation (US split, EU broad+sector, JP hedged, EM Asia)
+    assets: [us_large, us_small, eu_50, eu_banks, japan_hedged, em_asia]
     rebalance: monthly_first_sunday
     top_n: 3
