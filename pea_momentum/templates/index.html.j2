@@ -71,6 +71,8 @@
     .chip-row + .chip-row { margin-top: 2px; }
     td.chips { vertical-align: top; text-align: center; }
     th.chips { text-align: center; }
+    /* Performance metrics table — center every cell + header */
+    table.metrics th, table.metrics td { text-align: center; }
     footer { margin-top: 48px; color: var(--muted); font-size: 12px; text-align: center; }
     @media (max-width: 800px) { .grid-2 { grid-template-columns: 1fr; } }
   </style>
@@ -136,7 +138,7 @@
 
     <h2>Performance metrics</h2>
     <div class="panel">
-      <table>
+      <table class="metrics">
         <thead>
           <tr>
             <th>Strategy</th>
