@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PEA Accelerated Dual Momentum</title>
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js" charset="utf-8"></script>
+  <style>
+    :root {
+      --bg: #0e1116;
+      --panel: #161b22;
+      --border: #30363d;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --accent: #58a6ff;
+      --positive: #3fb950;
+      --negative: #f85149;
+    }
+    html, body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+    .container { max-width: 1200px; margin: 0 auto; padding: 24px; }
+    h1 { margin: 0 0 4px 0; font-size: 28px; }
+    h2 { margin: 32px 0 12px 0; font-size: 20px; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
+    .subtitle { color: var(--muted); margin-bottom: 24px; font-size: 13px; }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--border); }
+    th { color: var(--muted); font-weight: 500; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; }
+    td.numeric { text-align: right; font-variant-numeric: tabular-nums; }
+    .pos { color: var(--positive); }
+    .neg { color: var(--negative); }
+    .chart { height: 480px; }
+    .chart-small { height: 320px; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .pill {
+      display: inline-block;
+      background: rgba(88, 166, 255, 0.15);
+      color: var(--accent);
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 500;
+    }
+    footer { margin-top: 48px; color: var(--muted); font-size: 12px; text-align: center; }
+    @media (max-width: 800px) { .grid-2 { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>PEA Accelerated Dual Momentum</h1>
+    <div class="subtitle">
+      {{ summary.n_strategies }} strategies · last update {{ summary.last_update }} ·
+      data range {{ summary.data_start }} → {{ summary.data_end }}
+    </div>
+
+    <h2>This week's signal</h2>
+    <div class="panel">
+      <table>
+        <thead>
+          <tr>
+            <th>Strategy</th>
+            <th>Cadence</th>
+            <th>Last rebalance</th>
+            <th>Holdings</th>
+            <th class="numeric">Turnover</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in signals %}
+          <tr>
+            <td><span class="pill">{{ s.name }}</span></td>
+            <td>{{ s.cadence }}</td>
+            <td>{{ s.last_rebalance }}</td>
+            <td>{{ s.holdings_str }}</td>
+            <td class="numeric">{{ "%.1f%%"|format(s.turnover * 100) }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <h2>Equity curves</h2>
+    <div class="panel">
+      <div id="equity-chart" class="chart"></div>
+    </div>
+
+    <h2>Performance metrics</h2>
+    <div class="panel">
+      <table>
+        <thead>
+          <tr>
+            <th>Strategy</th>
+            <th class="numeric">CAGR</th>
+            <th class="numeric">Vol (ann.)</th>
+            <th class="numeric">Sharpe</th>
+            <th class="numeric">Sortino</th>
+            <th class="numeric">Max DD</th>
+            <th class="numeric">Calmar</th>
+            <th class="numeric">Hit rate</th>
+            <th class="numeric">Final</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for m in metrics_rows %}
+          <tr>
+            <td><span class="pill">{{ m.name }}</span></td>
+            <td class="numeric {{ 'pos' if m.cagr >= 0 else 'neg' }}">{{ "%.2f%%"|format(m.cagr * 100) }}</td>
+            <td class="numeric">{{ "%.2f%%"|format(m.vol_ann * 100) }}</td>
+            <td class="numeric">{{ "%.2f"|format(m.sharpe) }}</td>
+            <td class="numeric">{{ "%.2f"|format(m.sortino) }}</td>
+            <td class="numeric neg">{{ "%.2f%%"|format(m.max_drawdown * 100) }}</td>
+            <td class="numeric">{{ "%.2f"|format(m.calmar) }}</td>
+            <td class="numeric">{{ "%.1f%%"|format(m.hit_rate * 100) }}</td>
+            <td class="numeric">{{ "%.3f"|format(m.final_equity) }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <h2>Drawdown</h2>
+    <div class="panel">
+      <div id="drawdown-chart" class="chart"></div>
+    </div>
+
+    <footer>
+      <p>
+        Powered by polars · plotly · yfinance · ECB €STR.
+        Synthetic price for safe asset compounded from €STR daily fixings (ACT/360).
+        Backtest applies {{ summary.cost_bps }}bps one-way cost on turnover.
+      </p>
+    </footer>
+  </div>
+
+  <script>
+    Plotly.newPlot(
+      "equity-chart",
+      {{ equity_traces | safe }},
+      {{ equity_layout | safe }},
+      { responsive: true, displaylogo: false }
+    );
+    Plotly.newPlot(
+      "drawdown-chart",
+      {{ drawdown_traces | safe }},
+      {{ drawdown_layout | safe }},
+      { responsive: true, displaylogo: false }
+    );
+  </script>
+</body>
+</html>
