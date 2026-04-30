@@ -1,11 +1,12 @@
 name: Weekly update
 
-# Cron uses UTC. Sunday 04:00 UTC — runs after Friday's market close is final
-# and before any Monday open, so the produced signals are actionable for the
-# upcoming week. Override timing by editing the cron string below.
+# Cron uses UTC. Saturday 04:00 UTC — runs after Friday's market close is final
+# (US 21:00 UTC, EU 17:30 UTC) and well before any Monday open, giving 1.5 days
+# of lead time to review signals before trading. Override timing by editing the
+# cron string below.
 on:
   schedule:
-    - cron: "0 4 * * 0"
+    - cron: "0 4 * * 6"
   workflow_dispatch:
     inputs:
       backfill_start:
