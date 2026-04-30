@@ -1,0 +1,94 @@
+"""Tests for the fetch boundary layer.
+
+We don't hit the network — yfinance and httpx are monkeypatched. The point
+of these tests is to lock down the type-conversion path between pandas
+(which under pandas 3 may use the nullable Float64 extension dtype) and
+polars (which requires pyarrow for that conversion unless we go through
+native numpy arrays first).
+"""
+
+from __future__ import annotations
+
+from datetime import date
+
+import numpy as np
+import pandas as pd
+import polars as pl
+import pytest
+import yfinance as yf
+
+from pea_momentum import fetch
+from pea_momentum.universe import Asset
+
+
+def _asset() -> Asset:
+    return Asset(
+        id="t",
+        name="t",
+        isin="x",
+        yahoo="X.PA",
+        ter_pct=0.0,
+        replication="synthetic",
+        region="x",
+    )
+
+
+def test_fetch_yahoo_handles_pandas_extension_float64(monkeypatch: pytest.MonkeyPatch) -> None:
+    """pandas 3 returns Float64 (nullable) by default — must not require pyarrow."""
+    df = pd.DataFrame(
+        {"Close": pd.array([100.0, 101.5, 102.0], dtype="Float64")},
+        index=pd.DatetimeIndex(["2024-01-02", "2024-01-03", "2024-01-04"]),
+    )
+    monkeypatch.setattr(yf, "download", lambda *a, **kw: df)
+
+    result = fetch.fetch_yahoo(_asset(), start=date(2024, 1, 1))
+
+    assert result.height == 3
+    assert result.schema["date"] == pl.Date
+    assert result.schema["close"] == pl.Float64
+    assert result.get_column("close").to_list() == [100.0, 101.5, 102.0]
+    assert result.get_column("asset_id").unique().to_list() == ["t"]
+
+
+def test_fetch_yahoo_drops_nan_closes(monkeypatch: pytest.MonkeyPatch) -> None:
+    df = pd.DataFrame(
+        {"Close": pd.array([100.0, np.nan, 102.0], dtype="Float64")},
+        index=pd.DatetimeIndex(["2024-01-02", "2024-01-03", "2024-01-04"]),
+    )
+    monkeypatch.setattr(yf, "download", lambda *a, **kw: df)
+
+    result = fetch.fetch_yahoo(_asset(), start=date(2024, 1, 1))
+
+    assert result.height == 2
+    assert result.get_column("close").to_list() == [100.0, 102.0]
+
+
+def test_fetch_yahoo_handles_multilevel_columns(monkeypatch: pytest.MonkeyPatch) -> None:
+    """yfinance ≥ 0.2.40 returns multi-level columns even for a single ticker."""
+    df = pd.DataFrame(
+        [[100.0], [101.0]],
+        index=pd.DatetimeIndex(["2024-01-02", "2024-01-03"]),
+        columns=pd.MultiIndex.from_tuples([("Close", "X.PA")]),
+    )
+    monkeypatch.setattr(yf, "download", lambda *a, **kw: df)
+
+    result = fetch.fetch_yahoo(_asset(), start=date(2024, 1, 1))
+
+    assert result.height == 2
+    assert result.get_column("close").to_list() == [100.0, 101.0]
+
+
+def test_fetch_yahoo_empty_response_raises(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(yf, "download", lambda *a, **kw: pd.DataFrame())
+    with pytest.raises(fetch.FetchError, match="no data"):
+        fetch.fetch_yahoo(_asset(), start=date(2024, 1, 1))
+
+
+def test_fetch_yahoo_missing_close_raises(monkeypatch: pytest.MonkeyPatch) -> None:
+    df = pd.DataFrame(
+        {"Open": [100.0]},
+        index=pd.DatetimeIndex(["2024-01-02"]),
+    )
+    monkeypatch.setattr(yf, "download", lambda *a, **kw: df)
+    with pytest.raises(fetch.FetchError, match="missing Close"):
+        fetch.fetch_yahoo(_asset(), start=date(2024, 1, 1))
