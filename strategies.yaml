@@ -139,6 +139,17 @@ universe:
     proxy: estr                   # synthetic price compounded from ECB €STR
     ter_pct: 0.25
 
+  # How rows of assets are laid out in the signal table (Previous / New
+  # allocation cells). Each strategy filters this layout to its actual
+  # universe — assets not used by a strategy simply don't appear.
+  display_layout:
+    - [us_large, us_small]
+    - [eu_broad, eu_small]   # NOTE: eu_broad = pan-Europe (MSCI Europe);
+                             # to use eurozone-only Core MSCI EMU, swap for eu_large
+    - [em_asia]
+    - [world]
+    - [safe]
+
 # Three strategies sharing the same 6-asset universe to isolate the
 # rebalance-frequency effect (weekly vs. biweekly vs. monthly).
 strategies:

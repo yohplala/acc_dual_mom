@@ -86,6 +86,11 @@ class Config:
     assets: tuple[Asset, ...]
     safe_asset: SafeAsset
     strategies: tuple[Strategy, ...]
+    # Optional rendering layout for the signal table — list of rows, each a
+    # list of asset ids. Read by render.py. If None, render falls back to
+    # grouping by region. Each strategy uses only its slice of this layout
+    # (assets not in the strategy are skipped, empty rows collapse).
+    display_layout: tuple[tuple[str, ...], ...] | None = None
 
     def asset_by_id(self, asset_id: str) -> Asset:
         for asset in self.assets:
@@ -162,11 +167,17 @@ def _parse(raw: dict[str, Any]) -> Config:
         for s in raw["strategies"]
     )
 
+    raw_layout = universe_raw.get("display_layout")
+    display_layout: tuple[tuple[str, ...], ...] | None = (
+        tuple(tuple(row) for row in raw_layout) if raw_layout else None
+    )
+
     return Config(
         shared=shared,
         assets=assets,
         safe_asset=safe_asset,
         strategies=strategies,
+        display_layout=display_layout,
     )
 
 
