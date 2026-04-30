@@ -7,10 +7,11 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+import polars as pl
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from .backtest import BacktestResult
-from .metrics import compute, drawdown_series
+from .metrics import avg_pairwise_correlation, compute, drawdown_series
 from .universe import Config
 
 TEMPLATES_DIR = Path(__file__).parent / "templates"
@@ -33,6 +34,7 @@ def render(
     results: list[BacktestResult],
     config: Config,
     output_dir: str | Path,
+    prices_long: pl.DataFrame | None = None,
     template_name: str = "index.html.j2",
 ) -> Path:
     output_path = Path(output_dir)
@@ -46,7 +48,7 @@ def render(
 
     summary = _summary(results, config)
     signals = [_signal_row(r, config) for r in results]
-    metrics_rows = [_metrics_row(r) for r in results]
+    metrics_rows = [_metrics_row(r, config, prices_long) for r in results]
 
     equity_traces, equity_layout = _equity_figure(results)
     drawdown_traces, drawdown_layout = _drawdown_figure(results)
@@ -182,13 +184,31 @@ def _weight_bracket(pct: int) -> str:
     return "high"
 
 
-def _metrics_row(result: BacktestResult) -> dict[str, object]:
+def _metrics_row(
+    result: BacktestResult,
+    config: Config,
+    prices_long: pl.DataFrame | None,
+) -> dict[str, object]:
     m = compute(result.equity)
     # Sum of per-rebalance cost values (each = turnover_l1 * per_trade_pct).
     # In the same dimensionless unit as the equity multiple: `Final` plus
     # `total_cost` is roughly the no-cost final equity.
     total_cost = sum(r.cost for r in result.rebalances)
-    return {"name": result.strategy_name, **m.to_dict(), "total_cost": total_cost}
+    # Average pairwise correlation of the strategy's risky universe (excludes
+    # safe asset since the absolute filter already gates on it). Lower = more
+    # decorrelated = better diversification potential.
+    strategy = next(s for s in config.strategies if s.name == result.strategy_name)
+    avg_corr = (
+        avg_pairwise_correlation(prices_long, list(strategy.asset_ids))
+        if prices_long is not None
+        else None
+    )
+    return {
+        "name": result.strategy_name,
+        **m.to_dict(),
+        "total_cost": total_cost,
+        "avg_corr": avg_corr,
+    }
 
 
 def _equity_figure(results: list[BacktestResult]) -> tuple[list[dict], dict]:

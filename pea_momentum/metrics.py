@@ -10,6 +10,7 @@ import math
 from dataclasses import asdict, dataclass
 from typing import Any
 
+import numpy as np
 import polars as pl
 
 TRADING_DAYS_PER_YEAR = 252
@@ -104,6 +105,44 @@ def drawdown_series(equity: pl.DataFrame) -> pl.DataFrame:
         )
         .select(["date", "drawdown"])
     )
+
+
+def avg_pairwise_correlation(
+    prices_long: pl.DataFrame,
+    asset_ids: list[str],
+) -> float | None:
+    """Average of off-diagonal pairwise correlations of daily returns over the
+    full available history of `asset_ids`. Returns `None` if fewer than two
+    assets have usable data.
+
+    Lower values indicate a more decorrelated universe — better diversification
+    potential, which momentum-rotation strategies thrive on. Typical ranges:
+
+      < 0.40  well-diversified (e.g. equities + bonds + commodities)
+      0.40-0.60  moderate (regional equities)
+      0.60-0.75  tightly correlated (developed-market equities)
+      > 0.75  near-redundant (sector ETFs within one region)
+    """
+    relevant = prices_long.filter(pl.col("asset_id").is_in(asset_ids))
+    if relevant.is_empty():
+        return None
+    wide = relevant.pivot(values="close", index="date", on="asset_id").sort("date")
+    cols = [c for c in wide.columns if c != "date"]
+    if len(cols) < 2:
+        return None
+    wide = wide.with_columns([pl.col(c).forward_fill() for c in cols])
+    rets = wide.select(
+        *[(pl.col(c) / pl.col(c).shift(1) - 1.0).alias(c) for c in cols]
+    ).drop_nulls()
+    if rets.height < 2:
+        return None
+    arr = rets.to_numpy()
+    corr = np.corrcoef(arr, rowvar=False)
+    if corr.ndim == 0 or corr.shape[0] < 2:
+        return None
+    n = corr.shape[0]
+    mask = ~np.eye(n, dtype=bool)
+    return float(corr[mask].mean())
 
 
 def monthly_returns(equity: pl.DataFrame) -> pl.DataFrame:
