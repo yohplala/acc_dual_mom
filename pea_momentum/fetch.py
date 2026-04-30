@@ -51,8 +51,10 @@ def fetch_yahoo(asset: Asset, start: date) -> pl.DataFrame:
 
     # pandas 3 may return Float64 (nullable extension) which requires pyarrow
     # for `pl.from_pandas`. Build polars from native numpy arrays instead.
+    # Polars only accepts datetime64 at D/ms/us/ns resolution — yfinance under
+    # pandas 3 yields seconds-resolution indices, so we normalize to ns here.
     closes = raw["Close"].to_numpy(dtype="float64", na_value=float("nan"))
-    dates = raw.index.to_numpy()  # datetime64; polars casts cleanly to Date
+    dates = raw.index.to_numpy().astype("datetime64[ns]")
 
     return (
         pl.DataFrame({"date": dates, "close": closes})

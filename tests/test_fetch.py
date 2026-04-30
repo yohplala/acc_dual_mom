@@ -50,6 +50,33 @@ def test_fetch_yahoo_handles_pandas_extension_float64(monkeypatch: pytest.Monkey
     assert result.get_column("asset_id").unique().to_list() == ["t"]
 
 
+@pytest.mark.parametrize("resolution", ["s", "ms", "us", "ns"])
+def test_fetch_yahoo_handles_all_datetime_resolutions(
+    monkeypatch: pytest.MonkeyPatch, resolution: str
+) -> None:
+    """Regression: yfinance under pandas 3 yields `datetime64[s]` indices, which
+    polars rejects (only D/ms/us/ns are accepted). The fetcher must normalize
+    every resolution it might receive."""
+    raw_dates = np.array(
+        ["2024-01-02", "2024-01-03", "2024-01-04"], dtype=f"datetime64[{resolution}]"
+    )
+    df = pd.DataFrame(
+        {"Close": [100.0, 101.0, 102.0]},
+        index=pd.DatetimeIndex(raw_dates),
+    )
+    monkeypatch.setattr(yf, "download", lambda *a, **kw: df)
+
+    result = fetch.fetch_yahoo(_asset(), start=date(2024, 1, 1))
+
+    assert result.height == 3
+    assert result.schema["date"] == pl.Date
+    assert result.get_column("date").to_list() == [
+        date(2024, 1, 2),
+        date(2024, 1, 3),
+        date(2024, 1, 4),
+    ]
+
+
 def test_fetch_yahoo_drops_nan_closes(monkeypatch: pytest.MonkeyPatch) -> None:
     df = pd.DataFrame(
         {"Close": pd.array([100.0, np.nan, 102.0], dtype="Float64")},

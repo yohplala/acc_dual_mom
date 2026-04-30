@@ -45,7 +45,7 @@ universe:
     - id: us_tech
       name: Amundi PEA Nasdaq-100
       isin: FR0011871110
-      yahoo: PANX.PA              # UNVERIFIED
+      yahoo: PUST.PA
       ter_pct: 0.30
       replication: synthetic
       region: us
@@ -61,7 +61,9 @@ universe:
     - id: world
       name: Amundi PEA Monde (MSCI World)
       isin: FR001400U5Q4
-      yahoo: WLD.PA               # UNVERIFIED
+      yahoo: DCAM.PA              # NOTE: launched 2025-03-04, limited history.
+                                  # For longer backtests consider the older
+                                  # Amundi MSCI World Swap (LU1681043599).
       ter_pct: 0.20
       replication: synthetic
       region: world
@@ -69,7 +71,7 @@ universe:
     - id: eu_broad
       name: Amundi PEA MSCI Europe
       isin: FR0013412038
-      yahoo: PCEU.PA              # UNVERIFIED
+      yahoo: PCEU.PA
       ter_pct: 0.15
       replication: synthetic
       region: europe
@@ -77,7 +79,7 @@ universe:
     - id: eu_large
       name: Amundi Core MSCI EMU
       isin: LU1646361276
-      yahoo: CEMU.PA              # UNVERIFIED
+      yahoo: MFEC.PA
       ter_pct: 0.12
       replication: physical
       region: eurozone
@@ -85,7 +87,7 @@ universe:
     - id: eu_small
       name: Amundi MSCI EMU Small Cap ESG Broad Transition
       isin: LU1598689153
-      yahoo: MMS.PA               # was Lyxor pre-merger; UNVERIFIED post-rebrand
+      yahoo: MMS.PA
       ter_pct: 0.40
       replication: physical
       region: eurozone
@@ -93,7 +95,7 @@ universe:
     - id: japan
       name: Amundi PEA Japon (TOPIX)
       isin: FR0013411980
-      yahoo: PTPXE.PA             # UNVERIFIED
+      yahoo: PTPXE.PA
       ter_pct: 0.20
       replication: synthetic
       region: japan
@@ -101,7 +103,7 @@ universe:
     - id: em_asia
       name: Amundi PEA Asie Emergente (MSCI Emerging Asia)
       isin: FR0013412012
-      yahoo: AASI.PA
+      yahoo: PAASI.PA
       ter_pct: 0.30
       replication: synthetic
       region: em_asia
@@ -109,15 +111,15 @@ universe:
     - id: em_broad
       name: Amundi PEA Emergent (MSCI Emerging) ESG Transition
       isin: FR0013412020
-      yahoo: PAEEM.PA             # UNVERIFIED
+      yahoo: PAEEM.PA
       ter_pct: 0.30
       replication: synthetic
       region: em
 
     - id: france
-      name: Amundi CAC 40
+      name: Amundi CAC 40 Acc
       isin: FR0013380607
-      yahoo: CAC.PA               # UNVERIFIED
+      yahoo: CACC.PA              # Acc share class (CAC.PA is the Dist class with ISIN FR0007052782)
       ter_pct: 0.25
       replication: physical
       region: france
@@ -125,7 +127,7 @@ universe:
     - id: germany
       name: Amundi ETF DAX
       isin: FR0010655712
-      yahoo: CD8.PA               # UNVERIFIED
+      yahoo: CG1.PA
       ter_pct: 0.10
       replication: physical
       region: germany
