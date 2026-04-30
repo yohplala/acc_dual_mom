@@ -114,13 +114,33 @@ REGION_ORDER = (
 
 
 def _asset_rows(strategy: Any, config: Config) -> list[list[Any]]:
-    """Layout the strategy's asset universe as rows grouped by region,
-    with the safe asset always last on its own row."""
+    """Layout the strategy's universe as rows of assets.
+
+    If `universe.display_layout` is set in the YAML, that explicit list-of-lists
+    is the source of truth — each row is filtered to the strategy's actual
+    universe (plus the safe asset), and empty rows collapse. Otherwise we fall
+    back to grouping by `region` in REGION_ORDER, with safe asset on a final row.
+    """
+    if config.display_layout is not None:
+        strategy_ids = set(strategy.asset_ids) | {config.safe_asset.id}
+        rows: list[list[Any]] = []
+        for row_ids in config.display_layout:
+            row_assets: list[Any] = []
+            for aid in row_ids:
+                if aid not in strategy_ids:
+                    continue
+                row_assets.append(
+                    config.safe_asset if aid == config.safe_asset.id else config.asset_by_id(aid)
+                )
+            if row_assets:
+                rows.append(row_assets)
+        return rows
+
     by_region: dict[str, list[Any]] = {}
     for asset_id in strategy.asset_ids:
         a = config.asset_by_id(asset_id)
         by_region.setdefault(a.region, []).append(a)
-    rows: list[list[Any]] = []
+    rows = []
     for region in REGION_ORDER:
         if region in by_region:
             rows.append(by_region.pop(region))
