@@ -49,16 +49,19 @@ def fetch_yahoo(asset: Asset, start: date) -> pl.DataFrame:
     if "Close" not in raw.columns:
         raise FetchError(f"yfinance response for {asset.yahoo} missing Close column")
 
-    df = pl.from_pandas(raw[["Close"]].reset_index())
-    df = df.rename({df.columns[0]: "date", "Close": "close"})
+    # pandas 3 may return Float64 (nullable extension) which requires pyarrow
+    # for `pl.from_pandas`. Build polars from native numpy arrays instead.
+    closes = raw["Close"].to_numpy(dtype="float64", na_value=float("nan"))
+    dates = raw.index.to_numpy()  # datetime64; polars casts cleanly to Date
+
     return (
-        df.with_columns(
+        pl.DataFrame({"date": dates, "close": closes})
+        .with_columns(
             pl.col("date").cast(pl.Date),
-            pl.col("close").cast(pl.Float64),
             pl.lit(asset.id).alias("asset_id"),
             pl.lit("yfinance").alias("source"),
         )
-        .filter(pl.col("close").is_not_null())
+        .filter(pl.col("close").is_not_null() & pl.col("close").is_not_nan())
         .select(["date", "asset_id", "close", "source"])
     )
 
