@@ -7,6 +7,11 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# Opt into Node.js 24 for actions still pinned to Node.js 20 (becomes the
+# runner default on 2026-06-02; this silences the deprecation warning).
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   test:
     runs-on: ubuntu-latest

@@ -18,6 +18,11 @@ permissions:
   pages: write
   id-token: write
 
+# Opt into Node.js 24 for actions still pinned to Node.js 20 (becomes the
+# runner default on 2026-06-02; this silences the deprecation warning).
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 concurrency:
   group: weekly-update
   cancel-in-progress: false
