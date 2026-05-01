@@ -1,4 +1,9 @@
-"""HTML report rendering: plotly charts + Jinja2 template."""
+"""HTML report rendering: plotly charts + Jinja2 templates.
+
+Two pages produced:
+- `index.html`            strategy dashboard (equity / metrics / drawdown)
+- `correlations.html`     PEA-universe correlation matrix + redundancy groups
+"""
 
 from __future__ import annotations
 
@@ -7,10 +12,12 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 import polars as pl
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from .backtest import BacktestResult
+from .correlations import CorrelationMatrix, GroupRepresentative
 from .metrics import avg_pairwise_correlation, compute, drawdown_series
 from .universe import Config
 
@@ -275,3 +282,105 @@ def _drawdown_figure(
     layout: dict[str, Any] = dict(PLOT_LAYOUT_BASE)
     layout["yaxis"] = {**PLOT_LAYOUT_BASE["yaxis"], "title": "Drawdown (%)"}
     return traces, layout
+
+
+# ─── Correlation matrix page ──────────────────────────────────────────
+
+
+def render_correlations(
+    cm: CorrelationMatrix,
+    groups: list[GroupRepresentative],
+    threshold: float,
+    output_dir: str | Path,
+    template_name: str = "correlations.html.j2",
+) -> Path:
+    """Render the PEA-universe correlation matrix to `correlations.html`.
+
+    `cm`         the n-by-n matrix with asset_ids in heatmap order
+    `groups`     redundancy groups (each with a representative pick)
+    `threshold`  the correlation cutoff used to form groups (for display)
+    """
+    output_path = Path(output_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
+
+    env = Environment(
+        loader=FileSystemLoader(TEMPLATES_DIR),
+        autoescape=select_autoescape(["html", "xml"]),
+    )
+    template = env.get_template(template_name)
+
+    summary = {
+        "n_assets": len(cm.asset_ids),
+        "window_days": cm.window_days,
+        "threshold": threshold,
+        "last_update": datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
+    }
+
+    heatmap_traces, heatmap_layout = _heatmap_figure(cm)
+
+    groups_view = [
+        {
+            "group": list(g.group),
+            "representative": g.representative,
+            "representative_score": g.representative_score,
+        }
+        for g in groups
+    ]
+
+    rendered = template.render(
+        summary=summary,
+        groups=groups_view,
+        heatmap_traces=json.dumps(heatmap_traces),
+        heatmap_layout=json.dumps(heatmap_layout),
+    )
+
+    out_file = output_path / "correlations.html"
+    out_file.write_text(rendered)
+    return out_file
+
+
+def _heatmap_figure(cm: CorrelationMatrix) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Triangular Plotly heatmap. Upper triangle masked with NaN so only the
+    lower triangle (incl. diagonal) renders."""
+    if not cm.asset_ids:
+        return [], dict(PLOT_LAYOUT_BASE)
+
+    z = cm.matrix.copy()
+    mask = np.triu(np.ones_like(z, dtype=bool), k=1)
+    z[mask] = np.nan
+
+    trace = {
+        "type": "heatmap",
+        "x": cm.asset_ids,
+        "y": cm.asset_ids,
+        "z": [[None if math_isnan(v) else float(v) for v in row] for row in z],
+        "zmin": -1,
+        "zmax": 1,
+        "colorscale": [
+            [0.0, "#58a6ff"],  # blue: -1
+            [0.5, "#161b22"],  # dark: 0
+            [0.85, "#d29922"],  # amber: 0.7
+            [1.0, "#f85149"],  # red: 1
+        ],
+        "hoverongaps": False,
+        "hovertemplate": "%{y} vs %{x}<br>corr = %{z:.2f}<extra></extra>",
+    }
+
+    layout = dict(PLOT_LAYOUT_BASE)
+    layout["xaxis"] = {
+        **PLOT_LAYOUT_BASE["xaxis"],
+        "tickangle": -45,
+        "tickfont": {"size": 9},
+    }
+    layout["yaxis"] = {
+        **PLOT_LAYOUT_BASE["yaxis"],
+        "autorange": "reversed",
+        "tickfont": {"size": 9},
+    }
+    layout["margin"] = {"t": 16, "r": 16, "b": 120, "l": 140}
+    return [trace], layout
+
+
+def math_isnan(x: object) -> bool:
+    """True if x is a Python float NaN (or numpy NaN coerced to float)."""
+    return isinstance(x, float) and x != x  # NaN != NaN by IEEE 754
