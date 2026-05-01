@@ -62,7 +62,7 @@ universe:
   - { id: eu_strategic_auto,    name: Amundi European Strategic Autonomy ETF Acc,   isin: LU3180074463, currency: EUR, ter_pct: 0.40, sfdr: Article 6, category: Europe,       yahoo: null }
 
   # ─── Eurozone broad ────────────────────────────────────────────────
-  - { id: emu_core_eur_acc,     name: Amundi Core EURO STOXX 50 EUR Acc,            isin: LU1681047236, currency: EUR, ter_pct: 0.09, sfdr: Article 6, category: Eurozone,     yahoo: C50.PA }
+  - { id: emu_core_es50_acc,    name: Amundi Core EURO STOXX 50 EUR Acc,            isin: LU1681047236, currency: EUR, ter_pct: 0.09, sfdr: Article 6, category: Eurozone,     yahoo: C50.PA }
   - { id: emu_core_eur_dist,    name: Amundi Core EURO STOXX 50 EUR Dist,           isin: LU1681047319, currency: EUR, ter_pct: 0.09, sfdr: Article 6, category: Eurozone,     yahoo: null }
   - { id: emu_core_usd,         name: Amundi Core EURO STOXX 50 USD Acc,            isin: LU1681047400, currency: USD, ter_pct: 0.09, sfdr: Article 6, category: Eurozone,     yahoo: null }
   - { id: emu_ii_acc,           name: Amundi EURO STOXX 50 II UCITS ETF Acc,        isin: FR0007054358, currency: EUR, ter_pct: 0.20, sfdr: Article 6, category: Eurozone,     yahoo: MSE.PA }

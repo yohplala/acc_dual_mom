@@ -143,21 +143,3 @@ def avg_pairwise_correlation(
     n = corr.shape[0]
     mask = ~np.eye(n, dtype=bool)
     return float(corr[mask].mean())
-
-
-def monthly_returns(equity: pl.DataFrame) -> pl.DataFrame:
-    """Return [year, month, return] for a heatmap."""
-    return (
-        equity.sort("date")
-        .with_columns(
-            year=pl.col("date").dt.year(),
-            month=pl.col("date").dt.month(),
-        )
-        .group_by(["year", "month"], maintain_order=True)
-        .agg(pl.col("equity").last().alias("month_end_equity"))
-        .sort(["year", "month"])
-        .with_columns(
-            ret=(pl.col("month_end_equity") / pl.col("month_end_equity").shift(1) - 1.0),
-        )
-        .select(["year", "month", "ret"])
-    )

@@ -22,15 +22,7 @@ from pea_momentum.universe import Asset
 
 
 def _asset() -> Asset:
-    return Asset(
-        id="t",
-        name="t",
-        isin="x",
-        yahoo="X.PA",
-        ter_pct=0.0,
-        replication="synthetic",
-        region="x",
-    )
+    return Asset(id="t", isin="x", yahoo="X.PA", region="x")
 
 
 def test_fetch_yahoo_handles_pandas_extension_float64(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -234,11 +226,8 @@ def test_fetch_stooq_drops_null_closes(monkeypatch: pytest.MonkeyPatch) -> None:
 def _eur_asset_with_fallback() -> Asset:
     return Asset(
         id="eu_test",
-        name="x",
         isin="x",
         yahoo="X.PA",
-        ter_pct=0.0,
-        replication="synthetic",
         region="europe",
         inception=date(2018, 1, 1),
         index_proxy="^stoxxr",
@@ -269,11 +258,8 @@ def test_proxy_no_fallback_propagates_error(monkeypatch: pytest.MonkeyPatch) -> 
     """Without a fallback, Stooq failures bubble up loudly."""
     asset = Asset(
         id="x",
-        name="x",
         isin="x",
         yahoo="X.PA",
-        ter_pct=0.0,
-        replication="synthetic",
         region="europe",
         inception=date(2018, 1, 1),
         index_proxy="^stoxxr",

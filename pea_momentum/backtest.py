@@ -45,7 +45,6 @@ class BacktestResult:
     strategy_name: str
     equity: pl.DataFrame  # [date, equity, daily_return]
     rebalances: list[Rebalance]
-    weight_history: pl.DataFrame  # [date, asset_id, weight]
     # Visibility into rebalance attrition. A degenerate strategy that ends
     # up with `len(rebalances) == 0` may have many fill_skips (rebalance
     # day past last available trading day) or signal_skips (no asset has
@@ -53,6 +52,22 @@ class BacktestResult:
     # runs don't go unnoticed.
     n_fill_skips: int = 0
     n_signal_skips: int = 0
+
+
+_EMPTY_EQUITY_SCHEMA = {
+    "date": pl.Date,
+    "equity": pl.Float64,
+    "daily_return": pl.Float64,
+}
+
+
+def _empty_result(strategy_name: str) -> BacktestResult:
+    """Empty result with no rebalances — used when there's no usable data."""
+    return BacktestResult(
+        strategy_name=strategy_name,
+        equity=pl.DataFrame(schema=_EMPTY_EQUITY_SCHEMA),
+        rebalances=[],
+    )
 
 
 def run(
@@ -84,20 +99,11 @@ def run(
     wide = wide.drop_nulls(subset=[safe_id])  # need at least the safe asset
 
     if strategy.mode == "buy_and_hold":
-        return _run_buy_and_hold(wide, strategy, asset_ids, safe_id)
+        return _run_buy_and_hold(wide, strategy, asset_ids)
 
     if wide.is_empty():
         log.warning("backtest %s: no usable price data", strategy.name)
-        return BacktestResult(
-            strategy_name=strategy.name,
-            equity=pl.DataFrame(
-                schema={"date": pl.Date, "equity": pl.Float64, "daily_return": pl.Float64}
-            ),
-            rebalances=[],
-            weight_history=pl.DataFrame(
-                schema={"date": pl.Date, "asset_id": pl.Utf8, "weight": pl.Float64}
-            ),
-        )
+        return _empty_result(strategy.name)
 
     dates = wide.get_column("date").to_list()
     cost_pct = config.shared.costs.per_trade_pct / 100.0
@@ -118,7 +124,6 @@ def run(
     rebalances: list[Rebalance] = []
     fill_to_weights: dict[date, dict[str, float]] = {}
     prev_weights: dict[str, float] = {SAFE_ASSET_KEY: 1.0}
-    safe_score_id = safe_id
 
     n_fill_skips = 0
     n_signal_skips = 0
@@ -131,7 +136,7 @@ def run(
         scores = score_at(prices_long, asset_ids, s_day, scoring)
         # Safe asset must be scored on the SAME lookbacks as risky assets — the
         # absolute filter compares like-for-like.
-        safe_scores = score_at(prices_long, [safe_score_id], s_day, scoring)
+        safe_scores = score_at(prices_long, [safe_id], s_day, scoring)
         if not scores:
             n_signal_skips += 1
             continue
@@ -140,14 +145,14 @@ def run(
         # has enough lookback history), there's no defensible default —
         # 0.0 would silently let any positive risky score pass the filter,
         # which is the wrong direction in negative-rate regimes. Fail loud.
-        if safe_score_id not in safe_scores:
+        if safe_id not in safe_scores:
             raise RuntimeError(
-                f"safe asset {safe_score_id!r} has no score at signal date {s_day} — "
+                f"safe asset {safe_id!r} has no score at signal date {s_day} — "
                 f"backtest start is before safe asset has enough lookback history "
                 f"(need {max(scoring.lookbacks_days)} trading days). "
                 f"Push the --start date forward or use a longer-history safe asset."
             )
-        safe_score = safe_scores[safe_score_id]
+        safe_score = safe_scores[safe_id]
         new_w = allocate(
             scores=scores,
             safe_score=safe_score,
@@ -214,25 +219,10 @@ def run(
         }
     )
 
-    # Long-format weight history (one row per date+asset combination)
-    history_rows: list[dict[str, object]] = []
-    for d, w in zip(dates, effective, strict=True):
-        for a, weight in w.items():
-            if weight > 0:
-                history_rows.append({"date": d, "asset_id": a, "weight": weight})
-    weight_history = (
-        pl.DataFrame(
-            history_rows, schema={"date": pl.Date, "asset_id": pl.Utf8, "weight": pl.Float64}
-        )
-        if history_rows
-        else pl.DataFrame(schema={"date": pl.Date, "asset_id": pl.Utf8, "weight": pl.Float64})
-    )
-
     return BacktestResult(
         strategy_name=strategy.name,
         equity=equity_df,
         rebalances=rebalances,
-        weight_history=weight_history,
         n_fill_skips=n_fill_skips,
         n_signal_skips=n_signal_skips,
     )
@@ -248,35 +238,16 @@ def _run_buy_and_hold(
     wide: pl.DataFrame,
     strategy: Strategy,
     asset_ids: list[str],
-    safe_id: str,
 ) -> BacktestResult:
     """Equal-weight buy-and-hold across `asset_ids` from the first available
     date. No rebalances, no transaction costs — pure benchmark."""
     asset_cols = [c for c in asset_ids if c in wide.columns]
     if not asset_cols:
-        return BacktestResult(
-            strategy_name=strategy.name,
-            equity=pl.DataFrame(
-                schema={"date": pl.Date, "equity": pl.Float64, "daily_return": pl.Float64}
-            ),
-            rebalances=[],
-            weight_history=pl.DataFrame(
-                schema={"date": pl.Date, "asset_id": pl.Utf8, "weight": pl.Float64}
-            ),
-        )
+        return _empty_result(strategy.name)
 
     wide = wide.drop_nulls(subset=asset_cols)
     if wide.is_empty():
-        return BacktestResult(
-            strategy_name=strategy.name,
-            equity=pl.DataFrame(
-                schema={"date": pl.Date, "equity": pl.Float64, "daily_return": pl.Float64}
-            ),
-            rebalances=[],
-            weight_history=pl.DataFrame(
-                schema={"date": pl.Date, "asset_id": pl.Utf8, "weight": pl.Float64}
-            ),
-        )
+        return _empty_result(strategy.name)
 
     dates = wide.get_column("date").to_list()
     n = len(asset_cols)
@@ -314,18 +285,10 @@ def _run_buy_and_hold(
         )
     ]
 
-    history_rows = [
-        {"date": d, "asset_id": a, "weight": weight_per} for d in dates for a in asset_cols
-    ]
-    weight_history = pl.DataFrame(
-        history_rows, schema={"date": pl.Date, "asset_id": pl.Utf8, "weight": pl.Float64}
-    )
-
     return BacktestResult(
         strategy_name=strategy.name,
         equity=equity_df,
         rebalances=rebalances,
-        weight_history=weight_history,
     )
 
 

@@ -35,7 +35,6 @@ class DiscoveryEntry:
     isin: str
     currency: str
     ter_pct: float
-    sfdr: str
     category: str
     yahoo: str | None
     leveraged: bool = False
@@ -51,7 +50,6 @@ def load_discovery_universe(path: str | Path = "pea_universe.yaml") -> list[Disc
             isin=e["isin"],
             currency=e["currency"],
             ter_pct=float(e["ter_pct"]),
-            sfdr=e.get("sfdr", "Article 6"),
             category=e.get("category", "Other"),
             yahoo=e.get("yahoo"),
             leveraged=bool(e.get("leveraged", False)),
@@ -145,10 +143,7 @@ def _entry_to_asset(entry: DiscoveryEntry) -> Asset:
     fetches live ETF history only."""
     return Asset(
         id=entry.id,
-        name=entry.name,
         isin=entry.isin,
         yahoo=entry.yahoo or "",
-        ter_pct=entry.ter_pct,
-        replication="synthetic",
         region=entry.category.lower(),
     )
