@@ -42,10 +42,9 @@ universe:
       replication: synthetic
       region: us
       inception: 2014-04-29
-      index_proxy: ^spxtr                   # S&P 500 TR (USD) on Stooq — Yahoo
-      index_proxy_kind: usd_pr              # has the page but yfinance can't
-      index_proxy_source: stooq             # fetch it ("possibly delisted").
-      index_proxy_fallback: ^GSPC           # Yahoo PR fallback if Stooq down.
+      index_proxy: ^GSPC                    # S&P 500 (PR USD) — Yahoo. PR
+      index_proxy_kind: usd_pr              # understates by ~2pp/yr vs TR;
+                                            # see commit notes for context.
 
     - id: us_tech
       name: Amundi PEA Nasdaq-100
@@ -55,10 +54,8 @@ universe:
       replication: synthetic
       region: us
       inception: 2014-04-29
-      index_proxy: ^ndxtr                   # Nasdaq-100 TR (USD) — Stooq
+      index_proxy: ^NDX                     # Nasdaq-100 (PR USD) — Yahoo
       index_proxy_kind: usd_pr
-      index_proxy_source: stooq
-      index_proxy_fallback: ^NDX            # Yahoo PR fallback
 
     - id: us_small
       name: Amundi Russell 2000
@@ -68,10 +65,8 @@ universe:
       replication: synthetic
       region: us
       inception: 2017-09-21
-      index_proxy: ^ruttr                   # Russell 2000 TR (USD) — Stooq
+      index_proxy: ^RUT                     # Russell 2000 (PR USD) — Yahoo
       index_proxy_kind: usd_pr
-      index_proxy_source: stooq
-      index_proxy_fallback: ^RUT            # Yahoo PR fallback
 
     - id: world
       name: Amundi PEA Monde (MSCI World)
@@ -93,10 +88,8 @@ universe:
       replication: synthetic
       region: europe
       inception: 2018-12-12
-      index_proxy: ^stoxxr                  # STOXX Europe 600 Reinvested
-      index_proxy_kind: eur_pr              # (Total Return EUR — close approx
-      index_proxy_source: stooq             # of MSCI Europe NTR)
-      index_proxy_fallback: ^STOXX          # Yahoo PR fallback if Stooq unreachable
+      index_proxy: ^STOXX                   # STOXX Europe 600 (PR EUR) — Yahoo
+      index_proxy_kind: eur_pr              # (close approx of MSCI Europe)
 
     - id: eu_emu
       name: Amundi Core MSCI EMU            # eurozone-only large/mid cap
@@ -106,10 +99,9 @@ universe:
       replication: physical
       region: eurozone
       inception: 2017-09-29
-      index_proxy: ^sx5gr                   # Euro Stoxx 50 Gross Return (TR EUR;
+      index_proxy: ^STOXX50E                # Euro Stoxx 50 (PR EUR) — Yahoo;
       index_proxy_kind: eur_pr              # narrower than MSCI EMU but tightly
-      index_proxy_source: stooq             # correlated)
-      index_proxy_fallback: ^STOXX50E       # Yahoo PR fallback
+                                            # correlated
 
     - id: eu_small
       name: Amundi MSCI EMU Small Cap ESG Broad Transition
@@ -232,10 +224,8 @@ universe:
       replication: synthetic
       region: eurozone
       inception: 2017-09-29
-      index_proxy: ^sx5gr                   # Euro Stoxx 50 Gross Return (TR EUR)
+      index_proxy: ^STOXX50E                # Euro Stoxx 50 (PR EUR) — Yahoo
       index_proxy_kind: eur_pr
-      index_proxy_source: stooq
-      index_proxy_fallback: ^STOXX50E       # Yahoo PR fallback
 
   safe_asset:
     id: safe

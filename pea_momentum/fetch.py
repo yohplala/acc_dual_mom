@@ -163,16 +163,23 @@ def _fetch_stooq_close_only(ticker: str, start: date) -> pl.DataFrame:
         "i": "d",
     }
     log.info("fetching proxy %s from Stooq since %s", ticker, start)
-    with httpx.Client(timeout=30.0, follow_redirects=True) as client:
-        r = client.get(STOOQ_BASE_URL, params=params, headers={"Accept": "text/csv"})
-        r.raise_for_status()
+    try:
+        with httpx.Client(timeout=30.0, follow_redirects=True) as client:
+            r = client.get(STOOQ_BASE_URL, params=params, headers={"Accept": "text/csv"})
+            r.raise_for_status()
+    except httpx.HTTPError as exc:
+        # ConnectTimeout / ReadTimeout / network error / 4xx-5xx — convert to
+        # FetchError so the caller's `index_proxy_fallback` chain engages
+        # instead of crashing the whole fetch.
+        raise FetchError(f"Stooq fetch for {ticker!r} failed: {exc}") from exc
 
     body = r.content
-    # Stooq sometimes returns an HTML error page on bad tickers; CSV starts with
-    # "Date," — bail loudly on anything else.
+    # Stooq's free CSV endpoint started gating with API-key prompts in early
+    # 2026 — non-CSV responses (HTML "Get your apikey" page) are now common.
+    # Real CSV starts with "Date," — anything else is a soft failure.
     if not body.lstrip().lower().startswith(b"date,"):
         raise FetchError(
-            f"Stooq returned non-CSV response for {ticker!r} " f"(first 80 bytes: {body[:80]!r})"
+            f"Stooq returned non-CSV response for {ticker!r} (first 80 bytes: {body[:80]!r})"
         )
 
     raw = pl.read_csv(io.BytesIO(body))
