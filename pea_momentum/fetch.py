@@ -21,11 +21,11 @@ log = logging.getLogger(__name__)
 ECB_ESTR_URL = "https://data-api.ecb.europa.eu/service/data/EST/B.EU000A2X2A25.WT?format=csvdata"
 """€STR volume-weighted trimmed-mean rate (annualized, ACT/360, business days)."""
 
-ECB_EONIA_URL = (
-    "https://data-api.ecb.europa.eu/service/data/FM/D.U2.EUR.4F.MM.EONIA.HSTA?format=csvdata"
-)
-"""EONIA daily rate — predecessor to €STR. Available from 1999-01-04 to 2022-01-03,
-overlaps with €STR from 2019-10-02. We use EONIA pre-2019-10-02 and €STR after."""
+ECB_EONIA_URL = "https://data-api.ecb.europa.eu/service/data/EON/D.EONIA_TO.RATE?format=csvdata"
+"""EONIA daily rate — predecessor to €STR. Series key `EON.D.EONIA_TO.RATE`
+(dataflow EON, daily, total/aggregate, rate). Available from 1999-01-04 to
+2022-01-03, overlaps with €STR from 2019-10-02. We use EONIA pre-2019-10-02
+and €STR after."""
 
 ESTR_BASE_PRICE = 100.0
 """Synthetic price level on the first available safe-asset fixing."""
@@ -264,11 +264,17 @@ def fetch_eonia(start: date) -> pl.DataFrame:
     discontinued on 2022-01-03 (replaced by €STR which started 2019-10-02).
     For backtests starting before €STR's launch, EONIA fills in the pre-2019
     history. Same ACT/360 convention as €STR.
+
+    All HTTP / parsing errors are converted to `FetchError` so the caller's
+    fallback path engages instead of crashing the whole fetch.
     """
     log.info("fetching EONIA from ECB since %s", start)
-    with httpx.Client(timeout=30.0) as client:
-        r = client.get(ECB_EONIA_URL, headers={"Accept": "text/csv"})
-        r.raise_for_status()
+    try:
+        with httpx.Client(timeout=30.0) as client:
+            r = client.get(ECB_EONIA_URL, headers={"Accept": "text/csv"})
+            r.raise_for_status()
+    except httpx.HTTPError as exc:
+        raise FetchError(f"EONIA fetch failed: {exc}") from exc
 
     raw = pl.read_csv(io.BytesIO(r.content))
     date_col = next((c for c in raw.columns if c.upper() == "TIME_PERIOD"), None)
