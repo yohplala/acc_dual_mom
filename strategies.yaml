@@ -287,3 +287,15 @@ strategies:
     assets: [us_large, us_small, eu_50, eu_banks, japan_hedged, em_asia]
     rebalance: monthly_first_sunday
     top_n: 3
+
+  # Pure 100% MSCI World, never rebalanced — zero-cost baseline benchmark.
+  # Strategy mode `buy_and_hold` allocates equal weights to `assets` on day
+  # one and never rebalances. With a single-asset universe this means 100%
+  # held throughout. `rebalance` and `top_n` are unused in this mode but
+  # must be present.
+  - name: msci_world_buy_hold
+    description: 100% MSCI World buy-and-hold (zero-cost benchmark)
+    mode: buy_and_hold
+    assets: [world]
+    rebalance: monthly_first_sunday
+    top_n: 1

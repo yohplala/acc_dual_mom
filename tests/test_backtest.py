@@ -115,3 +115,39 @@ def test_no_rebalance_with_too_short_history() -> None:
     prices = _synthetic_prices(date(2023, 1, 1), days=50)
     result = run(prices, _strategy(), _config())
     assert result.rebalances == []
+
+
+def _bh_strategy() -> Strategy:
+    return Strategy(
+        name="bh",
+        description="",
+        asset_ids=("up",),
+        rebalance="monthly_first_sunday",
+        top_n=1,
+        reference_date=None,
+        mode="buy_and_hold",
+    )
+
+
+def test_buy_and_hold_holds_constant_weight() -> None:
+    prices = _synthetic_prices(date(2023, 1, 1), days=400)
+    result = run(prices, _bh_strategy(), _config())
+    assert len(result.rebalances) == 1
+    assert result.rebalances[0].weights == {"up": 1.0}
+    assert result.rebalances[0].turnover == 0.0
+    assert result.rebalances[0].cost == 0.0
+
+
+def test_buy_and_hold_zero_cost() -> None:
+    prices = _synthetic_prices(date(2023, 1, 1), days=400)
+    result = run(prices, _bh_strategy(), _config())
+    total_cost = sum(r.cost for r in result.rebalances)
+    assert total_cost == 0.0
+
+
+def test_buy_and_hold_tracks_underlying_uptrend() -> None:
+    prices = _synthetic_prices(date(2023, 1, 1), days=400)
+    result = run(prices, _bh_strategy(), _config())
+    # `up` grows at 0.05% per day; over ~400 days that's ~22% gain.
+    final_eq = result.equity.get_column("equity")[-1]
+    assert 1.15 < final_eq < 1.30

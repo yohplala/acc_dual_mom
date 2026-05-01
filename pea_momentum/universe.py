@@ -78,6 +78,11 @@ class Strategy:
     rebalance: str
     top_n: int
     reference_date: date | None = None
+    # `rotation` runs the score → filter → top-N → score-prop allocation.
+    # `buy_and_hold` allocates equal weights to `asset_ids` on day one and
+    # never rebalances — useful as a zero-cost reference benchmark (e.g.
+    # 100% MSCI World).
+    mode: str = "rotation"
 
 
 @dataclass(frozen=True, slots=True)
@@ -163,6 +168,7 @@ def _parse(raw: dict[str, Any]) -> Config:
             rebalance=s["rebalance"],
             top_n=int(s["top_n"]),
             reference_date=_parse_date(s.get("reference_date")),
+            mode=s.get("mode", "rotation"),
         )
         for s in raw["strategies"]
     )
