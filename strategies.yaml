@@ -158,6 +158,27 @@ strategies:
     rebalance: weekly_sunday
     top_n: 3
 
+  # Antonacci's classic dual momentum: same universe + cadence as
+  # core_monthly, but scoring uses a single 12-month lookback (252 trading
+  # days) instead of the accelerated mean of 1/3/6m. This is the
+  # benchmark the "accelerated" variant is benchmarked against in the
+  # original Antonacci literature.
+  - name: core_monthly_dm_12m
+    description: Classic Antonacci dual momentum (12-month lookback), monthly rebalance
+    assets: [us_large, us_small, eu_broad, eu_small, em_asia, world]
+    rebalance: monthly_first_sunday
+    top_n: 3
+    lookbacks_days: [252]
+
+  # Single 6-month lookback variant — sometimes used as the "moderate"
+  # version of dual momentum (vs accelerated 1/3/6m or classic 12m).
+  - name: core_monthly_dm_6m
+    description: Dual momentum with 6-month lookback, monthly rebalance
+    assets: [us_large, us_small, eu_broad, eu_small, em_asia, world]
+    rebalance: monthly_first_sunday
+    top_n: 3
+    lookbacks_days: [126]
+
   # Same 5 other sleeves as core_monthly, with `japan_hedged` swapped in
   # for `world`. Compares the value of an FX-hedged Japan exposure as the
   # 6th sleeve. Not a pure hedged-vs-unhedged A/B (would need a paired
