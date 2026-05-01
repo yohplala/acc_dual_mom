@@ -36,6 +36,11 @@ PLOT_LAYOUT_BASE: dict[str, Any] = {
 
 PALETTE = ["#58a6ff", "#3fb950", "#d29922", "#f85149", "#bc8cff", "#79c0ff"]
 
+_ENV = Environment(
+    loader=FileSystemLoader(TEMPLATES_DIR),
+    autoescape=select_autoescape(["html", "xml"]),
+)
+
 
 def render(
     results: list[BacktestResult],
@@ -46,12 +51,7 @@ def render(
 ) -> Path:
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
-
-    env = Environment(
-        loader=FileSystemLoader(TEMPLATES_DIR),
-        autoescape=select_autoescape(["html", "xml"]),
-    )
-    template = env.get_template(template_name)
+    template = _ENV.get_template(template_name)
 
     summary = _summary(results, config)
     signals = [_signal_row(r, config) for r in results]
@@ -311,12 +311,7 @@ def render_correlations(
 
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
-
-    env = Environment(
-        loader=FileSystemLoader(TEMPLATES_DIR),
-        autoescape=select_autoescape(["html", "xml"]),
-    )
-    template = env.get_template(template_name)
+    template = _ENV.get_template(template_name)
 
     summary = {
         "n_assets": len(cm.asset_ids),

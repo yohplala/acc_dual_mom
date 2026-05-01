@@ -21,6 +21,7 @@ from pathlib import Path
 import polars as pl
 
 PRICES_FILE = "prices.parquet"
+DISCOVERY_PRICES_FILE = "discover.parquet"
 HISTORY_DIR = "history"
 
 PRICES_SCHEMA: pl.Schema = pl.Schema(

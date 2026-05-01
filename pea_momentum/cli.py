@@ -21,6 +21,7 @@ import click
 import polars as pl
 
 from . import backtest, correlations, discover, fetch, render, store
+from .diagnostics import diagnose_strategies
 from .universe import Config, load_config
 
 DEFAULT_CONFIG = "strategies.yaml"
@@ -160,7 +161,9 @@ def cmd_render(ctx: click.Context, site_root: str) -> None:
         if equity is None or equity.is_empty():
             continue
         rebal_path = results_root / f"{strategy.name}.rebalances.json"
-        rebals = _load_rebalances(rebal_path) if rebal_path.exists() else []
+        rebals = (
+            backtest.rebalances_from_json(rebal_path.read_text()) if rebal_path.exists() else []
+        )
         results.append(
             backtest.BacktestResult(
                 strategy_name=strategy.name,
@@ -190,31 +193,6 @@ def cmd_run(ctx: click.Context, site_root: str, start: str | None) -> None:
     ctx.invoke(cmd_render, site_root=site_root)
 
 
-def _load_rebalances(path: Path) -> list[backtest.Rebalance]:
-    """Strict deserializer for `<strategy>.rebalances.json` artifacts.
-
-    Every field is written unconditionally by `backtest.rebalances_to_json`,
-    so a missing key indicates a corrupted artifact rather than a legacy
-    schema. We index strictly so corruption surfaces as a `KeyError`.
-    """
-    raw = json.loads(path.read_text())
-    return [
-        backtest.Rebalance(
-            rebalance_date=date.fromisoformat(r["rebalance_date"]),
-            signal_date=date.fromisoformat(r["signal_date"]),
-            fill_date=date.fromisoformat(r["fill_date"]),
-            scores=r["scores"],
-            weights=r["weights"],
-            turnover=float(r["turnover"]),
-            cost=float(r["cost"]),
-        )
-        for r in raw
-    ]
-
-
-DISCOVERY_PRICES_FILE = "discover.parquet"
-
-
 @cli.command(name="discover")
 @click.option("--start", default=None, help="ISO date for fetch start; default = ~3y back")
 @click.option(
@@ -235,7 +213,7 @@ def cmd_discover(ctx: click.Context, start: str | None, universe: str) -> None:
     )
     prices = discover.fetch_discovery_universe(entries, start=start_d)
 
-    out_path = data_root / DISCOVERY_PRICES_FILE
+    out_path = data_root / store.DISCOVERY_PRICES_FILE
     out_path.parent.mkdir(parents=True, exist_ok=True)
     if prices.is_empty():
         click.echo("WARN · discovery fetched zero rows; nothing to persist")
@@ -273,7 +251,7 @@ def cmd_render_correlations(
     cfg: Config = ctx.obj["config"]
     data_root: Path = ctx.obj["data_root"]
     entries = discover.load_discovery_universe(universe)
-    prices_path = data_root / DISCOVERY_PRICES_FILE
+    prices_path = data_root / store.DISCOVERY_PRICES_FILE
     if not prices_path.exists():
         raise click.ClickException(
             f"No discovery prices at {prices_path}; run `pea-mom discover` first."
@@ -289,7 +267,7 @@ def cmd_render_correlations(
         for g in grouped
     ]
 
-    diagnostics = correlations.diagnose_strategies(cfg, entries, reps)
+    diagnostics = diagnose_strategies(cfg, entries, reps)
 
     out = render.render_correlations(
         cm,

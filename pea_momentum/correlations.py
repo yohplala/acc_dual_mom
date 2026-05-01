@@ -1,22 +1,22 @@
 """Correlation-matrix analysis on the discovery universe.
 
-Four pieces:
+Three pieces:
 
-1. `compute_correlation_matrix()` — pairwise Pearson correlation of daily
-   returns over a trailing window. Returns ordered asset ids + the n-by-n
-   matrix as a numpy array.
+1. `pairwise_corrcoef()` — low-level helper: filter, pivot, forward-fill,
+   compute pairwise Pearson corrcoef on daily returns. Reused by
+   `metrics.avg_pairwise_correlation`.
 
-2. `find_groups()` — union-find on edges where correlation > threshold.
+2. `compute_correlation_matrix()` — wrap `pairwise_corrcoef` over a trailing
+   `window_days` window into a `CorrelationMatrix` for rendering.
+
+3. `find_groups()` — union-find on edges where correlation > threshold.
    Connected components are groups of redundant exposures.
 
-3. `best_in_group()` — for each group, picks the representative with the
+4. `best_in_group()` — for each group, picks the representative with the
    best return / cost ratio (CAGR over the window divided by TER).
 
-4. `diagnose_strategies()` — cross-references each strategy in
-   strategies.yaml against the correlation groups (matched by ISIN) to
-   flag two issues:
-   - **Replace**: a strategy uses an asset that isn't the best-in-group
-   - **Remove**: a strategy uses 2+ assets that fall in the same group
+Strategy diagnostics (cross-referencing strategies.yaml against these
+groups) live in `diagnostics.py`.
 """
 
 from __future__ import annotations
@@ -24,14 +24,9 @@ from __future__ import annotations
 import math
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
 
 import numpy as np
 import polars as pl
-
-if TYPE_CHECKING:
-    from .discover import DiscoveryEntry
-    from .universe import Config
 
 
 @dataclass(frozen=True, slots=True)
@@ -49,6 +44,40 @@ class GroupRepresentative:
     member_scores: dict[str, float]
 
 
+def pairwise_corrcoef(
+    prices_long: pl.DataFrame,
+    asset_ids: list[str],
+    window_days: int | None = None,
+) -> tuple[list[str], np.ndarray] | None:
+    """Filter, pivot, forward-fill, and compute pairwise Pearson corrcoef of
+    daily returns. Returns `(column_order, n-by-n matrix)` or `None` if
+    insufficient data (fewer than 2 assets or fewer than 2 returns).
+
+    `window_days = None` uses the full available history; otherwise only the
+    trailing `window_days + 1` rows are used.
+    """
+    relevant = prices_long.filter(pl.col("asset_id").is_in(asset_ids))
+    if relevant.is_empty():
+        return None
+    wide = relevant.pivot(values="close", index="date", on="asset_id").sort("date")
+    cols = [c for c in wide.columns if c != "date"]
+    if len(cols) < 2:
+        return None
+    wide = wide.with_columns([pl.col(c).forward_fill() for c in cols])
+    if window_days is not None:
+        wide = wide.tail(window_days + 1)
+    rets = wide.select(
+        *[(pl.col(c) / pl.col(c).shift(1) - 1.0).alias(c) for c in cols]
+    ).drop_nulls()
+    if rets.height < 2:
+        return None
+    arr = rets.to_numpy()
+    corr = np.corrcoef(arr, rowvar=False)
+    if corr.ndim == 0 or corr.shape[0] < 2:
+        return None
+    return cols, corr
+
+
 def compute_correlation_matrix(
     prices_long: pl.DataFrame,
     asset_ids: list[str],
@@ -61,26 +90,21 @@ def compute_correlation_matrix(
     not all of `asset_ids` will appear in `matrix.asset_ids` if some
     weren't fetched successfully.
     """
-    relevant = prices_long.filter(pl.col("asset_id").is_in(asset_ids))
-    if relevant.is_empty():
-        return CorrelationMatrix(asset_ids=[], matrix=np.empty((0, 0)), window_days=window_days)
-
-    wide = relevant.pivot(values="close", index="date", on="asset_id").sort("date")
-    cols = [c for c in wide.columns if c != "date"]
-    if len(cols) < 2:
+    result = pairwise_corrcoef(prices_long, asset_ids, window_days=window_days)
+    if result is None:
+        # Distinguish fully-empty (return empty matrix) from singleton (return
+        # 1-by-1 identity) so callers can render heatmaps either way.
+        relevant_ids = (
+            prices_long.filter(pl.col("asset_id").is_in(asset_ids))
+            .get_column("asset_id")
+            .unique()
+            .to_list()
+        )
+        cols = [c for c in asset_ids if c in relevant_ids]
+        if not cols:
+            return CorrelationMatrix(asset_ids=[], matrix=np.empty((0, 0)), window_days=window_days)
         return CorrelationMatrix(asset_ids=cols, matrix=np.eye(len(cols)), window_days=window_days)
-
-    wide = wide.with_columns([pl.col(c).forward_fill() for c in cols]).tail(window_days + 1)
-    rets = wide.select(
-        *[(pl.col(c) / pl.col(c).shift(1) - 1.0).alias(c) for c in cols]
-    ).drop_nulls()
-    if rets.height < 2:
-        return CorrelationMatrix(asset_ids=cols, matrix=np.eye(len(cols)), window_days=window_days)
-
-    arr = rets.to_numpy()
-    corr = np.corrcoef(arr, rowvar=False)
-    if corr.ndim == 0:
-        corr = np.array([[1.0]])
+    cols, corr = result
     return CorrelationMatrix(asset_ids=cols, matrix=corr, window_days=window_days)
 
 
@@ -165,96 +189,3 @@ def _cagr_over_window(prices_long: pl.DataFrame, asset_id: str, window_days: int
     if years <= 0:
         return None
     return math.copysign(abs(1.0 + total_return) ** (1.0 / years) - 1.0, total_return)
-
-
-# ─── Strategy diagnostics ─────────────────────────────────────────────
-
-
-@dataclass(frozen=True, slots=True)
-class StrategyDiagnostic:
-    strategy_name: str
-    issue: str  # "replace" | "remove"
-    detail: str  # human-readable summary of what's flagged
-    suggestion: str
-
-
-def diagnose_strategies(
-    config: Config,
-    discovery_entries: list[DiscoveryEntry],
-    groups: list[GroupRepresentative],
-) -> list[StrategyDiagnostic]:
-    """Cross-reference active strategies against correlation groups.
-
-    Matches strategy assets ↔ discovery assets by ISIN (the two YAMLs use
-    different `id` slugs). For each strategy:
-    - "remove" diagnostic if 2+ of its assets fall in the same correlation
-      group → keep one, drop the others.
-    - "replace" diagnostic if an asset used isn't the best-in-group rep
-      → consider swapping for the representative.
-
-    Singleton groups (no correlation pairs above threshold) are ignored —
-    they're not redundancies.
-    """
-    isin_to_disc_id: dict[str, str] = {e.isin: e.id for e in discovery_entries}
-    disc_id_to_group: dict[str, GroupRepresentative] = {}
-    for g in groups:
-        if len(g.group) < 2:  # ignore singletons
-            continue
-        for member in g.group:
-            disc_id_to_group[member] = g
-
-    out: list[StrategyDiagnostic] = []
-    for strategy in config.strategies:
-        # strategy_id → discovery_id (only for assets matched + grouped)
-        per_asset: dict[str, str] = {}
-        # group_rep → list of strategy assets in that group
-        groups_in_strategy: dict[str, list[str]] = {}
-
-        for asset_id in strategy.asset_ids:
-            asset = config.asset_by_id(asset_id)
-            disc_id = isin_to_disc_id.get(asset.isin)
-            if disc_id is None or disc_id not in disc_id_to_group:
-                continue
-            group = disc_id_to_group[disc_id]
-            per_asset[asset_id] = disc_id
-            groups_in_strategy.setdefault(group.representative, []).append(asset_id)
-
-        # Issue 1: redundant pair — 2+ assets in same group
-        for rep, members in groups_in_strategy.items():
-            if len(members) >= 2:
-                out.append(
-                    StrategyDiagnostic(
-                        strategy_name=strategy.name,
-                        issue="remove",
-                        detail=(
-                            f"{', '.join(members)} all fall in the same correlation "
-                            f"group (representative: {rep})"
-                        ),
-                        suggestion=f"keep one (suggest the rep: {rep}), drop the others",
-                    )
-                )
-
-        # Issue 2: suboptimal — used asset isn't the rep, AND no redundancy
-        # (if it's flagged as redundant, the "remove" diagnostic above already
-        # implicitly recommends the rep)
-        flagged_for_remove = {
-            m for members in groups_in_strategy.values() if len(members) >= 2 for m in members
-        }
-        for asset_id, disc_id in per_asset.items():
-            if asset_id in flagged_for_remove:
-                continue
-            group = disc_id_to_group[disc_id]
-            if disc_id != group.representative:
-                out.append(
-                    StrategyDiagnostic(
-                        strategy_name=strategy.name,
-                        issue="replace",
-                        detail=(
-                            f"{asset_id} is in a correlation group whose best member "
-                            f"is {group.representative} (CAGR/TER score)"
-                        ),
-                        suggestion=f"replace {asset_id} with {group.representative}",
-                    )
-                )
-
-    return out
