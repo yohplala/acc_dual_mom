@@ -27,9 +27,17 @@ class Asset:
     #   "eur_pr"  EUR-denominated price-return index (no FX conversion)
     #   "usd_pr"  USD-denominated; converted via EURUSD=X
     #   "jpy_pr"  JPY-denominated; converted via EURJPY=X
+    # NB: the kind tracks ONLY the FX-conversion path. Whether the underlying
+    # series is PR or TR depends on the chosen ticker (e.g. ^GSPC is PR, ^SPXTR
+    # is TR — both are USD-denominated and use the same FX path).
     index_proxy_kind: str | None = None
     # ETF inception date — splice point between proxy and live ETF history.
     inception: date | None = None
+    # Where to fetch the proxy from: "yahoo" (yfinance, default) or "stooq"
+    # (CSV via Stooq's Data Portal). Stooq has TR variants for European
+    # indices that Yahoo lacks; Yahoo is preferred where TR is available
+    # (e.g. ^SPXTR / ^NDXTR / ^RUTTR for US, ^GDAXI for Germany).
+    index_proxy_source: str = "yahoo"
 
 
 @dataclass(frozen=True, slots=True)
@@ -161,6 +169,7 @@ def _parse(raw: dict[str, Any]) -> Config:
             index_proxy=a.get("index_proxy"),
             index_proxy_kind=a.get("index_proxy_kind"),
             inception=_parse_date(a.get("inception")),
+            index_proxy_source=a.get("index_proxy_source", "yahoo"),
         )
         for a in universe_raw["assets"]
     )
