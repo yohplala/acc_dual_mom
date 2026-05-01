@@ -42,9 +42,10 @@ universe:
       replication: synthetic
       region: us
       inception: 2014-04-29
-      index_proxy: ^SPXTR                   # S&P 500 TR (USD) — total return
-      index_proxy_kind: usd_pr              # PR/TR distinction is in the ticker;
-                                            # `kind` only tracks FX conversion path.
+      index_proxy: ^spxtr                   # S&P 500 TR (USD) on Stooq — Yahoo
+      index_proxy_kind: usd_pr              # has the page but yfinance can't
+      index_proxy_source: stooq             # fetch it ("possibly delisted").
+      index_proxy_fallback: ^GSPC           # Yahoo PR fallback if Stooq down.
 
     - id: us_tech
       name: Amundi PEA Nasdaq-100
@@ -54,8 +55,10 @@ universe:
       replication: synthetic
       region: us
       inception: 2014-04-29
-      index_proxy: ^NDXTR                   # Nasdaq-100 TR (USD)
+      index_proxy: ^ndxtr                   # Nasdaq-100 TR (USD) — Stooq
       index_proxy_kind: usd_pr
+      index_proxy_source: stooq
+      index_proxy_fallback: ^NDX            # Yahoo PR fallback
 
     - id: us_small
       name: Amundi Russell 2000
@@ -65,8 +68,10 @@ universe:
       replication: synthetic
       region: us
       inception: 2017-09-21
-      index_proxy: ^RUTTR                   # Russell 2000 TR (USD)
+      index_proxy: ^ruttr                   # Russell 2000 TR (USD) — Stooq
       index_proxy_kind: usd_pr
+      index_proxy_source: stooq
+      index_proxy_fallback: ^RUT            # Yahoo PR fallback
 
     - id: world
       name: Amundi PEA Monde (MSCI World)
