@@ -91,6 +91,7 @@ universe:
       index_proxy: ^stoxxr                  # STOXX Europe 600 Reinvested
       index_proxy_kind: eur_pr              # (Total Return EUR — close approx
       index_proxy_source: stooq             # of MSCI Europe NTR)
+      index_proxy_fallback: ^STOXX          # Yahoo PR fallback if Stooq unreachable
 
     - id: eu_emu
       name: Amundi Core MSCI EMU            # eurozone-only large/mid cap
@@ -103,6 +104,7 @@ universe:
       index_proxy: ^sx5gr                   # Euro Stoxx 50 Gross Return (TR EUR;
       index_proxy_kind: eur_pr              # narrower than MSCI EMU but tightly
       index_proxy_source: stooq             # correlated)
+      index_proxy_fallback: ^STOXX50E       # Yahoo PR fallback
 
     - id: eu_small
       name: Amundi MSCI EMU Small Cap ESG Broad Transition
@@ -228,6 +230,7 @@ universe:
       index_proxy: ^sx5gr                   # Euro Stoxx 50 Gross Return (TR EUR)
       index_proxy_kind: eur_pr
       index_proxy_source: stooq
+      index_proxy_fallback: ^STOXX50E       # Yahoo PR fallback
 
   safe_asset:
     id: safe
