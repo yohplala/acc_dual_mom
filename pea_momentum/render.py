@@ -292,13 +292,16 @@ def render_correlations(
     groups: list[GroupRepresentative],
     threshold: float,
     output_dir: str | Path,
+    diagnostics: list[Any] | None = None,
     template_name: str = "correlations.html.j2",
 ) -> Path:
     """Render the PEA-universe correlation matrix to `correlations.html`.
 
-    `cm`         the n-by-n matrix with asset_ids in heatmap order
-    `groups`     redundancy groups (each with a representative pick)
-    `threshold`  the correlation cutoff used to form groups (for display)
+    `cm`           the n-by-n matrix with asset_ids in heatmap order
+    `groups`       redundancy groups (each with a representative pick)
+    `threshold`    the correlation cutoff used to form groups (for display)
+    `diagnostics`  optional list of `StrategyDiagnostic` rows to render in
+                   the per-strategy "remove / replace" recommendations table
     """
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
@@ -327,9 +330,20 @@ def render_correlations(
         for g in groups
     ]
 
+    diagnostics_view = [
+        {
+            "strategy_name": d.strategy_name,
+            "issue": d.issue,
+            "detail": d.detail,
+            "suggestion": d.suggestion,
+        }
+        for d in (diagnostics or [])
+    ]
+
     rendered = template.render(
         summary=summary,
         groups=groups_view,
+        diagnostics=diagnostics_view,
         heatmap_traces=json.dumps(heatmap_traces),
         heatmap_layout=json.dumps(heatmap_layout),
     )

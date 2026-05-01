@@ -137,3 +137,225 @@ class TestBestInGroup:
         rep = best_in_group(["a"], prices, ter_pct_by_id={"a": 0.10})
         assert rep.representative == "a"
         assert rep.group == ["a"]
+
+
+class TestDiagnoseStrategies:
+    """Cross-strategy diagnostics: 'remove' (redundant pair) + 'replace'
+    (suboptimal pick within a group)."""
+
+    def _make_setup(self):
+        """A 3-strategy / 3-group setup for testing both diagnostic types."""
+        from pea_momentum.discover import DiscoveryEntry
+        from pea_momentum.universe import (
+            Allocation,
+            Asset,
+            Config,
+            Costs,
+            Execution,
+            Filter,
+            SafeAsset,
+            Scoring,
+            Shared,
+            Strategy,
+        )
+
+        # 4 assets in strategies.yaml, with ISIN matching pea_universe.yaml
+        assets = (
+            Asset(
+                id="us",
+                name="us",
+                isin="ISIN_US",
+                yahoo="x",
+                ter_pct=0.12,
+                replication="synthetic",
+                region="us",
+            ),
+            Asset(
+                id="us_alt",
+                name="us_alt",
+                isin="ISIN_US_ALT",
+                yahoo="x",
+                ter_pct=0.30,
+                replication="synthetic",
+                region="us",
+            ),  # correlated with us
+            Asset(
+                id="eu",
+                name="eu",
+                isin="ISIN_EU",
+                yahoo="x",
+                ter_pct=0.15,
+                replication="synthetic",
+                region="eu",
+            ),
+            Asset(
+                id="jp",
+                name="jp",
+                isin="ISIN_JP",
+                yahoo="x",
+                ter_pct=0.20,
+                replication="synthetic",
+                region="jp",
+            ),
+        )
+        cfg = Config(
+            shared=Shared(
+                scoring=Scoring(lookbacks_days=(126,), aggregation="mean"),
+                allocation=Allocation(
+                    rule="score_proportional",
+                    granularity_pct=10,
+                    min_weight_pct=0,
+                    rounding="largest_remainder",
+                ),
+                filter=Filter(type="absolute_momentum", benchmark="safe_asset"),
+                costs=Costs(per_trade_pct=0.10),
+                execution=Execution(signal_close="friday", fill_close="monday"),
+            ),
+            assets=assets,
+            safe_asset=SafeAsset(
+                id="safe", name="safe", isin="ISIN_SAFE", proxy="estr", ter_pct=0.25
+            ),
+            strategies=(
+                # Strategy A: uses both us AND us_alt (redundant pair)
+                Strategy(
+                    name="strat_redundant",
+                    description="",
+                    asset_ids=("us", "us_alt", "eu"),
+                    rebalance="monthly_first_sunday",
+                    top_n=2,
+                ),
+                # Strategy B: uses us_alt (suboptimal — us is the rep)
+                Strategy(
+                    name="strat_suboptimal",
+                    description="",
+                    asset_ids=("us_alt", "eu"),
+                    rebalance="monthly_first_sunday",
+                    top_n=2,
+                ),
+                # Strategy C: uses us (the rep) — clean, no diagnostics
+                Strategy(
+                    name="strat_clean",
+                    description="",
+                    asset_ids=("us", "eu", "jp"),
+                    rebalance="monthly_first_sunday",
+                    top_n=2,
+                ),
+            ),
+        )
+
+        # Discovery universe — same ISINs, different ids
+        entries = [
+            DiscoveryEntry(
+                id="d_us",
+                name="us",
+                isin="ISIN_US",
+                currency="EUR",
+                ter_pct=0.12,
+                sfdr="Article 6",
+                category="USA",
+                yahoo="x",
+            ),
+            DiscoveryEntry(
+                id="d_us_alt",
+                name="us_alt",
+                isin="ISIN_US_ALT",
+                currency="EUR",
+                ter_pct=0.30,
+                sfdr="Article 6",
+                category="USA",
+                yahoo="x",
+            ),
+            DiscoveryEntry(
+                id="d_eu",
+                name="eu",
+                isin="ISIN_EU",
+                currency="EUR",
+                ter_pct=0.15,
+                sfdr="Article 6",
+                category="Europe",
+                yahoo="x",
+            ),
+            DiscoveryEntry(
+                id="d_jp",
+                name="jp",
+                isin="ISIN_JP",
+                currency="EUR",
+                ter_pct=0.20,
+                sfdr="Article 6",
+                category="Japan",
+                yahoo="x",
+            ),
+        ]
+
+        # Groups: d_us + d_us_alt are correlated; d_us is the rep (better score)
+        from pea_momentum.correlations import GroupRepresentative
+
+        groups = [
+            GroupRepresentative(
+                group=["d_us", "d_us_alt"],
+                representative="d_us",
+                representative_score=2.0,
+                member_scores={"d_us": 2.0, "d_us_alt": 0.5},
+            ),
+            # d_eu and d_jp in singleton groups (ignored)
+            GroupRepresentative(
+                group=["d_eu"],
+                representative="d_eu",
+                representative_score=1.0,
+                member_scores={"d_eu": 1.0},
+            ),
+            GroupRepresentative(
+                group=["d_jp"],
+                representative="d_jp",
+                representative_score=1.0,
+                member_scores={"d_jp": 1.0},
+            ),
+        ]
+
+        return cfg, entries, groups
+
+    def test_redundant_pair_flagged(self) -> None:
+        from pea_momentum.correlations import diagnose_strategies
+
+        cfg, entries, groups = self._make_setup()
+        diagnostics = diagnose_strategies(cfg, entries, groups)
+
+        redundant = [d for d in diagnostics if d.strategy_name == "strat_redundant"]
+        assert len(redundant) == 1
+        assert redundant[0].issue == "remove"
+        assert "us" in redundant[0].detail
+        assert "us_alt" in redundant[0].detail
+
+    def test_suboptimal_replace_flagged(self) -> None:
+        from pea_momentum.correlations import diagnose_strategies
+
+        cfg, entries, groups = self._make_setup()
+        diagnostics = diagnose_strategies(cfg, entries, groups)
+
+        suboptimal = [d for d in diagnostics if d.strategy_name == "strat_suboptimal"]
+        assert len(suboptimal) == 1
+        assert suboptimal[0].issue == "replace"
+        assert "us_alt" in suboptimal[0].detail
+        assert "d_us" in suboptimal[0].suggestion
+
+    def test_clean_strategy_no_diagnostics(self) -> None:
+        from pea_momentum.correlations import diagnose_strategies
+
+        cfg, entries, groups = self._make_setup()
+        diagnostics = diagnose_strategies(cfg, entries, groups)
+
+        clean = [d for d in diagnostics if d.strategy_name == "strat_clean"]
+        assert clean == []
+
+    def test_redundant_strategy_does_not_also_get_replace(self) -> None:
+        """If strat_redundant uses both us + us_alt, the 'remove' diagnostic
+        already implicitly recommends keeping the rep (us). Don't ALSO emit
+        a 'replace us_alt with us' — that's redundant feedback."""
+        from pea_momentum.correlations import diagnose_strategies
+
+        cfg, entries, groups = self._make_setup()
+        diagnostics = diagnose_strategies(cfg, entries, groups)
+
+        redundant_strat_diags = [d for d in diagnostics if d.strategy_name == "strat_redundant"]
+        replace_diags = [d for d in redundant_strat_diags if d.issue == "replace"]
+        assert replace_diags == []
