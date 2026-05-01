@@ -89,7 +89,14 @@ def _signal_row(result: BacktestResult, config: Config) -> dict[str, object]:
     asset_rows = _asset_rows(strategy, config)
 
     last = result.rebalances[-1] if result.rebalances else None
-    prev = result.rebalances[-2] if len(result.rebalances) >= 2 else None
+    if strategy.mode == "buy_and_hold":
+        # Buy-and-hold never rebalances after the initial allocation. The
+        # "Previous allocation" chips would otherwise all show 0% / grey,
+        # which is misleading — the static weights ARE the previous (and
+        # current, and forever) allocation. Mirror current onto previous.
+        prev = last
+    else:
+        prev = result.rebalances[-2] if len(result.rebalances) >= 2 else None
 
     return {
         "name": result.strategy_name,
@@ -118,17 +125,23 @@ REGION_ORDER = (
 def _asset_rows(strategy: Any, config: Config) -> list[list[Any]]:
     """Layout the strategy's universe as rows of assets.
 
-    The chip layout only contains assets that the user explicitly listed
-    under `strategy.assets` in the YAML — no implicit additions. If a
-    strategy needs `safe` shown alongside its risky sleeves, it has to be
-    listed there explicitly.
+    The chip layout shows whatever the user listed under `strategy.assets`
+    in YAML — plus, for rotation strategies, the safe asset as a final row
+    (because rotation can hold safe when no candidate beats the absolute
+    filter). Buy-and-hold strategies never rotate, so the safe row is
+    omitted there.
 
     If `universe.display_layout` is set, that list-of-lists drives the row
-    structure (each row filtered to the strategy's `asset_ids`, empty rows
-    collapse). Otherwise we group by `region` in REGION_ORDER.
+    structure (each row filtered to the strategy's `asset_ids` plus safe
+    for rotation; empty rows collapse). Otherwise we group by `region` in
+    REGION_ORDER.
     """
+    include_safe = strategy.mode == "rotation"
+
     if config.display_layout is not None:
         strategy_ids = set(strategy.asset_ids)
+        if include_safe:
+            strategy_ids.add(config.safe_asset.id)
         rows: list[list[Any]] = []
         for row_ids in config.display_layout:
             row_assets: list[Any] = []
@@ -152,6 +165,8 @@ def _asset_rows(strategy: Any, config: Config) -> list[list[Any]]:
             rows.append(by_region.pop(region))
     for assets in by_region.values():  # any unknown regions
         rows.append(assets)
+    if include_safe:
+        rows.append([config.safe_asset])
     return rows
 
 
