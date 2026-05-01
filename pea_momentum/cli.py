@@ -1,23 +1,26 @@
 """Command-line interface.
 
-pea-mom fetch       # download/refresh prices into the data root
-pea-mom backtest    # run all strategies, persist equity + rebalances
-pea-mom signal      # print the most recent rebalance per strategy
-pea-mom render      # build HTML report from persisted results
-pea-mom run         # full pipeline: fetch → backtest → render
+pea-mom fetch              # download/refresh strategy prices
+pea-mom backtest           # run all strategies, persist equity + rebalances
+pea-mom signal             # print the most recent rebalance per strategy
+pea-mom render             # build the strategy HTML report
+pea-mom run                # full pipeline: fetch → backtest → render
+
+pea-mom discover           # fetch the broad PEA-eligible Amundi universe
+pea-mom render-correlations  # build the correlation-matrix HTML page
 """
 
 from __future__ import annotations
 
 import json
 import logging
-from datetime import date
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 import click
 import polars as pl
 
-from . import backtest, fetch, render, store
+from . import backtest, correlations, discover, fetch, render, store
 from .universe import Config, load_config
 
 DEFAULT_CONFIG = "strategies.yaml"
@@ -203,6 +206,86 @@ def _load_rebalances(path: Path) -> list[backtest.Rebalance]:
         )
         for r in raw
     ]
+
+
+DISCOVERY_PRICES_FILE = "discover.parquet"
+
+
+@cli.command(name="discover")
+@click.option("--start", default=None, help="ISO date for fetch start; default = ~3y back")
+@click.option(
+    "--universe",
+    default="pea_universe.yaml",
+    show_default=True,
+    help="Path to the discovery universe YAML",
+)
+@click.pass_context
+def cmd_discover(ctx: click.Context, start: str | None, universe: str) -> None:
+    """Fetch close prices for every ticker-confirmed entry in the broad
+    PEA-eligible Amundi universe (no proxies, no FX conversion). Writes to
+    `<data-root>/discover.parquet`."""
+    data_root: Path = ctx.obj["data_root"]
+    entries = discover.load_discovery_universe(universe)
+    start_d = (
+        date.fromisoformat(start) if start else (datetime.utcnow().date() - timedelta(days=365 * 3))
+    )
+    prices = discover.fetch_discovery_universe(entries, start=start_d)
+
+    out_path = data_root / DISCOVERY_PRICES_FILE
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    if prices.is_empty():
+        click.echo("WARN · discovery fetched zero rows; nothing to persist")
+        return
+    prices.write_parquet(out_path, compression="zstd")
+    n_assets = prices.get_column("asset_id").n_unique()
+    click.echo(f"OK · {prices.height} rows · {n_assets} assets · saved to {out_path}")
+
+
+@cli.command(name="render-correlations")
+@click.option("--site-root", default=DEFAULT_SITE_ROOT, show_default=True)
+@click.option(
+    "--universe",
+    default="pea_universe.yaml",
+    show_default=True,
+    help="Path to the discovery universe YAML (used for TER values)",
+)
+@click.option("--window-days", default=252, show_default=True, type=int)
+@click.option(
+    "--threshold",
+    default=0.85,
+    show_default=True,
+    type=float,
+    help="Correlation threshold for group identification",
+)
+@click.pass_context
+def cmd_render_correlations(
+    ctx: click.Context,
+    site_root: str,
+    universe: str,
+    window_days: int,
+    threshold: float,
+) -> None:
+    """Render the correlation-matrix HTML page from `discover.parquet`."""
+    data_root: Path = ctx.obj["data_root"]
+    entries = discover.load_discovery_universe(universe)
+    prices_path = data_root / DISCOVERY_PRICES_FILE
+    if not prices_path.exists():
+        raise click.ClickException(
+            f"No discovery prices at {prices_path}; run `pea-mom discover` first."
+        )
+    prices = pl.read_parquet(prices_path)
+
+    asset_ids = prices.get_column("asset_id").unique().to_list()
+    cm = correlations.compute_correlation_matrix(prices, asset_ids, window_days=window_days)
+    grouped = correlations.find_groups(cm, threshold=threshold)
+    ter_pct_by_id = {e.id: e.ter_pct for e in entries}
+    reps = [
+        correlations.best_in_group(g, prices, ter_pct_by_id, window_days=window_days)
+        for g in grouped
+    ]
+
+    out = render.render_correlations(cm, reps, threshold=threshold, output_dir=site_root)
+    click.echo(f"OK · wrote {out} ({len(asset_ids)} assets, {len(grouped)} groups)")
 
 
 if __name__ == "__main__":
