@@ -76,6 +76,9 @@ def run(
         wide = wide.filter(pl.col("date") <= end)
     wide = wide.drop_nulls(subset=[safe_id])  # need at least the safe asset
 
+    if strategy.mode == "buy_and_hold":
+        return _run_buy_and_hold(wide, strategy, asset_ids, safe_id)
+
     if wide.is_empty():
         log.warning("backtest %s: no usable price data", strategy.name)
         return BacktestResult(
@@ -200,6 +203,89 @@ def _turnover(prev: dict[str, float], new: dict[str, float], safe_id: str) -> fl
     """L1 distance between two weight dicts. Safe-asset rebalancing also counts."""
     keys = set(prev) | set(new)
     return sum(abs(new.get(k, 0.0) - prev.get(k, 0.0)) for k in keys)
+
+
+def _run_buy_and_hold(
+    wide: pl.DataFrame,
+    strategy: Strategy,
+    asset_ids: list[str],
+    safe_id: str,
+) -> BacktestResult:
+    """Equal-weight buy-and-hold across `asset_ids` from the first available
+    date. No rebalances, no transaction costs — pure benchmark."""
+    asset_cols = [c for c in asset_ids if c in wide.columns]
+    if not asset_cols:
+        return BacktestResult(
+            strategy_name=strategy.name,
+            equity=pl.DataFrame(
+                schema={"date": pl.Date, "equity": pl.Float64, "daily_return": pl.Float64}
+            ),
+            rebalances=[],
+            weight_history=pl.DataFrame(
+                schema={"date": pl.Date, "asset_id": pl.Utf8, "weight": pl.Float64}
+            ),
+        )
+
+    wide = wide.drop_nulls(subset=asset_cols)
+    if wide.is_empty():
+        return BacktestResult(
+            strategy_name=strategy.name,
+            equity=pl.DataFrame(
+                schema={"date": pl.Date, "equity": pl.Float64, "daily_return": pl.Float64}
+            ),
+            rebalances=[],
+            weight_history=pl.DataFrame(
+                schema={"date": pl.Date, "asset_id": pl.Utf8, "weight": pl.Float64}
+            ),
+        )
+
+    dates = wide.get_column("date").to_list()
+    n = len(asset_cols)
+    weight_per = 1.0 / n
+    weights = {a: weight_per for a in asset_cols}
+
+    rets_wide = wide.select(
+        pl.col("date"),
+        *[(pl.col(c) / pl.col(c).shift(1) - 1.0).fill_null(0.0).alias(c) for c in asset_cols],
+    )
+    rows = list(rets_wide.iter_rows(named=True))
+
+    equity_values: list[float] = [1.0]
+    daily_returns: list[float] = [0.0]
+    for i in range(1, len(rows)):
+        gross = sum(weight_per * rows[i].get(a, 0.0) for a in asset_cols)
+        daily_returns.append(gross)
+        equity_values.append(equity_values[-1] * (1.0 + gross))
+
+    equity_df = pl.DataFrame(
+        {"date": dates, "equity": equity_values, "daily_return": daily_returns}
+    )
+
+    # Single synthetic rebalance at start so the dashboard shows the static
+    # weights in "New allocation". turnover and cost are zero by definition.
+    rebalances = [
+        Rebalance(
+            rebalance_date=dates[0],
+            signal_date=dates[0],
+            fill_date=dates[0],
+            scores={},
+            weights=weights,
+            turnover=0.0,
+            cost=0.0,
+        )
+    ]
+
+    history_rows = [{"date": d, "asset_id": a, "weight": weight_per} for d in dates for a in asset_cols]
+    weight_history = pl.DataFrame(
+        history_rows, schema={"date": pl.Date, "asset_id": pl.Utf8, "weight": pl.Float64}
+    )
+
+    return BacktestResult(
+        strategy_name=strategy.name,
+        equity=equity_df,
+        rebalances=rebalances,
+        weight_history=weight_history,
+    )
 
 
 def rebalances_to_dicts(rebalances: list[Rebalance]) -> list[dict[str, object]]:
