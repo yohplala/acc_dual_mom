@@ -65,9 +65,13 @@ universe:
       replication: synthetic
       region: world
       inception: 2025-03-04
-      index_proxy: ^990100-USD-STRD         # MSCI World direct index (USD PR;
-      index_proxy_kind: usd_pr              # ~2pp/yr understatement vs TR but
-                                            # gives 2008+ history vs URTH's 2012)
+      index_proxy: IWDA.AS                  # iShares Core MSCI World UCITS ETF
+      index_proxy_kind: eur_tr              # EUR-quoted accumulating (TR via
+                                            # NAV reinvestment), since
+                                            # 2009-09-25. Loses 2008 GFC vs the
+                                            # old ^990100-USD-STRD proxy but TR
+                                            # matches the live ETF (no ~2pp/yr
+                                            # understatement).
 
     - id: eu_broad
       name: Amundi PEA MSCI Europe

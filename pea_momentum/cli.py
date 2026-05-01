@@ -234,7 +234,7 @@ def cmd_discover(ctx: click.Context, start: str | None, universe: str) -> None:
 @click.option("--window-days", default=252, show_default=True, type=int)
 @click.option(
     "--threshold",
-    default=0.85,
+    default=0.90,
     show_default=True,
     type=float,
     help="Correlation threshold for group identification",
@@ -260,7 +260,8 @@ def cmd_render_correlations(
 
     asset_ids = prices.get_column("asset_id").unique().to_list()
     cm = correlations.compute_correlation_matrix(prices, asset_ids, window_days=window_days)
-    grouped = correlations.find_groups(cm, threshold=threshold)
+    region_by_id = {e.id: e.region for e in entries}
+    grouped = correlations.find_groups(cm, threshold=threshold, region_by_id=region_by_id)
     ter_pct_by_id = {e.id: e.ter_pct for e in entries}
     reps = [
         correlations.best_in_group(g, prices, ter_pct_by_id, window_days=window_days)
