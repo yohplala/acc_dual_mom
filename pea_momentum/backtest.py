@@ -275,7 +275,9 @@ def _run_buy_and_hold(
         )
     ]
 
-    history_rows = [{"date": d, "asset_id": a, "weight": weight_per} for d in dates for a in asset_cols]
+    history_rows = [
+        {"date": d, "asset_id": a, "weight": weight_per} for d in dates for a in asset_cols
+    ]
     weight_history = pl.DataFrame(
         history_rows, schema={"date": pl.Date, "asset_id": pl.Utf8, "weight": pl.Float64}
     )

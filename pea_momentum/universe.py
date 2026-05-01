@@ -19,6 +19,17 @@ class Asset:
     ter_pct: float
     replication: str
     region: str
+    # Optional Yahoo ticker for the underlying index, used to extend price
+    # history backward before the ETF launched. None disables stitching for
+    # this asset (history is limited to the ETF's own data).
+    index_proxy: str | None = None
+    # Currency / return type of the proxy:
+    #   "eur_pr"  EUR-denominated price-return index (no FX conversion)
+    #   "usd_pr"  USD-denominated; converted via EURUSD=X
+    #   "jpy_pr"  JPY-denominated; converted via EURJPY=X
+    index_proxy_kind: str | None = None
+    # ETF inception date — splice point between proxy and live ETF history.
+    inception: date | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -147,6 +158,9 @@ def _parse(raw: dict[str, Any]) -> Config:
             ter_pct=float(a["ter_pct"]),
             replication=a["replication"],
             region=a["region"],
+            index_proxy=a.get("index_proxy"),
+            index_proxy_kind=a.get("index_proxy_kind"),
+            inception=_parse_date(a.get("inception")),
         )
         for a in universe_raw["assets"]
     )
