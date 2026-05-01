@@ -117,7 +117,7 @@
           <tr>
             <th>Group size</th>
             <th>Best in group</th>
-            <th>Score (CAGR / TER)</th>
+            <th>Score (CAGR − TER, ann.)</th>
             <th>All members</th>
           </tr>
         </thead>
@@ -142,10 +142,12 @@
         </tbody>
       </table>
       <p style="color: var(--muted); font-size: 12px; margin-top: 12px;">
-        Representative pick: highest CAGR / TER ratio over the same window. Use it to
-        choose one member per group when constructing strategy universes — picking
-        multiple from the same group adds no diversification. Click an ETF to open
-        its Amundi product page.
+        Representative pick: highest <code>CAGR − TER</code> (annualised net-of-fees
+        return) over the same window. Use it to choose one member per group when
+        constructing strategy universes — picking multiple from the same group adds
+        no diversification. Cross-perimeter pairs (e.g. MSCI World vs S&amp;P 500) are
+        kept separate even when their daily correlation exceeds the threshold.
+        Click an ETF to open its Amundi product page.
       </p>
       {% else %}
       <p style="color: var(--muted);">No data — run <code>pea-mom discover</code> first.</p>
