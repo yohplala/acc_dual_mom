@@ -118,13 +118,17 @@ REGION_ORDER = (
 def _asset_rows(strategy: Any, config: Config) -> list[list[Any]]:
     """Layout the strategy's universe as rows of assets.
 
-    If `universe.display_layout` is set in the YAML, that explicit list-of-lists
-    is the source of truth — each row is filtered to the strategy's actual
-    universe (plus the safe asset), and empty rows collapse. Otherwise we fall
-    back to grouping by `region` in REGION_ORDER, with safe asset on a final row.
+    The chip layout only contains assets that the user explicitly listed
+    under `strategy.assets` in the YAML — no implicit additions. If a
+    strategy needs `safe` shown alongside its risky sleeves, it has to be
+    listed there explicitly.
+
+    If `universe.display_layout` is set, that list-of-lists drives the row
+    structure (each row filtered to the strategy's `asset_ids`, empty rows
+    collapse). Otherwise we group by `region` in REGION_ORDER.
     """
     if config.display_layout is not None:
-        strategy_ids = set(strategy.asset_ids) | {config.safe_asset.id}
+        strategy_ids = set(strategy.asset_ids)
         rows: list[list[Any]] = []
         for row_ids in config.display_layout:
             row_assets: list[Any] = []
@@ -148,7 +152,6 @@ def _asset_rows(strategy: Any, config: Config) -> list[list[Any]]:
             rows.append(by_region.pop(region))
     for assets in by_region.values():  # any unknown regions
         rows.append(assets)
-    rows.append([config.safe_asset])
     return rows
 
 
