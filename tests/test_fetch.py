@@ -119,3 +119,92 @@ def test_fetch_yahoo_missing_close_raises(monkeypatch: pytest.MonkeyPatch) -> No
     monkeypatch.setattr(yf, "download", lambda *a, **kw: df)
     with pytest.raises(fetch.FetchError, match="missing Close"):
         fetch.fetch_yahoo(_asset(), start=date(2024, 1, 1))
+
+
+# ── Stooq fetcher tests (HTTP mocked via httpx.Client.get monkeypatch) ──
+
+
+class _MockResp:
+    def __init__(self, content: bytes, status_code: int = 200) -> None:
+        self.content = content
+        self.status_code = status_code
+
+    def raise_for_status(self) -> None:
+        if self.status_code >= 400:
+            raise RuntimeError(f"HTTP {self.status_code}")
+
+
+class _MockClient:
+    """Drop-in for httpx.Client; stores last params and returns a canned body."""
+
+    def __init__(self, body: bytes, status: int = 200) -> None:
+        self._body = body
+        self._status = status
+        self.last_params: dict[str, str] | None = None
+
+    def __enter__(self) -> _MockClient:
+        return self
+
+    def __exit__(self, *args: object) -> None:
+        return None
+
+    def get(self, url: str, params=None, headers=None) -> _MockResp:
+        self.last_params = params
+        return _MockResp(self._body, self._status)
+
+
+def _patch_stooq_response(monkeypatch: pytest.MonkeyPatch, body: bytes) -> _MockClient:
+    client = _MockClient(body)
+    monkeypatch.setattr(fetch.httpx, "Client", lambda **kw: client)
+    return client
+
+
+_STOOQ_CSV_OK = (
+    b"Date,Open,High,Low,Close,Volume\n"
+    b"2024-01-02,100.0,101.0,99.5,100.5,12345\n"
+    b"2024-01-03,100.5,102.0,100.0,101.8,67890\n"
+    b"2024-01-04,101.8,102.5,101.0,102.2,55555\n"
+)
+
+
+def test_fetch_stooq_parses_csv(monkeypatch: pytest.MonkeyPatch) -> None:
+    _patch_stooq_response(monkeypatch, _STOOQ_CSV_OK)
+    out = fetch._fetch_stooq_close_only("^stoxxr", start=date(2024, 1, 1))
+    assert out.height == 3
+    assert out.schema["date"] == pl.Date
+    assert out.get_column("close").to_list() == [100.5, 101.8, 102.2]
+
+
+def test_fetch_stooq_filters_by_start_date(monkeypatch: pytest.MonkeyPatch) -> None:
+    _patch_stooq_response(monkeypatch, _STOOQ_CSV_OK)
+    out = fetch._fetch_stooq_close_only("^stoxxr", start=date(2024, 1, 3))
+    assert out.height == 2
+    assert out.get_column("date").to_list() == [date(2024, 1, 3), date(2024, 1, 4)]
+
+
+def test_fetch_stooq_passes_params_correctly(monkeypatch: pytest.MonkeyPatch) -> None:
+    client = _patch_stooq_response(monkeypatch, _STOOQ_CSV_OK)
+    fetch._fetch_stooq_close_only("^sx5gr", start=date(2020, 5, 15))
+    assert client.last_params is not None
+    assert client.last_params["s"] == "^sx5gr"
+    assert client.last_params["d1"] == "20200515"
+    assert client.last_params["i"] == "d"
+
+
+def test_fetch_stooq_rejects_non_csv_response(monkeypatch: pytest.MonkeyPatch) -> None:
+    _patch_stooq_response(monkeypatch, b"<html><body>Captcha required</body></html>")
+    with pytest.raises(fetch.FetchError, match="non-CSV"):
+        fetch._fetch_stooq_close_only("^bogus", start=date(2024, 1, 1))
+
+
+def test_fetch_stooq_drops_null_closes(monkeypatch: pytest.MonkeyPatch) -> None:
+    body = (
+        b"Date,Open,High,Low,Close,Volume\n"
+        b"2024-01-02,100.0,101.0,99.5,100.5,12345\n"
+        b"2024-01-03,,,,,0\n"  # null close
+        b"2024-01-04,101.8,102.5,101.0,102.2,55555\n"
+    )
+    _patch_stooq_response(monkeypatch, body)
+    out = fetch._fetch_stooq_close_only("^stoxxr", start=date(2024, 1, 1))
+    assert out.height == 2
+    assert out.get_column("close").to_list() == [100.5, 102.2]

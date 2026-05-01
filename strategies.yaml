@@ -42,8 +42,9 @@ universe:
       replication: synthetic
       region: us
       inception: 2014-04-29
-      index_proxy: ^GSPC                    # S&P 500 (PR USD)
-      index_proxy_kind: usd_pr
+      index_proxy: ^SPXTR                   # S&P 500 TR (USD) — total return
+      index_proxy_kind: usd_pr              # PR/TR distinction is in the ticker;
+                                            # `kind` only tracks FX conversion path.
 
     - id: us_tech
       name: Amundi PEA Nasdaq-100
@@ -53,7 +54,7 @@ universe:
       replication: synthetic
       region: us
       inception: 2014-04-29
-      index_proxy: ^NDX                     # Nasdaq-100 (PR USD)
+      index_proxy: ^NDXTR                   # Nasdaq-100 TR (USD)
       index_proxy_kind: usd_pr
 
     - id: us_small
@@ -64,7 +65,7 @@ universe:
       replication: synthetic
       region: us
       inception: 2017-09-21
-      index_proxy: ^RUT                     # Russell 2000 (PR USD)
+      index_proxy: ^RUTTR                   # Russell 2000 TR (USD)
       index_proxy_kind: usd_pr
 
     - id: world
@@ -87,8 +88,9 @@ universe:
       replication: synthetic
       region: europe
       inception: 2018-12-12
-      index_proxy: ^STOXX                   # STOXX Europe 600 (PR EUR — close
-      index_proxy_kind: eur_pr              # approximation of MSCI Europe)
+      index_proxy: ^stoxxr                  # STOXX Europe 600 Reinvested
+      index_proxy_kind: eur_pr              # (Total Return EUR — close approx
+      index_proxy_source: stooq             # of MSCI Europe NTR)
 
     - id: eu_emu
       name: Amundi Core MSCI EMU            # eurozone-only large/mid cap
@@ -98,8 +100,9 @@ universe:
       replication: physical
       region: eurozone
       inception: 2017-09-29
-      index_proxy: ^STOXX50E                # Euro Stoxx 50 (PR EUR — narrower
-      index_proxy_kind: eur_pr              # than MSCI EMU but tightly correlated)
+      index_proxy: ^sx5gr                   # Euro Stoxx 50 Gross Return (TR EUR;
+      index_proxy_kind: eur_pr              # narrower than MSCI EMU but tightly
+      index_proxy_source: stooq             # correlated)
 
     - id: eu_small
       name: Amundi MSCI EMU Small Cap ESG Broad Transition
@@ -222,8 +225,9 @@ universe:
       replication: synthetic
       region: eurozone
       inception: 2017-09-29
-      index_proxy: ^STOXX50E                # Euro Stoxx 50 (PR EUR)
+      index_proxy: ^sx5gr                   # Euro Stoxx 50 Gross Return (TR EUR)
       index_proxy_kind: eur_pr
+      index_proxy_source: stooq
 
   safe_asset:
     id: safe

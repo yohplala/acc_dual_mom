@@ -70,7 +70,15 @@ def _fetch_proxy_in_eur(asset: Asset, start: date) -> pl.DataFrame:
     if asset.index_proxy is None:
         raise FetchError(f"Asset {asset.id} has no index_proxy configured")
 
-    idx = _fetch_yahoo_close_only(asset.index_proxy, start=start)
+    if asset.index_proxy_source == "stooq":
+        idx = _fetch_stooq_close_only(asset.index_proxy, start=start)
+    elif asset.index_proxy_source == "yahoo":
+        idx = _fetch_yahoo_close_only(asset.index_proxy, start=start)
+    else:
+        raise FetchError(
+            f"Unknown index_proxy_source {asset.index_proxy_source!r} for asset {asset.id}"
+        )
+
     fx_ticker = YAHOO_FX[kind]
     if fx_ticker is None:
         return idx
@@ -101,6 +109,55 @@ def _fetch_yahoo_close_only(ticker: str, start: date) -> pl.DataFrame:
         pl.DataFrame({"date": dates, "close": closes})
         .with_columns(pl.col("date").cast(pl.Date))
         .filter(pl.col("close").is_not_null() & pl.col("close").is_not_nan())
+        .sort("date")
+    )
+
+
+STOOQ_BASE_URL = "https://stooq.com/q/d/l/"
+"""Stooq's daily-CSV endpoint. Pattern:
+    https://stooq.com/q/d/l/?s=<ticker>&d1=<YYYYMMDD>&d2=<YYYYMMDD>&i=d
+Returns CSV with header `Date,Open,High,Low,Close,Volume`.
+"""
+
+
+def _fetch_stooq_close_only(ticker: str, start: date) -> pl.DataFrame:
+    """Fetch a Stooq ticker via CSV download and return [date, close].
+
+    Stooq has TR / Reinvested variants for many European indices that Yahoo
+    lacks (^stoxxr, ^sx5gr, etc). The CSV endpoint accepts a ticker and date
+    range — we pull the full range and filter to `start` afterwards.
+    """
+    end = date.today()
+    params = {
+        "s": ticker,
+        "d1": start.strftime("%Y%m%d"),
+        "d2": end.strftime("%Y%m%d"),
+        "i": "d",
+    }
+    log.info("fetching proxy %s from Stooq since %s", ticker, start)
+    with httpx.Client(timeout=30.0, follow_redirects=True) as client:
+        r = client.get(STOOQ_BASE_URL, params=params, headers={"Accept": "text/csv"})
+        r.raise_for_status()
+
+    body = r.content
+    # Stooq sometimes returns an HTML error page on bad tickers; CSV starts with
+    # "Date," — bail loudly on anything else.
+    if not body.lstrip().lower().startswith(b"date,"):
+        raise FetchError(
+            f"Stooq returned non-CSV response for {ticker!r} " f"(first 80 bytes: {body[:80]!r})"
+        )
+
+    raw = pl.read_csv(io.BytesIO(body))
+    if "Date" not in raw.columns or "Close" not in raw.columns:
+        raise FetchError(f"unexpected Stooq CSV columns for {ticker}: {raw.columns}")
+
+    return (
+        raw.select(
+            pl.col("Date").str.strptime(pl.Date, format="%Y-%m-%d").alias("date"),
+            pl.col("Close").cast(pl.Float64).alias("close"),
+        )
+        .filter(pl.col("close").is_not_null() & pl.col("close").is_not_nan())
+        .filter(pl.col("date") >= start)
         .sort("date")
     )
 
