@@ -107,6 +107,12 @@ class Strategy:
     # never rebalances — useful as a zero-cost reference benchmark (e.g.
     # 100% MSCI World).
     mode: str = "rotation"
+    # Optional per-strategy scoring lookback override. If None, strategies
+    # use `Config.shared.scoring.lookbacks_days` (the default ADM 21/63/126
+    # mean). Setting `[126]` gives classic Antonacci dual momentum (single
+    # 6-month lookback). Same `aggregation` rule applies (mean for >1
+    # lookback; for a single value, mean returns the value as-is).
+    lookbacks_days: tuple[int, ...] | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -215,6 +221,10 @@ def _parse_strategy(s: dict[str, Any]) -> Strategy:
             f"strategy {s.get('name', '?')!r}: unknown mode {mode!r} "
             f"(valid: {sorted(VALID_MODES)})"
         )
+    raw_lookbacks = s.get("lookbacks_days")
+    lookbacks: tuple[int, ...] | None = (
+        tuple(int(x) for x in raw_lookbacks) if raw_lookbacks is not None else None
+    )
     return Strategy(
         name=s["name"],
         description=s.get("description", ""),
@@ -223,6 +233,7 @@ def _parse_strategy(s: dict[str, Any]) -> Strategy:
         top_n=int(s["top_n"]),
         reference_date=_parse_date(s.get("reference_date")),
         mode=mode,
+        lookbacks_days=lookbacks,
     )
 
 
