@@ -95,6 +95,12 @@ universe:
       ter_pct: 0.30
       replication: synthetic
       region: em_asia
+      inception: 2018-12-19
+      index_proxy: EEMA                     # iShares MSCI EM Asia ETF (USD,
+      index_proxy_kind: usd_pr              # since 2012-02-09 — earliest free
+                                            # source for clean MSCI EM Asia
+                                            # exposure; no 2008-2011 history
+                                            # available without paid data).
 
     - id: japan_hedged
       name: Amundi PEA Japon (TOPIX) EUR Hedged
