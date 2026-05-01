@@ -5,7 +5,9 @@ from __future__ import annotations
 from datetime import date, timedelta
 
 import polars as pl
+import pytest
 
+from pea_momentum.errors import FetchError
 from pea_momentum.stitching import jpy_to_eur, splice_at_inception, usd_to_eur
 
 
@@ -24,19 +26,19 @@ def _etf_long(start: date, levels: list[float], asset_id: str = "x") -> pl.DataF
 
 
 class TestSplice:
-    def test_empty_etf_returns_etf(self) -> None:
+    def test_empty_etf_raises(self) -> None:
         etf = pl.DataFrame(
             schema={"date": pl.Date, "asset_id": pl.Utf8, "close": pl.Float64, "source": pl.Utf8}
         )
         proxy = _series(date(2010, 1, 1), [100.0, 101.0])
-        out = splice_at_inception(etf, proxy, date(2015, 1, 1), "x")
-        assert out.is_empty()
+        with pytest.raises(FetchError, match="ETF series is empty"):
+            splice_at_inception(etf, proxy, date(2015, 1, 1), "x")
 
-    def test_empty_proxy_returns_etf(self) -> None:
+    def test_empty_proxy_raises(self) -> None:
         etf = _etf_long(date(2015, 1, 1), [100.0, 101.0])
         proxy = pl.DataFrame(schema={"date": pl.Date, "close": pl.Float64})
-        out = splice_at_inception(etf, proxy, date(2015, 1, 1), "x")
-        assert out.equals(etf)
+        with pytest.raises(FetchError, match="proxy series is empty"):
+            splice_at_inception(etf, proxy, date(2015, 1, 1), "x")
 
     def test_level_continuity(self) -> None:
         # Proxy: 50.0 on inception day; ETF: 200.0 on inception day.

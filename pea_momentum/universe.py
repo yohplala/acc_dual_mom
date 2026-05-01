@@ -189,18 +189,7 @@ def _parse(raw: dict[str, Any]) -> Config:
         ter_pct=float(sa["ter_pct"]),
     )
 
-    strategies = tuple(
-        Strategy(
-            name=s["name"],
-            description=s.get("description", ""),
-            asset_ids=tuple(s["assets"]),
-            rebalance=s["rebalance"],
-            top_n=int(s["top_n"]),
-            reference_date=_parse_date(s.get("reference_date")),
-            mode=s.get("mode", "rotation"),
-        )
-        for s in raw["strategies"]
-    )
+    strategies = tuple(_parse_strategy(s) for s in raw["strategies"])
 
     raw_layout = universe_raw.get("display_layout")
     display_layout: tuple[tuple[str, ...], ...] | None = (
@@ -213,6 +202,27 @@ def _parse(raw: dict[str, Any]) -> Config:
         safe_asset=safe_asset,
         strategies=strategies,
         display_layout=display_layout,
+    )
+
+
+VALID_MODES: frozenset[str] = frozenset({"rotation", "buy_and_hold"})
+
+
+def _parse_strategy(s: dict[str, Any]) -> Strategy:
+    mode = s.get("mode", "rotation")
+    if mode not in VALID_MODES:
+        raise ValueError(
+            f"strategy {s.get('name', '?')!r}: unknown mode {mode!r} "
+            f"(valid: {sorted(VALID_MODES)})"
+        )
+    return Strategy(
+        name=s["name"],
+        description=s.get("description", ""),
+        asset_ids=tuple(s["assets"]),
+        rebalance=s["rebalance"],
+        top_n=int(s["top_n"]),
+        reference_date=_parse_date(s.get("reference_date")),
+        mode=mode,
     )
 
 

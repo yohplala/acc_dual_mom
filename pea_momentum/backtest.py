@@ -46,6 +46,13 @@ class BacktestResult:
     equity: pl.DataFrame  # [date, equity, daily_return]
     rebalances: list[Rebalance]
     weight_history: pl.DataFrame  # [date, asset_id, weight]
+    # Visibility into rebalance attrition. A degenerate strategy that ends
+    # up with `len(rebalances) == 0` may have many fill_skips (rebalance
+    # day past last available trading day) or signal_skips (no asset has
+    # enough lookback yet); the CLI surfaces this so silent zero-rebalance
+    # runs don't go unnoticed.
+    n_fill_skips: int = 0
+    n_signal_skips: int = 0
 
 
 def run(
@@ -101,16 +108,32 @@ def run(
     prev_weights: dict[str, float] = {SAFE_ASSET_KEY: 1.0}
     safe_score_id = safe_id
 
+    n_fill_skips = 0
+    n_signal_skips = 0
     for r_day in rebalance_dates(strategy, dates[0], dates[-1]):
         s_day = signal_date(r_day)
         f_day = fill_date(r_day)
         if f_day not in dates:
+            n_fill_skips += 1
             continue  # fill day outside trading window
         scores = score_at(prices_long, asset_ids, s_day, config.shared.scoring)
         safe_scores = score_at(prices_long, [safe_score_id], s_day, config.shared.scoring)
-        safe_score = safe_scores.get(safe_score_id, 0.0)
         if not scores:
+            n_signal_skips += 1
             continue
+        # The safe asset is the absolute-momentum threshold. If it has no
+        # score (typically because the backtest starts before the safe asset
+        # has enough lookback history), there's no defensible default —
+        # 0.0 would silently let any positive risky score pass the filter,
+        # which is the wrong direction in negative-rate regimes. Fail loud.
+        if safe_score_id not in safe_scores:
+            raise RuntimeError(
+                f"safe asset {safe_score_id!r} has no score at signal date {s_day} — "
+                f"backtest start is before safe asset has enough lookback history "
+                f"(need {max(config.shared.scoring.lookbacks_days)} trading days). "
+                f"Push the --start date forward or use a longer-history safe asset."
+            )
+        safe_score = safe_scores[safe_score_id]
         new_w = allocate(
             scores=scores,
             safe_score=safe_score,
@@ -196,6 +219,8 @@ def run(
         equity=equity_df,
         rebalances=rebalances,
         weight_history=weight_history,
+        n_fill_skips=n_fill_skips,
+        n_signal_skips=n_signal_skips,
     )
 
 
@@ -290,20 +315,20 @@ def _run_buy_and_hold(
     )
 
 
-def rebalances_to_dicts(rebalances: list[Rebalance]) -> list[dict[str, object]]:
-    return [
-        {
-            "rebalance_date": r.rebalance_date.isoformat(),
-            "signal_date": r.signal_date.isoformat(),
-            "fill_date": r.fill_date.isoformat(),
-            "scores": r.scores,
-            "weights": r.weights,
-            "turnover": r.turnover,
-            "cost": r.cost,
-        }
-        for r in rebalances
-    ]
-
-
 def rebalances_to_json(rebalances: list[Rebalance]) -> str:
-    return json.dumps(rebalances_to_dicts(rebalances), indent=2, default=str)
+    return json.dumps(
+        [
+            {
+                "rebalance_date": r.rebalance_date.isoformat(),
+                "signal_date": r.signal_date.isoformat(),
+                "fill_date": r.fill_date.isoformat(),
+                "scores": r.scores,
+                "weights": r.weights,
+                "turnover": r.turnover,
+                "cost": r.cost,
+            }
+            for r in rebalances
+        ],
+        indent=2,
+        default=str,
+    )

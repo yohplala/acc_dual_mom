@@ -83,10 +83,16 @@ def cmd_backtest(ctx: click.Context, start: str | None, end: str | None) -> None
         rebal_path = results_root / f"{strategy.name}.rebalances.json"
         rebal_path.write_text(backtest.rebalances_to_json(result.rebalances))
         last_w = result.rebalances[-1].weights if result.rebalances else {}
+        click.echo(
+            f"  {strategy.name}: {len(result.rebalances)} rebalances, "
+            f"{result.n_fill_skips} fill-skips, {result.n_signal_skips} signal-skips"
+        )
         summary.append(
             {
                 "strategy": strategy.name,
                 "n_rebalances": len(result.rebalances),
+                "n_fill_skips": result.n_fill_skips,
+                "n_signal_skips": result.n_signal_skips,
                 "final_equity": float(result.equity.get_column("equity")[-1])
                 if not result.equity.is_empty()
                 else 1.0,
@@ -178,16 +184,22 @@ def cmd_run(ctx: click.Context, site_root: str, start: str | None) -> None:
 
 
 def _load_rebalances(path: Path) -> list[backtest.Rebalance]:
+    """Strict deserializer for `<strategy>.rebalances.json` artifacts.
+
+    Every field is written unconditionally by `backtest.rebalances_to_json`,
+    so a missing key indicates a corrupted artifact rather than a legacy
+    schema. We index strictly so corruption surfaces as a `KeyError`.
+    """
     raw = json.loads(path.read_text())
     return [
         backtest.Rebalance(
             rebalance_date=date.fromisoformat(r["rebalance_date"]),
             signal_date=date.fromisoformat(r["signal_date"]),
             fill_date=date.fromisoformat(r["fill_date"]),
-            scores=r.get("scores", {}),
-            weights=r.get("weights", {}),
-            turnover=float(r.get("turnover", 0.0)),
-            cost=float(r.get("cost", 0.0)),
+            scores=r["scores"],
+            weights=r["weights"],
+            turnover=float(r["turnover"]),
+            cost=float(r["cost"]),
         )
         for r in raw
     ]
