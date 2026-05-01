@@ -25,6 +25,8 @@
 #   yahoo        yfinance ticker; null if unknown (skipped on fetch)
 #   leveraged    true if 2x / -1x / -2x — these distort correlation,
 #                rendered separately on the heatmap
+#   amundi_url   optional override for the product page URL on
+#                amundietf.fr; if absent, derived from name + isin
 
 universe:
   # ─── World / global ────────────────────────────────────────────────

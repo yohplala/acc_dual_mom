@@ -293,6 +293,7 @@ def render_correlations(
     threshold: float,
     output_dir: str | Path,
     diagnostics: list[Any] | None = None,
+    entries: list[Any] | None = None,
     template_name: str = "correlations.html.j2",
 ) -> Path:
     """Render the PEA-universe correlation matrix to `correlations.html`.
@@ -302,7 +303,12 @@ def render_correlations(
     `threshold`    the correlation cutoff used to form groups (for display)
     `diagnostics`  optional list of `StrategyDiagnostic` rows to render in
                    the per-strategy "remove / replace" recommendations table
+    `entries`      optional list of `DiscoveryEntry` — used to render each
+                   asset id in the redundancy-groups table as a link to
+                   its Amundi product page
     """
+    from .discover import amundi_product_url
+
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
 
@@ -320,6 +326,8 @@ def render_correlations(
     }
 
     heatmap_traces, heatmap_layout = _heatmap_figure(cm)
+
+    url_by_id: dict[str, str] = {e.id: amundi_product_url(e) for e in entries} if entries else {}
 
     groups_view = [
         {
@@ -344,6 +352,7 @@ def render_correlations(
         summary=summary,
         groups=groups_view,
         diagnostics=diagnostics_view,
+        url_by_id=url_by_id,
         heatmap_traces=json.dumps(heatmap_traces),
         heatmap_layout=json.dumps(heatmap_layout),
     )
