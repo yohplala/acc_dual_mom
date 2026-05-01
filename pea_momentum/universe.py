@@ -13,11 +13,8 @@ import yaml
 @dataclass(frozen=True, slots=True)
 class Asset:
     id: str
-    name: str
     isin: str
     yahoo: str
-    ter_pct: float
-    replication: str
     region: str
     # Optional Yahoo ticker for the underlying index, used to extend price
     # history backward before the ETF launched. None disables stitching for
@@ -48,10 +45,7 @@ class Asset:
 @dataclass(frozen=True, slots=True)
 class SafeAsset:
     id: str
-    name: str
-    isin: str
     proxy: str
-    ter_pct: float
 
 
 @dataclass(frozen=True, slots=True)
@@ -64,7 +58,6 @@ class Scoring:
 class Allocation:
     rule: str
     granularity_pct: int
-    min_weight_pct: float
     rounding: str
 
 
@@ -80,24 +73,16 @@ class Costs:
 
 
 @dataclass(frozen=True, slots=True)
-class Execution:
-    signal_close: str
-    fill_close: str
-
-
-@dataclass(frozen=True, slots=True)
 class Shared:
     scoring: Scoring
     allocation: Allocation
     filter: Filter
     costs: Costs
-    execution: Execution
 
 
 @dataclass(frozen=True, slots=True)
 class Strategy:
     name: str
-    description: str
     asset_ids: tuple[str, ...]
     rebalance: str
     top_n: int
@@ -133,9 +118,6 @@ class Config:
                 return asset
         raise KeyError(f"Unknown asset id: {asset_id}")
 
-    def assets_for(self, strategy: Strategy) -> tuple[Asset, ...]:
-        return tuple(self.asset_by_id(aid) for aid in strategy.asset_ids)
-
 
 def load_config(path: str | Path = "strategies.yaml") -> Config:
     raw = yaml.safe_load(Path(path).read_text())
@@ -154,7 +136,6 @@ def _parse(raw: dict[str, Any]) -> Config:
         allocation=Allocation(
             rule=shared_raw["allocation"]["rule"],
             granularity_pct=int(shared_raw["allocation"]["granularity_pct"]),
-            min_weight_pct=float(shared_raw["allocation"]["min_weight_pct"]),
             rounding=shared_raw["allocation"]["rounding"],
         ),
         filter=Filter(
@@ -162,20 +143,13 @@ def _parse(raw: dict[str, Any]) -> Config:
             benchmark=shared_raw["filter"]["benchmark"],
         ),
         costs=Costs(per_trade_pct=float(shared_raw["costs"]["per_trade_pct"])),
-        execution=Execution(
-            signal_close=shared_raw["execution"]["signal_close"],
-            fill_close=shared_raw["execution"]["fill_close"],
-        ),
     )
 
     assets = tuple(
         Asset(
             id=a["id"],
-            name=a["name"],
             isin=a["isin"],
             yahoo=a["yahoo"],
-            ter_pct=float(a["ter_pct"]),
-            replication=a["replication"],
             region=a["region"],
             index_proxy=a.get("index_proxy"),
             index_proxy_kind=a.get("index_proxy_kind"),
@@ -187,13 +161,7 @@ def _parse(raw: dict[str, Any]) -> Config:
     )
 
     sa = universe_raw["safe_asset"]
-    safe_asset = SafeAsset(
-        id=sa["id"],
-        name=sa["name"],
-        isin=sa["isin"],
-        proxy=sa["proxy"],
-        ter_pct=float(sa["ter_pct"]),
-    )
+    safe_asset = SafeAsset(id=sa["id"], proxy=sa["proxy"])
 
     strategies = tuple(_parse_strategy(s) for s in raw["strategies"])
 
@@ -227,7 +195,6 @@ def _parse_strategy(s: dict[str, Any]) -> Strategy:
     )
     return Strategy(
         name=s["name"],
-        description=s.get("description", ""),
         asset_ids=tuple(s["assets"]),
         rebalance=s["rebalance"],
         top_n=int(s["top_n"]),

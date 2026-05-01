@@ -18,7 +18,6 @@ from pea_momentum.universe import Strategy
 def _strategy(rebalance: str, reference_date: date | None = None) -> Strategy:
     return Strategy(
         name="t",
-        description="",
         asset_ids=("a",),
         rebalance=rebalance,
         top_n=1,

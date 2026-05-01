@@ -12,7 +12,6 @@ def _alloc(granularity: int = 10) -> Allocation:
     return Allocation(
         rule="score_proportional",
         granularity_pct=granularity,
-        min_weight_pct=0,
         rounding="largest_remainder",
     )
 
