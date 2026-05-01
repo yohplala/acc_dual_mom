@@ -50,34 +50,49 @@ def fetch_all(config: Config, start: date | None = None) -> pl.DataFrame:
 
 
 def fetch_yahoo_with_optional_proxy(asset: Asset, start: date) -> pl.DataFrame:
-    """Fetch the live ETF, then splice pre-inception index proxy if configured."""
+    """Fetch the live ETF, then splice pre-inception index proxy if configured.
+
+    Proxy failures propagate as `FetchError` (loud failure) — the only silent
+    degradation is configured `index_proxy_fallback` inside `_fetch_proxy_in_eur`.
+    A configured proxy that can't be fetched should be fixed in YAML, not
+    masked by ETF-only history.
+    """
     etf = fetch_yahoo(asset, start=start)
     if asset.index_proxy is None or asset.inception is None:
         return etf
-    try:
-        proxy = _fetch_proxy_in_eur(asset, start=start)
-    except FetchError as exc:
-        log.warning("proxy fetch failed for %s — keeping ETF-only history: %s", asset.id, exc)
-        return etf
+    proxy = _fetch_proxy_in_eur(asset, start=start)
     return stitching.splice_at_inception(etf, proxy, asset.inception, asset.id)
 
 
 def _fetch_proxy_in_eur(asset: Asset, start: date) -> pl.DataFrame:
-    """Fetch the proxy index and convert to EUR if needed. Returns [date, close]."""
+    """Fetch the proxy index and convert to EUR if needed. Returns [date, close].
+
+    Tries the primary `index_proxy` (via the configured `index_proxy_source`).
+    If that fails AND `index_proxy_fallback` is configured, retries with the
+    fallback as a Yahoo ticker. If no fallback is configured, the primary
+    failure propagates — surfaces broken tickers / API outages immediately
+    rather than silently degrading to ETF-only history.
+    """
     kind = asset.index_proxy_kind or "eur_pr"
     if kind not in YAHOO_FX:
         raise FetchError(f"Unknown index_proxy_kind {kind!r} for asset {asset.id}")
     if asset.index_proxy is None:
         raise FetchError(f"Asset {asset.id} has no index_proxy configured")
 
-    if asset.index_proxy_source == "stooq":
-        idx = _fetch_stooq_close_only(asset.index_proxy, start=start)
-    elif asset.index_proxy_source == "yahoo":
-        idx = _fetch_yahoo_close_only(asset.index_proxy, start=start)
-    else:
-        raise FetchError(
-            f"Unknown index_proxy_source {asset.index_proxy_source!r} for asset {asset.id}"
+    try:
+        idx = _fetch_proxy_primary(asset, start)
+    except FetchError as exc:
+        if asset.index_proxy_fallback is None:
+            raise
+        log.warning(
+            "primary proxy %s (%s) failed for %s — falling back to Yahoo %s: %s",
+            asset.index_proxy,
+            asset.index_proxy_source,
+            asset.id,
+            asset.index_proxy_fallback,
+            exc,
         )
+        idx = _fetch_yahoo_close_only(asset.index_proxy_fallback, start=start)
 
     fx_ticker = YAHOO_FX[kind]
     if fx_ticker is None:
@@ -89,6 +104,18 @@ def _fetch_proxy_in_eur(asset: Asset, start: date) -> pl.DataFrame:
     if kind == "jpy_pr":
         return stitching.jpy_to_eur(idx, fx)
     raise FetchError(f"FX conversion not implemented for kind {kind!r}")
+
+
+def _fetch_proxy_primary(asset: Asset, start: date) -> pl.DataFrame:
+    """Dispatch the primary proxy fetch by configured source. Raises FetchError
+    on failure — caller decides whether to engage `index_proxy_fallback`."""
+    if asset.index_proxy_source == "stooq":
+        return _fetch_stooq_close_only(asset.index_proxy, start=start)  # type: ignore[arg-type]
+    if asset.index_proxy_source == "yahoo":
+        return _fetch_yahoo_close_only(asset.index_proxy, start=start)  # type: ignore[arg-type]
+    raise FetchError(
+        f"Unknown index_proxy_source {asset.index_proxy_source!r} for asset {asset.id}"
+    )
 
 
 def _fetch_yahoo_close_only(ticker: str, start: date) -> pl.DataFrame:

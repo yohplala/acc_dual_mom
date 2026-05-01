@@ -208,3 +208,61 @@ def test_fetch_stooq_drops_null_closes(monkeypatch: pytest.MonkeyPatch) -> None:
     out = fetch._fetch_stooq_close_only("^stoxxr", start=date(2024, 1, 1))
     assert out.height == 2
     assert out.get_column("close").to_list() == [100.5, 102.2]
+
+
+# ── Proxy fallback chain (Stooq primary → Yahoo fallback) ──
+
+
+def _eur_asset_with_fallback() -> Asset:
+    return Asset(
+        id="eu_test",
+        name="x",
+        isin="x",
+        yahoo="X.PA",
+        ter_pct=0.0,
+        replication="synthetic",
+        region="europe",
+        inception=date(2018, 1, 1),
+        index_proxy="^stoxxr",
+        index_proxy_kind="eur_pr",
+        index_proxy_source="stooq",
+        index_proxy_fallback="^STOXX",
+    )
+
+
+def test_proxy_fallback_engages_when_stooq_fails(monkeypatch: pytest.MonkeyPatch) -> None:
+    """If Stooq returns an error and a fallback is configured, fall back to Yahoo."""
+    asset = _eur_asset_with_fallback()
+    _patch_stooq_response(monkeypatch, b"<html>captcha</html>")  # Stooq fails
+
+    yahoo_called: list[str] = []
+
+    def fake_yahoo_close_only(ticker: str, start: date) -> pl.DataFrame:
+        yahoo_called.append(ticker)
+        return pl.DataFrame({"date": [date(2024, 1, 2), date(2024, 1, 3)], "close": [100.0, 101.0]})
+
+    monkeypatch.setattr(fetch, "_fetch_yahoo_close_only", fake_yahoo_close_only)
+    out = fetch._fetch_proxy_in_eur(asset, start=date(2024, 1, 1))
+    assert out.height == 2
+    assert "^STOXX" in yahoo_called  # fallback was queried
+
+
+def test_proxy_no_fallback_propagates_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Without a fallback, Stooq failures bubble up loudly."""
+    asset = Asset(
+        id="x",
+        name="x",
+        isin="x",
+        yahoo="X.PA",
+        ter_pct=0.0,
+        replication="synthetic",
+        region="europe",
+        inception=date(2018, 1, 1),
+        index_proxy="^stoxxr",
+        index_proxy_kind="eur_pr",
+        index_proxy_source="stooq",
+        index_proxy_fallback=None,  # no fallback
+    )
+    _patch_stooq_response(monkeypatch, b"<html>captcha</html>")
+    with pytest.raises(fetch.FetchError, match="non-CSV"):
+        fetch._fetch_proxy_in_eur(asset, start=date(2024, 1, 1))
