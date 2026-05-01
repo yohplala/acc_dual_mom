@@ -295,7 +295,12 @@ def cmd_render_correlations(
     diagnostics = correlations.diagnose_strategies(cfg, entries, reps)
 
     out = render.render_correlations(
-        cm, reps, threshold=threshold, output_dir=site_root, diagnostics=diagnostics
+        cm,
+        reps,
+        threshold=threshold,
+        output_dir=site_root,
+        diagnostics=diagnostics,
+        entries=entries,
     )
     click.echo(
         f"OK · wrote {out} ({len(asset_ids)} assets, {len(grouped)} groups, "
