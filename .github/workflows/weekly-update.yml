@@ -19,6 +19,14 @@ permissions:
   pages: write
   id-token: write
 
+# Stooq's free CSV endpoint requires an API key (free, captcha-gated, obtained
+# at https://stooq.com/q/d/?s=aapl.us&get_apikey). Stored as a repo secret of
+# the same name. If unset, fetch.py skips the apikey param — Stooq returns
+# the apikey-prompt HTML instead of CSV, the fetcher detects this as a soft
+# failure, and `index_proxy_fallback` engages (Yahoo PR).
+env:
+  STOOQ_API_KEY: ${{ secrets.STOOQ_API_KEY }}
+
 concurrency:
   group: weekly-update
   cancel-in-progress: false

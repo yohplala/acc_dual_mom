@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import io
 import logging
+import os
 from datetime import date
 
 import httpx
@@ -143,9 +144,18 @@ def _fetch_yahoo_close_only(ticker: str, start: date) -> pl.DataFrame:
 
 STOOQ_BASE_URL = "https://stooq.com/q/d/l/"
 """Stooq's daily-CSV endpoint. Pattern:
-    https://stooq.com/q/d/l/?s=<ticker>&d1=<YYYYMMDD>&d2=<YYYYMMDD>&i=d
+    https://stooq.com/q/d/l/?s=<ticker>&d1=<YYYYMMDD>&d2=<YYYYMMDD>&i=d&apikey=<key>
 Returns CSV with header `Date,Open,High,Low,Close,Volume`.
+
+The free `apikey` is obtained at https://stooq.com/q/d/?s=aapl.us&get_apikey
+(captcha required, one-time). Without a key, requests return an HTML
+"Get your apikey" page instead of CSV — the fetcher detects this as a
+soft failure and engages `index_proxy_fallback`.
 """
+
+STOOQ_API_KEY_ENV = "STOOQ_API_KEY"
+"""Environment variable name for the Stooq API key. In CI it's wired through
+`weekly-update.yml` from a GitHub Actions secret of the same name."""
 
 
 def _fetch_stooq_close_only(ticker: str, start: date) -> pl.DataFrame:
@@ -154,14 +164,21 @@ def _fetch_stooq_close_only(ticker: str, start: date) -> pl.DataFrame:
     Stooq has TR / Reinvested variants for many European indices that Yahoo
     lacks (^stoxxr, ^sx5gr, etc). The CSV endpoint accepts a ticker and date
     range — we pull the full range and filter to `start` afterwards.
+
+    Reads the API key from `$STOOQ_API_KEY` and appends it to the request.
+    Without the key Stooq's free CSV endpoint returns an HTML apikey-prompt
+    page instead of CSV (gated since early 2026).
     """
     end = date.today()
-    params = {
+    params: dict[str, str] = {
         "s": ticker,
         "d1": start.strftime("%Y%m%d"),
         "d2": end.strftime("%Y%m%d"),
         "i": "d",
     }
+    api_key = os.getenv(STOOQ_API_KEY_ENV)
+    if api_key:
+        params["apikey"] = api_key
     log.info("fetching proxy %s from Stooq since %s", ticker, start)
     try:
         with httpx.Client(timeout=30.0, follow_redirects=True) as client:
