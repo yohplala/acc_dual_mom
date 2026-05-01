@@ -23,12 +23,14 @@ import polars as pl
 PRICES_FILE = "prices.parquet"
 HISTORY_DIR = "history"
 
-PRICES_SCHEMA = {
-    "date": pl.Date,
-    "asset_id": pl.Utf8,
-    "close": pl.Float64,
-    "source": pl.Utf8,
-}
+PRICES_SCHEMA: pl.Schema = pl.Schema(
+    {
+        "date": pl.Date,
+        "asset_id": pl.Utf8,
+        "close": pl.Float64,
+        "source": pl.Utf8,
+    }
+)
 
 
 def prices_path(data_root: str | Path) -> Path:
