@@ -38,6 +38,11 @@ class Asset:
     # indices that Yahoo lacks; Yahoo is preferred where TR is available
     # (e.g. ^SPXTR / ^NDXTR / ^RUTTR for US, ^GDAXI for Germany).
     index_proxy_source: str = "yahoo"
+    # Optional Yahoo fallback ticker if the primary `index_proxy` fetch fails
+    # (typical use: Stooq TR primary → Yahoo PR fallback to gracefully degrade
+    # from TR to PR rather than crash). When None, primary fetch failures
+    # propagate as FetchError so problems surface loudly.
+    index_proxy_fallback: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -170,6 +175,7 @@ def _parse(raw: dict[str, Any]) -> Config:
             index_proxy_kind=a.get("index_proxy_kind"),
             inception=_parse_date(a.get("inception")),
             index_proxy_source=a.get("index_proxy_source", "yahoo"),
+            index_proxy_fallback=a.get("index_proxy_fallback"),
         )
         for a in universe_raw["assets"]
     )
