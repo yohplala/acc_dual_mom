@@ -24,7 +24,7 @@ from .allocate import SAFE_ASSET_KEY, allocate
 from .schedule import fill_date, rebalance_dates, signal_date
 from .score import score_at
 from .store import prices_wide
-from .universe import Config, Strategy
+from .universe import Config, Scoring, Strategy
 
 log = logging.getLogger(__name__)
 
@@ -102,6 +102,18 @@ def run(
     dates = wide.get_column("date").to_list()
     cost_pct = config.shared.costs.per_trade_pct / 100.0
 
+    # Per-strategy scoring override: if a strategy specifies its own
+    # lookbacks_days (e.g. [126] for classic 6-month dual momentum), build
+    # a Scoring with those windows; otherwise use the shared default
+    # (21/63/126 mean = accelerated dual momentum).
+    if strategy.lookbacks_days is not None:
+        scoring = Scoring(
+            lookbacks_days=strategy.lookbacks_days,
+            aggregation=config.shared.scoring.aggregation,
+        )
+    else:
+        scoring = config.shared.scoring
+
     # Schedule: fill_date -> new_weights
     rebalances: list[Rebalance] = []
     fill_to_weights: dict[date, dict[str, float]] = {}
@@ -116,8 +128,10 @@ def run(
         if f_day not in dates:
             n_fill_skips += 1
             continue  # fill day outside trading window
-        scores = score_at(prices_long, asset_ids, s_day, config.shared.scoring)
-        safe_scores = score_at(prices_long, [safe_score_id], s_day, config.shared.scoring)
+        scores = score_at(prices_long, asset_ids, s_day, scoring)
+        # Safe asset must be scored on the SAME lookbacks as risky assets — the
+        # absolute filter compares like-for-like.
+        safe_scores = score_at(prices_long, [safe_score_id], s_day, scoring)
         if not scores:
             n_signal_skips += 1
             continue
@@ -130,7 +144,7 @@ def run(
             raise RuntimeError(
                 f"safe asset {safe_score_id!r} has no score at signal date {s_day} — "
                 f"backtest start is before safe asset has enough lookback history "
-                f"(need {max(config.shared.scoring.lookbacks_days)} trading days). "
+                f"(need {max(scoring.lookbacks_days)} trading days). "
                 f"Push the --start date forward or use a longer-history safe asset."
             )
         safe_score = safe_scores[safe_score_id]
