@@ -61,7 +61,14 @@ def cmd_fetch(ctx: click.Context, start: str | None) -> None:
 
 
 @cli.command(name="backtest")
-@click.option("--start", default=None, help="ISO date for backtest start")
+@click.option(
+    "--start",
+    default="2012-01-01",
+    show_default=True,
+    help="ISO date for backtest start. Default 2012-01-01 — earliest date "
+    "where every strategy in strategies.yaml has usable data (gated by "
+    "EEMA's 2012 inception which proxies em_asia).",
+)
 @click.option("--end", default=None, help="ISO date for backtest end")
 @click.pass_context
 def cmd_backtest(ctx: click.Context, start: str | None, end: str | None) -> None:
@@ -266,6 +273,7 @@ def cmd_render_correlations(
     threshold: float,
 ) -> None:
     """Render the correlation-matrix HTML page from `discover.parquet`."""
+    cfg: Config = ctx.obj["config"]
     data_root: Path = ctx.obj["data_root"]
     entries = discover.load_discovery_universe(universe)
     prices_path = data_root / DISCOVERY_PRICES_FILE
@@ -284,8 +292,15 @@ def cmd_render_correlations(
         for g in grouped
     ]
 
-    out = render.render_correlations(cm, reps, threshold=threshold, output_dir=site_root)
-    click.echo(f"OK · wrote {out} ({len(asset_ids)} assets, {len(grouped)} groups)")
+    diagnostics = correlations.diagnose_strategies(cfg, entries, reps)
+
+    out = render.render_correlations(
+        cm, reps, threshold=threshold, output_dir=site_root, diagnostics=diagnostics
+    )
+    click.echo(
+        f"OK · wrote {out} ({len(asset_ids)} assets, {len(grouped)} groups, "
+        f"{len(diagnostics)} strategy diagnostics)"
+    )
 
 
 if __name__ == "__main__":
