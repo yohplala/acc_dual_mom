@@ -41,6 +41,9 @@ universe:
       ter_pct: 0.12
       replication: synthetic
       region: us
+      inception: 2014-04-29
+      index_proxy: ^GSPC                    # S&P 500 (PR USD)
+      index_proxy_kind: usd_pr
 
     - id: us_tech
       name: Amundi PEA Nasdaq-100
@@ -49,6 +52,9 @@ universe:
       ter_pct: 0.30
       replication: synthetic
       region: us
+      inception: 2014-04-29
+      index_proxy: ^NDX                     # Nasdaq-100 (PR USD)
+      index_proxy_kind: usd_pr
 
     - id: us_small
       name: Amundi Russell 2000
@@ -57,16 +63,20 @@ universe:
       ter_pct: 0.35
       replication: synthetic
       region: us
+      inception: 2017-09-21
+      index_proxy: ^RUT                     # Russell 2000 (PR USD)
+      index_proxy_kind: usd_pr
 
     - id: world
       name: Amundi PEA Monde (MSCI World)
       isin: FR001400U5Q4
-      yahoo: DCAM.PA              # NOTE: launched 2025-03-04, limited history.
-                                  # For longer backtests consider the older
-                                  # Amundi MSCI World Swap (LU1681043599).
+      yahoo: DCAM.PA              # launched 2025-03-04 — short native history
       ter_pct: 0.20
       replication: synthetic
       region: world
+      inception: 2025-03-04
+      index_proxy: URTH                     # iShares MSCI World ETF (USD, 2012+)
+      index_proxy_kind: usd_pr
 
     - id: eu_broad
       name: Amundi PEA MSCI Europe
@@ -75,6 +85,9 @@ universe:
       ter_pct: 0.15
       replication: synthetic
       region: europe
+      inception: 2018-12-12
+      index_proxy: ^STOXX                   # STOXX Europe 600 (PR EUR — close
+      index_proxy_kind: eur_pr              # approximation of MSCI Europe)
 
     - id: eu_emu
       name: Amundi Core MSCI EMU            # eurozone-only large/mid cap
@@ -83,6 +96,9 @@ universe:
       ter_pct: 0.12
       replication: physical
       region: eurozone
+      inception: 2017-09-29
+      index_proxy: ^STOXX50E                # Euro Stoxx 50 (PR EUR — narrower
+      index_proxy_kind: eur_pr              # than MSCI EMU but tightly correlated)
 
     - id: eu_small
       name: Amundi MSCI EMU Small Cap ESG Broad Transition
@@ -99,6 +115,9 @@ universe:
       ter_pct: 0.20
       replication: synthetic
       region: japan
+      inception: 2018-12-19
+      index_proxy: ^N225                    # Nikkei 225 (PR JPY — close enough
+      index_proxy_kind: jpy_pr              # to TOPIX for momentum signals)
 
     - id: em_asia
       name: Amundi PEA Asie Emergente (MSCI Emerging Asia)
@@ -123,6 +142,9 @@ universe:
       ter_pct: 0.25
       replication: physical
       region: france
+      inception: 2019-03-15
+      index_proxy: ^FCHI                    # CAC 40 (PR EUR)
+      index_proxy_kind: eur_pr
 
     - id: germany
       name: Amundi ETF DAX
@@ -131,6 +153,9 @@ universe:
       ter_pct: 0.10
       replication: physical
       region: germany
+      inception: 2008-12-22
+      index_proxy: ^GDAXI                   # DAX (TR EUR — uniquely a total
+      index_proxy_kind: eur_pr              # return index, ideal proxy)
 
     # ── Additions for Japan-hedging A/B + country rotation + sector satellite ──
 
@@ -149,6 +174,9 @@ universe:
       ter_pct: 0.18
       replication: synthetic
       region: italy
+      inception: 2010-06-08
+      index_proxy: FTSEMIB.MI               # FTSE MIB (PR EUR)
+      index_proxy_kind: eur_pr
 
     - id: spain
       name: Amundi IBEX 35 Acc      # Acc share class (FR0010655746) for consistency
@@ -157,6 +185,9 @@ universe:
       ter_pct: 0.30
       replication: physical
       region: spain
+      inception: 2009-04-01
+      index_proxy: ^IBEX                    # IBEX 35 (PR EUR)
+      index_proxy_kind: eur_pr
 
     - id: china
       name: Amundi PEA Chine (MSCI China) Screened
@@ -189,6 +220,9 @@ universe:
       ter_pct: 0.09
       replication: synthetic
       region: eurozone
+      inception: 2017-09-29
+      index_proxy: ^STOXX50E                # Euro Stoxx 50 (PR EUR)
+      index_proxy_kind: eur_pr
 
   safe_asset:
     id: safe
