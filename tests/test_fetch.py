@@ -183,12 +183,30 @@ def test_fetch_stooq_filters_by_start_date(monkeypatch: pytest.MonkeyPatch) -> N
 
 
 def test_fetch_stooq_passes_params_correctly(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv(fetch.STOOQ_API_KEY_ENV, raising=False)
     client = _patch_stooq_response(monkeypatch, _STOOQ_CSV_OK)
     fetch._fetch_stooq_close_only("^sx5gr", start=date(2020, 5, 15))
     assert client.last_params is not None
     assert client.last_params["s"] == "^sx5gr"
     assert client.last_params["d1"] == "20200515"
     assert client.last_params["i"] == "d"
+    assert "apikey" not in client.last_params  # no env → no apikey param
+
+
+def test_fetch_stooq_appends_apikey_when_env_set(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv(fetch.STOOQ_API_KEY_ENV, "TESTKEY12345")
+    client = _patch_stooq_response(monkeypatch, _STOOQ_CSV_OK)
+    fetch._fetch_stooq_close_only("^spxtr", start=date(2020, 1, 1))
+    assert client.last_params is not None
+    assert client.last_params.get("apikey") == "TESTKEY12345"
+
+
+def test_fetch_stooq_skips_apikey_when_env_empty(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv(fetch.STOOQ_API_KEY_ENV, "")
+    client = _patch_stooq_response(monkeypatch, _STOOQ_CSV_OK)
+    fetch._fetch_stooq_close_only("^spxtr", start=date(2020, 1, 1))
+    assert client.last_params is not None
+    assert "apikey" not in client.last_params  # empty env treated as unset
 
 
 def test_fetch_stooq_rejects_non_csv_response(monkeypatch: pytest.MonkeyPatch) -> None:
