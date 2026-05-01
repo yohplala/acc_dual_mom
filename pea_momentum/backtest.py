@@ -309,3 +309,21 @@ def rebalances_to_json(rebalances: list[Rebalance]) -> str:
         indent=2,
         default=str,
     )
+
+
+def rebalances_from_json(text: str) -> list[Rebalance]:
+    """Strict deserializer mirroring `rebalances_to_json`. Missing keys raise
+    KeyError — they would indicate a corrupted artifact, not a legacy schema."""
+    raw = json.loads(text)
+    return [
+        Rebalance(
+            rebalance_date=date.fromisoformat(r["rebalance_date"]),
+            signal_date=date.fromisoformat(r["signal_date"]),
+            fill_date=date.fromisoformat(r["fill_date"]),
+            scores=r["scores"],
+            weights=r["weights"],
+            turnover=float(r["turnover"]),
+            cost=float(r["cost"]),
+        )
+        for r in raw
+    ]

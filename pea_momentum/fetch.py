@@ -122,16 +122,20 @@ def _fetch_proxy_primary(asset: Asset, start: date) -> pl.DataFrame:
 
 def _fetch_yahoo_close_only(ticker: str, start: date) -> pl.DataFrame:
     """Fetch a Yahoo ticker and return [date, close] only (no asset_id/source)."""
-    log.info("fetching proxy/FX %s from yfinance since %s", ticker, start)
+    log.info("fetching %s from yfinance since %s", ticker, start)
     raw = yf.download(
         ticker, start=start.isoformat(), progress=False, auto_adjust=True, actions=False
     )
     if raw is None or raw.empty:
         raise FetchError(f"yfinance returned no data for {ticker}")
-    if hasattr(raw.columns, "get_level_values"):
-        raw = raw.droplevel(1, axis=1) if raw.columns.nlevels > 1 else raw
+    if raw.columns.nlevels > 1:
+        raw = raw.droplevel(1, axis=1)
     if "Close" not in raw.columns:
         raise FetchError(f"yfinance response for {ticker} missing Close column")
+    # pandas 3 may return Float64 (nullable extension) which requires pyarrow
+    # for `pl.from_pandas`. Build polars from native numpy arrays instead.
+    # Polars only accepts datetime64 at D/ms/us/ns resolution — yfinance under
+    # pandas 3 yields seconds-resolution indices, so we normalize to ns here.
     closes = raw["Close"].to_numpy(dtype="float64", na_value=float("nan"))
     dates = raw.index.to_numpy().astype("datetime64[ns]")
     return (
@@ -215,38 +219,13 @@ def _fetch_stooq_close_only(ticker: str, start: date) -> pl.DataFrame:
 
 
 def fetch_yahoo(asset: Asset, start: date) -> pl.DataFrame:
-    log.info("fetching %s (%s) from yfinance since %s", asset.id, asset.yahoo, start)
-    raw = yf.download(
-        asset.yahoo,
-        start=start.isoformat(),
-        progress=False,
-        auto_adjust=True,
-        actions=False,
-    )
-    if raw is None or raw.empty:
-        raise FetchError(f"yfinance returned no data for {asset.yahoo} ({asset.id})")
-
-    if hasattr(raw.columns, "get_level_values"):
-        raw = raw.droplevel(1, axis=1) if raw.columns.nlevels > 1 else raw
-
-    if "Close" not in raw.columns:
-        raise FetchError(f"yfinance response for {asset.yahoo} missing Close column")
-
-    # pandas 3 may return Float64 (nullable extension) which requires pyarrow
-    # for `pl.from_pandas`. Build polars from native numpy arrays instead.
-    # Polars only accepts datetime64 at D/ms/us/ns resolution — yfinance under
-    # pandas 3 yields seconds-resolution indices, so we normalize to ns here.
-    closes = raw["Close"].to_numpy(dtype="float64", na_value=float("nan"))
-    dates = raw.index.to_numpy().astype("datetime64[ns]")
-
+    """Fetch the live ETF closes via Yahoo. Returns [date, asset_id, close, source]."""
     return (
-        pl.DataFrame({"date": dates, "close": closes})
+        _fetch_yahoo_close_only(asset.yahoo, start=start)
         .with_columns(
-            pl.col("date").cast(pl.Date),
             pl.lit(asset.id).alias("asset_id"),
             pl.lit("yfinance").alias("source"),
         )
-        .filter(pl.col("close").is_not_null() & pl.col("close").is_not_nan())
         .select(["date", "asset_id", "close", "source"])
     )
 
@@ -288,56 +267,27 @@ def fetch_safe_asset(safe: SafeAsset, start: date) -> pl.DataFrame:
     return _rates_to_synthetic_close(combined, asset_id=safe.id)
 
 
-def fetch_estr(start: date) -> pl.DataFrame:
-    """Fetch €STR daily fixings from ECB Data Portal, return [date, rate_pct]."""
-    log.info("fetching €STR from ECB since %s", start)
-    with httpx.Client(timeout=30.0) as client:
-        r = client.get(ECB_ESTR_URL, headers={"Accept": "text/csv"})
-        r.raise_for_status()
+def _fetch_ecb_csv(url: str, start: date, *, name: str) -> pl.DataFrame:
+    """Fetch a daily ECB rate CSV and return [date, rate_pct].
 
-    raw = pl.read_csv(io.BytesIO(r.content))
-    date_col = next((c for c in raw.columns if c.upper() == "TIME_PERIOD"), None)
-    value_col = next((c for c in raw.columns if c.upper() == "OBS_VALUE"), None)
-    if date_col is None or value_col is None:
-        raise FetchError(
-            f"unexpected ECB CSV columns: {raw.columns}; expected TIME_PERIOD + OBS_VALUE"
-        )
-
-    return (
-        raw.select(
-            pl.col(date_col).str.strptime(pl.Date, format="%Y-%m-%d").alias("date"),
-            pl.col(value_col).cast(pl.Float64).alias("rate_pct"),
-        )
-        .filter(pl.col("date") >= start)
-        .sort("date")
-    )
-
-
-def fetch_eonia(start: date) -> pl.DataFrame:
-    """Fetch EONIA daily fixings from ECB Data Portal, return [date, rate_pct].
-
-    EONIA was the eurozone overnight rate from 1999-01-04 until it was
-    discontinued on 2022-01-03 (replaced by €STR which started 2019-10-02).
-    For backtests starting before €STR's launch, EONIA fills in the pre-2019
-    history. Same ACT/360 convention as €STR.
-
-    All HTTP / parsing errors are converted to `FetchError` so the caller's
-    fallback path engages instead of crashing the whole fetch.
+    All HTTP / parsing errors are converted to `FetchError` so callers'
+    fallback paths engage instead of crashing the whole fetch.
     """
-    log.info("fetching EONIA from ECB since %s", start)
+    log.info("fetching %s from ECB since %s", name, start)
     try:
         with httpx.Client(timeout=30.0) as client:
-            r = client.get(ECB_EONIA_URL, headers={"Accept": "text/csv"})
+            r = client.get(url, headers={"Accept": "text/csv"})
             r.raise_for_status()
     except httpx.HTTPError as exc:
-        raise FetchError(f"EONIA fetch failed: {exc}") from exc
+        raise FetchError(f"{name} fetch failed: {exc}") from exc
 
     raw = pl.read_csv(io.BytesIO(r.content))
     date_col = next((c for c in raw.columns if c.upper() == "TIME_PERIOD"), None)
     value_col = next((c for c in raw.columns if c.upper() == "OBS_VALUE"), None)
     if date_col is None or value_col is None:
         raise FetchError(
-            f"unexpected ECB EONIA CSV columns: {raw.columns}; expected TIME_PERIOD + OBS_VALUE"
+            f"unexpected ECB {name} CSV columns: {raw.columns}; "
+            f"expected TIME_PERIOD + OBS_VALUE"
         )
 
     return (
@@ -349,6 +299,22 @@ def fetch_eonia(start: date) -> pl.DataFrame:
         .filter(pl.col("rate_pct").is_not_null())
         .sort("date")
     )
+
+
+def fetch_estr(start: date) -> pl.DataFrame:
+    """Fetch €STR daily fixings from ECB Data Portal, return [date, rate_pct]."""
+    return _fetch_ecb_csv(ECB_ESTR_URL, start, name="€STR")
+
+
+def fetch_eonia(start: date) -> pl.DataFrame:
+    """Fetch EONIA daily fixings from ECB Data Portal, return [date, rate_pct].
+
+    EONIA was the eurozone overnight rate from 1999-01-04 until it was
+    discontinued on 2022-01-03 (replaced by €STR which started 2019-10-02).
+    For backtests starting before €STR's launch, EONIA fills in the pre-2019
+    history. Same ACT/360 convention as €STR.
+    """
+    return _fetch_ecb_csv(ECB_EONIA_URL, start, name="EONIA")
 
 
 def _rates_to_synthetic_close(rates: pl.DataFrame, asset_id: str) -> pl.DataFrame:

@@ -123,23 +123,12 @@ def avg_pairwise_correlation(
       0.60-0.75  tightly correlated (developed-market equities)
       > 0.75  near-redundant (sector ETFs within one region)
     """
-    relevant = prices_long.filter(pl.col("asset_id").is_in(asset_ids))
-    if relevant.is_empty():
+    from .correlations import pairwise_corrcoef
+
+    result = pairwise_corrcoef(prices_long, asset_ids, window_days=None)
+    if result is None:
         return None
-    wide = relevant.pivot(values="close", index="date", on="asset_id").sort("date")
-    cols = [c for c in wide.columns if c != "date"]
-    if len(cols) < 2:
-        return None
-    wide = wide.with_columns([pl.col(c).forward_fill() for c in cols])
-    rets = wide.select(
-        *[(pl.col(c) / pl.col(c).shift(1) - 1.0).alias(c) for c in cols]
-    ).drop_nulls()
-    if rets.height < 2:
-        return None
-    arr = rets.to_numpy()
-    corr = np.corrcoef(arr, rowvar=False)
-    if corr.ndim == 0 or corr.shape[0] < 2:
-        return None
+    _, corr = result
     n = corr.shape[0]
     mask = ~np.eye(n, dtype=bool)
     return float(corr[mask].mean())
