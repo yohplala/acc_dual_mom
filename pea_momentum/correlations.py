@@ -110,11 +110,17 @@ def compute_correlation_matrix(
 
 def find_groups(
     cm: CorrelationMatrix,
-    threshold: float = 0.85,
+    threshold: float = 0.90,
+    region_by_id: Mapping[str, str] | None = None,
 ) -> list[list[str]]:
     """Union-Find groups: assets are in the same group if there's a chain
     of pairwise correlations all above `threshold`. Groups of size 1
     (singletons) are also returned so the caller has a complete partition.
+
+    If `region_by_id` is provided, two assets are unioned only when their
+    daily correlation is above `threshold` AND they share the same coarse
+    region. This prevents lumping cross-perimeter pairs that share market
+    beta but track different universes (e.g. MSCI World vs S&P 500).
     """
     n = len(cm.asset_ids)
     if n == 0:
@@ -134,8 +140,14 @@ def find_groups(
 
     for i in range(n):
         for j in range(i + 1, n):
-            if cm.matrix[i, j] > threshold:
-                union(i, j)
+            if cm.matrix[i, j] <= threshold:
+                continue
+            if region_by_id is not None:
+                ri = region_by_id.get(cm.asset_ids[i])
+                rj = region_by_id.get(cm.asset_ids[j])
+                if ri != rj:
+                    continue
+            union(i, j)
 
     groups_by_root: dict[int, list[str]] = {}
     for i in range(n):
@@ -155,15 +167,17 @@ def best_in_group(
     ter_pct_by_id: Mapping[str, float],
     window_days: int = 252,
 ) -> GroupRepresentative:
-    """Pick the asset with highest score = CAGR / max(TER, 0.01).
+    """Pick the asset with highest score = CAGR - TER (additive net-of-fees
+    annual return over the same window). Both CAGR and TER are fractions
+    (TER passed in as percent points → divided by 100 internally).
 
     Single-member groups return that member as representative trivially.
     """
     scores: dict[str, float] = {}
     for asset_id in group:
         cagr = _cagr_over_window(prices_long, asset_id, window_days)
-        ter = max(ter_pct_by_id.get(asset_id, 0.10), 0.01)  # avoid div-by-zero
-        scores[asset_id] = cagr / ter if cagr is not None else float("-inf")
+        ter_frac = ter_pct_by_id.get(asset_id, 0.10) / 100.0
+        scores[asset_id] = (cagr - ter_frac) if cagr is not None else float("-inf")
 
     rep = max(scores, key=lambda k: scores[k])
     return GroupRepresentative(

@@ -36,9 +36,14 @@ ESTR_START = date(2019, 10, 2)
 """First €STR fixing date. Pre-this we splice EONIA."""
 
 YAHOO_FX = {
+    # `_pr` and `_tr` are purely semantic labels — the fetcher does no
+    # return-type math, only FX conversion. Whether the underlying series
+    # is price-return or total-return is determined by the chosen ticker.
     "usd_pr": "EURUSD=X",
+    "usd_tr": "EURUSD=X",
     "jpy_pr": "EURJPY=X",
     "eur_pr": None,  # no FX needed
+    "eur_tr": None,  # no FX needed
 }
 
 
@@ -101,7 +106,7 @@ def _fetch_proxy_in_eur(asset: Asset, start: date) -> pl.DataFrame:
         return idx
 
     fx = _fetch_yahoo_close_only(fx_ticker, start=start)
-    if kind == "usd_pr":
+    if kind in ("usd_pr", "usd_tr"):
         return stitching.usd_to_eur(idx, fx)
     if kind == "jpy_pr":
         return stitching.jpy_to_eur(idx, fx)

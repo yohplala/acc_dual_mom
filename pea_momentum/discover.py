@@ -40,6 +40,39 @@ class DiscoveryEntry:
     leveraged: bool = False
     amundi_url: str | None = None
 
+    @property
+    def region(self) -> str:
+        """Coarse geographic / asset-class perimeter, derived from `category`.
+
+        Used by `find_groups()` to skip unioning two assets whose daily
+        correlation exceeds the threshold but which sit in distinct
+        perimeters (e.g. MSCI World vs S&P 500: same beta, different
+        underlying universes — should not be flagged as redundant)."""
+        return _coarse_region(self.category)
+
+
+def _coarse_region(category: str) -> str:
+    cat = category.upper()
+    if cat.startswith("USA"):
+        return "USA"
+    if cat.startswith("WORLD"):
+        return "WORLD"
+    if cat.startswith("JAPAN"):
+        return "JAPAN"
+    if cat in ("EMERGING-ASIA", "CHINA", "INDIA"):
+        return "EM-ASIA"
+    if cat.startswith("EMERGING"):
+        return "EM"
+    if cat.startswith("ASIA-PACIFIC"):
+        return "ASIA-PACIFIC"
+    if cat.startswith("CASH"):
+        return "CASH"
+    if cat.startswith("THEMATIC"):
+        return "THEMATIC"
+    # Default bucket: Eurozone, Europe, individual EU countries, EU sectors
+    # (all the sector ETFs in our YAML are European-focused)
+    return "EUROPE"
+
 
 def load_discovery_universe(path: str | Path = "pea_universe.yaml") -> list[DiscoveryEntry]:
     raw = yaml.safe_load(Path(path).read_text())
