@@ -46,17 +46,6 @@ universe:
       index_proxy_kind: usd_pr              # has no clean cash-TR equivalent;
                                             # PR understates by ~2pp/yr.
 
-    - id: us_tech
-      name: Amundi PEA Nasdaq-100
-      isin: FR0011871110
-      yahoo: PUST.PA
-      ter_pct: 0.30
-      replication: synthetic
-      region: us
-      inception: 2014-04-29
-      index_proxy: ^NDX                     # Nasdaq-100 (PR USD) — Yahoo
-      index_proxy_kind: usd_pr
-
     - id: us_small
       name: Amundi Russell 2000
       isin: LU1681038672
@@ -91,18 +80,6 @@ universe:
       index_proxy: ^STOXX                   # STOXX Europe 600 (PR EUR) — Yahoo
       index_proxy_kind: eur_pr              # (close approx of MSCI Europe)
 
-    - id: eu_emu
-      name: Amundi Core MSCI EMU            # eurozone-only large/mid cap
-      isin: LU1646361276
-      yahoo: MFEC.PA
-      ter_pct: 0.12
-      replication: physical
-      region: eurozone
-      inception: 2017-09-29
-      index_proxy: ^STOXX50E                # Euro Stoxx 50 (PR EUR) — Yahoo;
-      index_proxy_kind: eur_pr              # narrower than MSCI EMU but tightly
-                                            # correlated
-
     - id: eu_small
       name: Amundi MSCI EMU Small Cap ESG Broad Transition
       isin: LU1598689153
@@ -110,17 +87,6 @@ universe:
       ter_pct: 0.40
       replication: physical
       region: eurozone
-
-    - id: japan
-      name: Amundi PEA Japon (TOPIX)
-      isin: FR0013411980
-      yahoo: PTPXE.PA
-      ter_pct: 0.20
-      replication: synthetic
-      region: japan
-      inception: 2018-12-19
-      index_proxy: ^N225                    # Nikkei 225 (PR JPY — close enough
-      index_proxy_kind: jpy_pr              # to TOPIX for momentum signals)
 
     - id: em_asia
       name: Amundi PEA Asie Emergente (MSCI Emerging Asia)
@@ -130,38 +96,6 @@ universe:
       replication: synthetic
       region: em_asia
 
-    - id: em_broad
-      name: Amundi PEA Emergent (MSCI Emerging) ESG Transition
-      isin: FR0013412020
-      yahoo: PAEEM.PA
-      ter_pct: 0.30
-      replication: synthetic
-      region: em
-
-    - id: france
-      name: Amundi CAC 40 Acc
-      isin: FR0013380607
-      yahoo: CACC.PA              # Acc share class (CAC.PA is the Dist class with ISIN FR0007052782)
-      ter_pct: 0.25
-      replication: physical
-      region: france
-      inception: 2019-03-15
-      index_proxy: ^FCHI                    # CAC 40 (PR EUR)
-      index_proxy_kind: eur_pr
-
-    - id: germany
-      name: Amundi ETF DAX
-      isin: FR0010655712
-      yahoo: CG1.PA
-      ter_pct: 0.10
-      replication: physical
-      region: germany
-      inception: 2008-12-22
-      index_proxy: ^GDAXI                   # DAX (TR EUR — uniquely a total
-      index_proxy_kind: eur_pr              # return index, ideal proxy)
-
-    # ── Additions for Japan-hedging A/B + country rotation + sector satellite ──
-
     - id: japan_hedged
       name: Amundi PEA Japon (TOPIX) EUR Hedged
       isin: FR0013411998
@@ -169,44 +103,6 @@ universe:
       ter_pct: 0.48
       replication: synthetic
       region: japan
-
-    - id: italy
-      name: Amundi Italy MIB ESG
-      isin: LU1681037518
-      yahoo: FMI.PA                 # verified via Boursorama
-      ter_pct: 0.18
-      replication: synthetic
-      region: italy
-      inception: 2010-06-08
-      index_proxy: FTSEMIB.MI               # FTSE MIB (PR EUR)
-      index_proxy_kind: eur_pr
-
-    - id: spain
-      name: Amundi IBEX 35 Acc      # Acc share class (FR0010655746) for consistency
-      isin: FR0010655746
-      yahoo: CS1.PA                 # verified via Boursorama
-      ter_pct: 0.30
-      replication: physical
-      region: spain
-      inception: 2009-04-01
-      index_proxy: ^IBEX                    # IBEX 35 (PR EUR)
-      index_proxy_kind: eur_pr
-
-    - id: china
-      name: Amundi PEA Chine (MSCI China) Screened
-      isin: FR0011871078
-      yahoo: PASI.PA                # verified via Yahoo Finance
-      ter_pct: 0.65
-      replication: synthetic
-      region: china
-
-    - id: india
-      name: Amundi PEA Inde (MSCI India)
-      isin: FR0011869320
-      yahoo: PINR.PA                # verified via Yahoo Finance
-      ter_pct: 0.85
-      replication: synthetic
-      region: india
 
     - id: eu_banks
       name: Amundi STOXX Europe 600 Banks
@@ -240,15 +136,15 @@ universe:
   display_layout:
     - [us_large, us_small]
     - [world]
-    - [eu_broad, eu_emu, eu_50]                 # broad-cap Europe alternatives
+    - [eu_broad, eu_50]                         # broad-cap Europe alternatives
     - [eu_small, eu_banks]                      # eurozone sub-exposures
-    - [france, germany, italy, spain]           # eurozone single-country
-    - [japan, japan_hedged]                     # FX hedging A/B
-    - [em_asia, em_broad, china, india]         # emerging markets
+    - [japan_hedged]
+    - [em_asia]
     - [safe]
 
-# Three strategies sharing the same 6-asset universe to isolate the
-# rebalance-frequency effect (weekly vs. biweekly vs. monthly).
+# Two cadences (monthly + weekly) on the same 6-asset core, kept side-by-side
+# as evidence of why faster rebalancing underperforms at our cost level.
+# Biweekly was dropped — finding settled, kept noise.
 strategies:
   - name: core_monthly
     description: 6-asset core, monthly first-Sunday rebalance
@@ -256,28 +152,10 @@ strategies:
     rebalance: monthly_first_sunday
     top_n: 3
 
-  - name: core_biweekly
-    description: 6-asset core, biweekly Sunday rebalance
-    assets: [us_large, us_small, eu_broad, eu_small, em_asia, world]
-    rebalance: biweekly_sunday
-    reference_date: 2020-01-05    # anchors the biweekly cycle
-    top_n: 3
-
   - name: core_weekly
-    description: 6-asset core, weekly Sunday rebalance
+    description: 6-asset core, weekly Sunday rebalance (cost-drag exhibit)
     assets: [us_large, us_small, eu_broad, eu_small, em_asia, world]
     rebalance: weekly_sunday
-    top_n: 3
-
-  # Comparative variant of core_monthly: same cadence + same assets EXCEPT
-  # the Europe sleeve is eurozone-only (eu_emu) instead of pan-European
-  # (eu_broad). Lets the backtest empirically settle whether geographic
-  # breadth helps the strategy on our specific universe and period — see
-  # ADM literature for the theoretical case for `eu_broad`.
-  - name: core_monthly_emu
-    description: 6-asset core (eurozone Europe sleeve), monthly first-Sunday rebalance
-    assets: [us_large, us_small, eu_emu, eu_small, em_asia, world]
-    rebalance: monthly_first_sunday
     top_n: 3
 
   # Same 5 other sleeves as core_monthly, with `japan_hedged` swapped in
@@ -288,17 +166,6 @@ strategies:
   - name: core_monthly_japan_hedged
     description: 6-asset core with EUR-hedged Japan replacing world, monthly rebalance
     assets: [us_large, us_small, eu_broad, eu_small, em_asia, japan_hedged]
-    rebalance: monthly_first_sunday
-    top_n: 3
-
-  # Pure geographic rotation across 9 single-country sleeves (US + 4 eurozone
-  # + Japan + 3 emerging). Top-3 by accelerated-momentum score per rebalance.
-  # Background: literature reports Sharpe ≈ 1.2 for 22-country / top-11 setups
-  # (Logical Invest, QuantifiedStrategies). Our 9-country slice is on the
-  # smaller side but covers the major geographies available within PEA.
-  - name: country_rotation_monthly
-    description: 9-country geographic rotation, monthly first-Sunday rebalance
-    assets: [us_large, france, germany, italy, spain, japan, em_asia, china, india]
     rebalance: monthly_first_sunday
     top_n: 3
 
