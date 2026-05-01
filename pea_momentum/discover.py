@@ -13,6 +13,7 @@ caller gets back whatever data was successfully retrieved.
 from __future__ import annotations
 
 import logging
+import re
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
@@ -38,6 +39,7 @@ class DiscoveryEntry:
     category: str
     yahoo: str | None
     leveraged: bool = False
+    amundi_url: str | None = None
 
 
 def load_discovery_universe(path: str | Path = "pea_universe.yaml") -> list[DiscoveryEntry]:
@@ -53,9 +55,31 @@ def load_discovery_universe(path: str | Path = "pea_universe.yaml") -> list[Disc
             category=e.get("category", "Other"),
             yahoo=e.get("yahoo"),
             leveraged=bool(e.get("leveraged", False)),
+            amundi_url=e.get("amundi_url"),
         )
         for e in raw["universe"]
     ]
+
+
+def amundi_product_url(entry: DiscoveryEntry) -> str:
+    """Resolve the Amundi product page URL for `entry`.
+
+    Uses `entry.amundi_url` if explicitly set in the YAML; otherwise
+    constructs from name + ISIN using Amundi's observed slug pattern:
+
+        https://www.amundietf.fr/fr/particuliers/produits/equity/{slug}/{isin-lower}
+
+    where `slug` lowercases the product name, drops non-alphanumeric
+    characters, and joins words with single dashes. Best-effort — if the
+    constructed URL 404s for a particular ETF, set `amundi_url:` in
+    `pea_universe.yaml` to override.
+    """
+    if entry.amundi_url:
+        return entry.amundi_url
+    slug = re.sub(r"[^a-z0-9\s-]", "", entry.name.lower())
+    slug = re.sub(r"\s+", "-", slug.strip())
+    slug = re.sub(r"-+", "-", slug)
+    return f"https://www.amundietf.fr/fr/particuliers/produits/equity/{slug}/{entry.isin.lower()}"
 
 
 def fetch_discovery_universe(

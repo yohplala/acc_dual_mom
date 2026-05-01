@@ -37,8 +37,11 @@
     .pill.remove { background: rgba(248, 81, 73, 0.18); color: var(--negative); }
     .pill.replace { background: rgba(210, 153, 34, 0.18); color: #d29922; }
     .members { color: var(--muted); font-size: 12px; }
-    nav a { color: var(--accent); text-decoration: none; margin-right: 16px; }
+    nav { margin-bottom: 16px; }
+    nav a { color: var(--accent); text-decoration: none; margin-right: 16px; font-size: 13px; }
     nav a:hover { text-decoration: underline; }
+    .pill a { color: inherit; text-decoration: none; }
+    .pill a:hover { text-decoration: underline; }
     footer { margin-top: 48px; color: var(--muted); font-size: 12px; text-align: center; }
   </style>
 </head>
@@ -122,10 +125,16 @@
           {% for g in groups %}
           <tr>
             <td>{{ g.group|length }}</td>
-            <td><span class="pill rep">{{ g.representative }}</span></td>
+            <td>
+              {% if url_by_id.get(g.representative) %}
+              <span class="pill rep"><a href="{{ url_by_id[g.representative] }}" target="_blank" rel="noopener">{{ g.representative }}</a></span>
+              {% else %}
+              <span class="pill rep">{{ g.representative }}</span>
+              {% endif %}
+            </td>
             <td class="numeric">{{ "%.2f"|format(g.representative_score) }}</td>
             <td class="members">
-              {% for m in g.group %}{% if m != g.representative %}<span class="pill">{{ m }}</span> {% endif %}{% endfor %}
+              {% for m in g.group %}{% if m != g.representative %}{% if url_by_id.get(m) %}<span class="pill"><a href="{{ url_by_id[m] }}" target="_blank" rel="noopener">{{ m }}</a></span>{% else %}<span class="pill">{{ m }}</span>{% endif %} {% endif %}{% endfor %}
               {% if g.group|length == 1 %}<em>(singleton)</em>{% endif %}
             </td>
           </tr>
@@ -135,7 +144,8 @@
       <p style="color: var(--muted); font-size: 12px; margin-top: 12px;">
         Representative pick: highest CAGR / TER ratio over the same window. Use it to
         choose one member per group when constructing strategy universes — picking
-        multiple from the same group adds no diversification.
+        multiple from the same group adds no diversification. Click an ETF to open
+        its Amundi product page.
       </p>
       {% else %}
       <p style="color: var(--muted);">No data — run <code>pea-mom discover</code> first.</p>
