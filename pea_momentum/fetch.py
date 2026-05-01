@@ -14,6 +14,7 @@ import polars as pl
 import yfinance as yf
 
 from . import stitching
+from .errors import FetchError
 from .universe import Asset, Config, SafeAsset
 
 log = logging.getLogger(__name__)
@@ -358,7 +359,3 @@ def _earliest_useful_start() -> date:
     no data before their ETF inception — backtests filter to the period when
     all required assets are present."""
     return date(2008, 1, 1)
-
-
-class FetchError(RuntimeError):
-    """Raised when an upstream price provider returns unusable data."""

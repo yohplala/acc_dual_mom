@@ -40,7 +40,6 @@ jobs:
 
       - name: Type check (mypy)
         run: poetry run mypy pea_momentum
-        continue-on-error: true   # warn-only until codebase fully typed
 
       - name: Run tests
         run: poetry run pytest -v

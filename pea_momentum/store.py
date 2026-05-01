@@ -3,17 +3,15 @@
 Layout under the data root (typically `./data` locally, or a checked-out
 data branch in CI):
 
-    prices.parquet         long-format closes for every asset and the safe asset
-    history/<strategy>.parquet   per-strategy weight + return time series
-    metrics.json           cross-strategy summary statistics
-    last_signals.json      most-recent rebalance per strategy (for the live CLI)
+    prices.parquet                 long-format closes for every asset and the safe asset
+    history/<strategy>.parquet     per-strategy weight + return time series
 
 Schema for prices.parquet:
 
     date      Date
     asset_id  Utf8     (matches `id` from strategies.yaml; "safe" for the safe asset)
     close     Float64  EUR-denominated close
-    source    Utf8     "yfinance" | "estr_synthetic" | "stitched_index"
+    source    Utf8     "yfinance" | "estr_synthetic" | "stitched_index_proxy"
 """
 
 from __future__ import annotations
@@ -24,8 +22,6 @@ import polars as pl
 
 PRICES_FILE = "prices.parquet"
 HISTORY_DIR = "history"
-METRICS_FILE = "metrics.json"
-LAST_SIGNALS_FILE = "last_signals.json"
 
 PRICES_SCHEMA = {
     "date": pl.Date,
@@ -41,14 +37,6 @@ def prices_path(data_root: str | Path) -> Path:
 
 def history_path(data_root: str | Path, strategy_name: str) -> Path:
     return Path(data_root) / HISTORY_DIR / f"{strategy_name}.parquet"
-
-
-def metrics_path(data_root: str | Path) -> Path:
-    return Path(data_root) / METRICS_FILE
-
-
-def last_signals_path(data_root: str | Path) -> Path:
-    return Path(data_root) / LAST_SIGNALS_FILE
 
 
 def write_prices(df: pl.DataFrame, data_root: str | Path) -> Path:

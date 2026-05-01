@@ -15,6 +15,9 @@ splice approach:
 Resulting series is continuous in level (no jump on the splice date) and
 provenance is preserved via the `source` column ("yfinance" for live ETF,
 "stitched_index_proxy" for synthetic pre-inception segment).
+
+Failures in any of these steps raise `FetchError` — the caller decides
+whether to engage `index_proxy_fallback` for graceful degradation.
 """
 
 from __future__ import annotations
@@ -22,6 +25,8 @@ from __future__ import annotations
 from datetime import date
 
 import polars as pl
+
+from .errors import FetchError
 
 
 def splice_at_inception(
@@ -35,21 +40,34 @@ def splice_at_inception(
     Both inputs are long-format `[date, close]` DataFrames (proxy may also
     carry extra columns; only `date` and `close` are used). Returns a long
     `[date, asset_id, close, source]` covering the union of dates.
+
+    Raises `FetchError` if any precondition fails (empty inputs, no overlap
+    around the inception date, non-positive proxy close). A user-configured
+    proxy that can't be spliced is a real problem — not silently masked.
     """
     if etf_long.is_empty():
-        return etf_long
+        raise FetchError(
+            f"splice {asset_id}: ETF series is empty (yfinance returned no rows for the live ETF)"
+        )
     if proxy_long.is_empty():
-        return etf_long
+        raise FetchError(f"splice {asset_id}: proxy series is empty (check the index_proxy ticker)")
 
     etf_at = etf_long.filter(pl.col("date") >= inception).sort("date").head(1)
     proxy_at = proxy_long.filter(pl.col("date") <= inception).sort("date").tail(1)
-    if etf_at.is_empty() or proxy_at.is_empty():
-        return etf_long
+    if etf_at.is_empty():
+        raise FetchError(f"splice {asset_id}: no ETF data on or after inception date {inception}")
+    if proxy_at.is_empty():
+        raise FetchError(
+            f"splice {asset_id}: no proxy data on or before inception date {inception} "
+            f"(proxy series begins after the configured inception)"
+        )
 
     etf_close = float(etf_at.get_column("close")[0])
     proxy_close = float(proxy_at.get_column("close")[0])
     if proxy_close <= 0:
-        return etf_long
+        raise FetchError(
+            f"splice {asset_id}: proxy close at inception is non-positive ({proxy_close})"
+        )
     scale = etf_close / proxy_close
 
     pre = (
@@ -70,22 +88,33 @@ def splice_at_inception(
 def usd_to_eur(idx_usd: pl.DataFrame, eurusd: pl.DataFrame) -> pl.DataFrame:
     """Convert a USD-denominated `[date, close]` series to EUR using a
     daily `[date, close]` EURUSD series (USD per EUR). EUR price = USD / EURUSD.
+    Raises `FetchError` if either input is empty.
     """
-    return _convert(idx_usd, eurusd)
+    return _convert(idx_usd, eurusd, ccy="USD")
 
 
 def jpy_to_eur(idx_jpy: pl.DataFrame, eurjpy: pl.DataFrame) -> pl.DataFrame:
     """Convert a JPY-denominated `[date, close]` series to EUR using a
     daily `[date, close]` EURJPY series (JPY per EUR). EUR price = JPY / EURJPY.
+    Raises `FetchError` if either input is empty.
     """
-    return _convert(idx_jpy, eurjpy)
+    return _convert(idx_jpy, eurjpy, ccy="JPY")
 
 
-def _convert(idx_local: pl.DataFrame, fx_per_eur: pl.DataFrame) -> pl.DataFrame:
-    """Local-CCY index series → EUR. fx_per_eur is units-of-local-ccy per 1 EUR."""
-    if idx_local.is_empty() or fx_per_eur.is_empty():
-        return pl.DataFrame(schema={"date": pl.Date, "close": pl.Float64})
+def _convert(idx_local: pl.DataFrame, fx_per_eur: pl.DataFrame, ccy: str) -> pl.DataFrame:
+    """Local-CCY index series → EUR. fx_per_eur is units-of-local-ccy per 1 EUR.
+    Raises `FetchError` rather than silently returning empty when an input
+    is empty or the inner-join produces no overlapping dates.
+    """
+    if idx_local.is_empty():
+        raise FetchError(f"{ccy}→EUR: index series is empty")
+    if fx_per_eur.is_empty():
+        raise FetchError(f"{ccy}→EUR: FX series is empty (check EUR{ccy}=X yfinance ticker)")
     fx = fx_per_eur.select(["date", pl.col("close").alias("_fx")])
     joined = idx_local.join(fx, on="date", how="inner")
     joined = joined.filter(pl.col("_fx") > 0)
+    if joined.is_empty():
+        raise FetchError(
+            f"{ccy}→EUR: no overlapping dates between index and FX series after positivity filter"
+        )
     return joined.with_columns(close=pl.col("close") / pl.col("_fx")).select(["date", "close"])
