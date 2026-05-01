@@ -75,8 +75,9 @@ universe:
       replication: synthetic
       region: world
       inception: 2025-03-04
-      index_proxy: URTH                     # iShares MSCI World ETF (USD, 2012+)
-      index_proxy_kind: usd_pr
+      index_proxy: ^990100-USD-STRD         # MSCI World direct index (USD PR;
+      index_proxy_kind: usd_pr              # ~2pp/yr understatement vs TR but
+                                            # gives 2008+ history vs URTH's 2012)
 
     - id: eu_broad
       name: Amundi PEA MSCI Europe
