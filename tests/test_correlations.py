@@ -271,7 +271,7 @@ class TestDiagnoseStrategies:
         return cfg, entries, groups
 
     def test_redundant_pair_flagged(self) -> None:
-        from pea_momentum.correlations import diagnose_strategies
+        from pea_momentum.diagnostics import diagnose_strategies
 
         cfg, entries, groups = self._make_setup()
         diagnostics = diagnose_strategies(cfg, entries, groups)
@@ -283,7 +283,7 @@ class TestDiagnoseStrategies:
         assert "us_alt" in redundant[0].detail
 
     def test_suboptimal_replace_flagged(self) -> None:
-        from pea_momentum.correlations import diagnose_strategies
+        from pea_momentum.diagnostics import diagnose_strategies
 
         cfg, entries, groups = self._make_setup()
         diagnostics = diagnose_strategies(cfg, entries, groups)
@@ -295,7 +295,7 @@ class TestDiagnoseStrategies:
         assert "d_us" in suboptimal[0].suggestion
 
     def test_clean_strategy_no_diagnostics(self) -> None:
-        from pea_momentum.correlations import diagnose_strategies
+        from pea_momentum.diagnostics import diagnose_strategies
 
         cfg, entries, groups = self._make_setup()
         diagnostics = diagnose_strategies(cfg, entries, groups)
@@ -307,7 +307,7 @@ class TestDiagnoseStrategies:
         """If strat_redundant uses both us + us_alt, the 'remove' diagnostic
         already implicitly recommends keeping the rep (us). Don't ALSO emit
         a 'replace us_alt with us' — that's redundant feedback."""
-        from pea_momentum.correlations import diagnose_strategies
+        from pea_momentum.diagnostics import diagnose_strategies
 
         cfg, entries, groups = self._make_setup()
         diagnostics = diagnose_strategies(cfg, entries, groups)
