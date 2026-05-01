@@ -75,6 +75,12 @@ jobs:
         run: |
           poetry run pea-mom -v fetch ${{ inputs.backfill_start && format('--start {0}', inputs.backfill_start) || '' }}
 
+      - name: Discover broad PEA universe
+        # Soft-fails per asset (skips bad tickers with a warning); only crashes
+        # on infrastructure errors. Run after fetch so prices.parquet is ready
+        # alongside discover.parquet for the build-pages job.
+        run: poetry run pea-mom -v discover
+
       - name: Push to prices-data orphan branch
         env:
           REMOTE_URL: ${{ format('https://x-access-token:{0}@github.com/{1}.git', secrets.GITHUB_TOKEN, github.repository) }}
@@ -84,10 +90,11 @@ jobs:
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
           mkdir -p /tmp/prices-data
           cp data/prices.parquet /tmp/prices-data/
+          cp data/discover.parquet /tmp/prices-data/ 2>/dev/null || echo "(no discover.parquet yet)"
           cd /tmp/prices-data
           git init -q
           git checkout --orphan prices-data
-          git add prices.parquet
+          git add prices.parquet discover.parquet 2>/dev/null || git add prices.parquet
           git commit -q -m "Prices $(date -u +%Y-%m-%dT%H:%MZ)"
           git push --force "$REMOTE_URL" prices-data
 
@@ -172,11 +179,23 @@ jobs:
           mkdir -p data
           git fetch origin prices-data:prices-data backtest-results:backtest-results
           git --work-tree=data checkout prices-data -- prices.parquet
+          git --work-tree=data checkout prices-data -- discover.parquet 2>/dev/null || echo "(no discover.parquet on prices-data — first run after wire-in)"
           git --work-tree=data checkout backtest-results -- history results
           git reset HEAD
 
-      - name: Render HTML
+      - name: Render strategy dashboard (index.html)
         run: poetry run pea-mom render
+
+      - name: Render correlation matrix (correlations.html)
+        # Skips cleanly if the discover step didn't produce data (first run
+        # before wire-in, or all 22 known tickers failed to fetch). The
+        # strategy dashboard publishes regardless.
+        run: |
+          if [ -f data/discover.parquet ]; then
+            poetry run pea-mom render-correlations --site-root site/
+          else
+            echo "skipping correlations render — no discover.parquet"
+          fi
 
       - name: Upload site artifact
         uses: actions/upload-pages-artifact@v5

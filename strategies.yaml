@@ -243,3 +243,25 @@ strategies:
     assets: [us_large, eu_50, em_asia]
     rebalance: monthly_first_sunday
     top_n: 3
+
+  # ADM rotation between MSCI World and EUR-hedged Japan (top-1 per month).
+  # Direct comparison vs `msci_world_buy_hold`: does ADM picking the stronger
+  # of the two each month outperform a static 100%-world hold? Same universe
+  # size (effectively 1 risky asset held at a time, vs always-world).
+  # Note: japan_hedged is an EQUITY ETF (TOPIX with EUR hedge), NOT a safe
+  # asset — strategy can still go 100% safe via the absolute filter.
+  - name: world_jp_hedge_adm_monthly
+    description: ADM rotation between MSCI World and Japan-hedged, monthly top-1
+    assets: [world, japan_hedged]
+    rebalance: monthly_first_sunday
+    top_n: 1
+
+  # ADM rotation across the World3 universe + Japan-hedged (top-3 of 4 per
+  # month). Direct comparison vs `world3_buy_hold`: does ADM picking 3 of
+  # 4 sleeves each month — and rotating which sleeve drops out — outperform
+  # the static 1/3-1/3-1/3 hold?
+  - name: world3_jp_hedge_adm_monthly
+    description: ADM rotation across S&P 500 + Euro Stoxx 50 + EM Asia + Japan-hedged, monthly top-3 of 4
+    assets: [us_large, eu_50, em_asia, japan_hedged]
+    rebalance: monthly_first_sunday
+    top_n: 3

@@ -34,6 +34,8 @@
       padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 500;
     }
     .pill.rep { background: rgba(63, 185, 80, 0.18); color: var(--positive); }
+    .pill.remove { background: rgba(248, 81, 73, 0.18); color: var(--negative); }
+    .pill.replace { background: rgba(210, 153, 34, 0.18); color: #d29922; }
     .members { color: var(--muted); font-size: 12px; }
     nav a { color: var(--accent); text-decoration: none; margin-right: 16px; }
     nav a:hover { text-decoration: underline; }
@@ -57,6 +59,51 @@
         white ≈ uncorrelated; bright blue = inversely correlated. Hover over a cell
         to see the exact value.
       </p>
+    </div>
+
+    <h2>Strategy diagnostics</h2>
+    <div class="panel">
+      {% if diagnostics %}
+      <p style="color: var(--muted); font-size: 12px; margin: 0 0 12px 0;">
+        Cross-references each strategy's assets in
+        <a href="https://github.com/yohplala/acc_dual_mom/blob/main/strategies.yaml" style="color: var(--accent);">strategies.yaml</a>
+        against the correlation groups below. Two flag types per strategy:
+        <strong style="color: var(--negative);">remove</strong> (2+ of your assets fall in the same group → drop the weaker)
+        and <strong style="color: #d29922;">replace</strong> (an asset used isn't the best-in-group rep → consider swapping).
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th>Strategy</th>
+            <th>Issue</th>
+            <th>Detail</th>
+            <th>Suggestion</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for d in diagnostics %}
+          <tr>
+            <td><span class="pill">{{ d.strategy_name }}</span></td>
+            <td>
+              {% if d.issue == "remove" %}
+              <span class="pill remove">remove</span>
+              {% else %}
+              <span class="pill replace">replace</span>
+              {% endif %}
+            </td>
+            <td>{{ d.detail }}</td>
+            <td><em>{{ d.suggestion }}</em></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p style="color: var(--muted);">
+        No diagnostics — every strategy uses an asset that is either the
+        best-in-group representative or in a singleton (uncorrelated) group.
+        Run after enough discovery assets have data and groups have formed.
+      </p>
+      {% endif %}
     </div>
 
     <h2>Redundancy groups (correlation > {{ "%.2f"|format(summary.threshold) }})</h2>
