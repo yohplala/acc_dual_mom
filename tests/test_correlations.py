@@ -151,7 +151,6 @@ class TestDiagnoseStrategies:
             Asset,
             Config,
             Costs,
-            Execution,
             Filter,
             SafeAsset,
             Scoring,
@@ -161,42 +160,10 @@ class TestDiagnoseStrategies:
 
         # 4 assets in strategies.yaml, with ISIN matching pea_universe.yaml
         assets = (
-            Asset(
-                id="us",
-                name="us",
-                isin="ISIN_US",
-                yahoo="x",
-                ter_pct=0.12,
-                replication="synthetic",
-                region="us",
-            ),
-            Asset(
-                id="us_alt",
-                name="us_alt",
-                isin="ISIN_US_ALT",
-                yahoo="x",
-                ter_pct=0.30,
-                replication="synthetic",
-                region="us",
-            ),  # correlated with us
-            Asset(
-                id="eu",
-                name="eu",
-                isin="ISIN_EU",
-                yahoo="x",
-                ter_pct=0.15,
-                replication="synthetic",
-                region="eu",
-            ),
-            Asset(
-                id="jp",
-                name="jp",
-                isin="ISIN_JP",
-                yahoo="x",
-                ter_pct=0.20,
-                replication="synthetic",
-                region="jp",
-            ),
+            Asset(id="us", isin="ISIN_US", yahoo="x", region="us"),
+            Asset(id="us_alt", isin="ISIN_US_ALT", yahoo="x", region="us"),
+            Asset(id="eu", isin="ISIN_EU", yahoo="x", region="eu"),
+            Asset(id="jp", isin="ISIN_JP", yahoo="x", region="jp"),
         )
         cfg = Config(
             shared=Shared(
@@ -204,22 +171,17 @@ class TestDiagnoseStrategies:
                 allocation=Allocation(
                     rule="score_proportional",
                     granularity_pct=10,
-                    min_weight_pct=0,
                     rounding="largest_remainder",
                 ),
                 filter=Filter(type="absolute_momentum", benchmark="safe_asset"),
                 costs=Costs(per_trade_pct=0.10),
-                execution=Execution(signal_close="friday", fill_close="monday"),
             ),
             assets=assets,
-            safe_asset=SafeAsset(
-                id="safe", name="safe", isin="ISIN_SAFE", proxy="estr", ter_pct=0.25
-            ),
+            safe_asset=SafeAsset(id="safe", proxy="estr"),
             strategies=(
                 # Strategy A: uses both us AND us_alt (redundant pair)
                 Strategy(
                     name="strat_redundant",
-                    description="",
                     asset_ids=("us", "us_alt", "eu"),
                     rebalance="monthly_first_sunday",
                     top_n=2,
@@ -227,7 +189,6 @@ class TestDiagnoseStrategies:
                 # Strategy B: uses us_alt (suboptimal — us is the rep)
                 Strategy(
                     name="strat_suboptimal",
-                    description="",
                     asset_ids=("us_alt", "eu"),
                     rebalance="monthly_first_sunday",
                     top_n=2,
@@ -235,7 +196,6 @@ class TestDiagnoseStrategies:
                 # Strategy C: uses us (the rep) — clean, no diagnostics
                 Strategy(
                     name="strat_clean",
-                    description="",
                     asset_ids=("us", "eu", "jp"),
                     rebalance="monthly_first_sunday",
                     top_n=2,
@@ -251,7 +211,6 @@ class TestDiagnoseStrategies:
                 isin="ISIN_US",
                 currency="EUR",
                 ter_pct=0.12,
-                sfdr="Article 6",
                 category="USA",
                 yahoo="x",
             ),
@@ -261,7 +220,6 @@ class TestDiagnoseStrategies:
                 isin="ISIN_US_ALT",
                 currency="EUR",
                 ter_pct=0.30,
-                sfdr="Article 6",
                 category="USA",
                 yahoo="x",
             ),
@@ -271,7 +229,6 @@ class TestDiagnoseStrategies:
                 isin="ISIN_EU",
                 currency="EUR",
                 ter_pct=0.15,
-                sfdr="Article 6",
                 category="Europe",
                 yahoo="x",
             ),
@@ -281,7 +238,6 @@ class TestDiagnoseStrategies:
                 isin="ISIN_JP",
                 currency="EUR",
                 ter_pct=0.20,
-                sfdr="Article 6",
                 category="Japan",
                 yahoo="x",
             ),

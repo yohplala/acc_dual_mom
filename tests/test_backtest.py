@@ -12,7 +12,6 @@ from pea_momentum.universe import (
     Asset,
     Config,
     Costs,
-    Execution,
     Filter,
     SafeAsset,
     Scoring,
@@ -28,34 +27,16 @@ def _config() -> Config:
             allocation=Allocation(
                 rule="score_proportional",
                 granularity_pct=10,
-                min_weight_pct=0.0,
                 rounding="largest_remainder",
             ),
             filter=Filter(type="absolute_momentum", benchmark="safe_asset"),
             costs=Costs(per_trade_pct=0.10),
-            execution=Execution(signal_close="friday", fill_close="monday"),
         ),
         assets=(
-            Asset(
-                id="up",
-                name="up",
-                isin="x",
-                yahoo="x",
-                ter_pct=0,
-                replication="synthetic",
-                region="x",
-            ),
-            Asset(
-                id="dn",
-                name="dn",
-                isin="x",
-                yahoo="x",
-                ter_pct=0,
-                replication="synthetic",
-                region="x",
-            ),
+            Asset(id="up", isin="x", yahoo="x", region="x"),
+            Asset(id="dn", isin="x", yahoo="x", region="x"),
         ),
-        safe_asset=SafeAsset(id="safe", name="safe", isin="x", proxy="estr", ter_pct=0),
+        safe_asset=SafeAsset(id="safe", proxy="estr"),
         strategies=(),
     )
 
@@ -63,7 +44,6 @@ def _config() -> Config:
 def _strategy(rebalance: str = "weekly_sunday") -> Strategy:
     return Strategy(
         name="t",
-        description="",
         asset_ids=("up", "dn"),
         rebalance=rebalance,
         top_n=1,
@@ -120,7 +100,6 @@ def test_no_rebalance_with_too_short_history() -> None:
 def _bh_strategy() -> Strategy:
     return Strategy(
         name="bh",
-        description="",
         asset_ids=("up",),
         rebalance="monthly_first_sunday",
         top_n=1,

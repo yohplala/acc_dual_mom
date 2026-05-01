@@ -166,9 +166,6 @@ def cmd_render(ctx: click.Context, site_root: str) -> None:
                 strategy_name=strategy.name,
                 equity=equity,
                 rebalances=rebals,
-                weight_history=pl.DataFrame(
-                    schema={"date": pl.Date, "asset_id": pl.Utf8, "weight": pl.Float64}
-                ),
             )
         )
 
