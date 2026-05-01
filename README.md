@@ -45,6 +45,7 @@ Strategy config lives in [`strategies.yaml`](strategies.yaml) — universe slice
 ### 📊 Live Data & Charts
 
 - **[Live dashboard](https://yohplala.github.io/acc_dual_mom/)** — overlaid equity curves, drawdown, current signals, performance metrics. Refreshed every Saturday 04:00 UTC.
+- **[Correlation matrix](https://yohplala.github.io/acc_dual_mom/correlations.html)** — pairwise correlation across the broad PEA-eligible Amundi universe + redundancy groups. Useful for picking non-overlapping assets when constructing strategy universes.
 
 ### 📋 References
 

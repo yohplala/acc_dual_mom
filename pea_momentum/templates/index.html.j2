@@ -79,6 +79,9 @@
     /* Performance metrics table — center every cell + header */
     table.metrics th, table.metrics td { text-align: center; }
     footer { margin-top: 48px; color: var(--muted); font-size: 12px; text-align: center; }
+    nav { margin-bottom: 16px; }
+    nav a { color: var(--accent); text-decoration: none; font-size: 13px; }
+    nav a:hover { text-decoration: underline; }
     @media (max-width: 800px) { .grid-2 { grid-template-columns: 1fr; } }
   </style>
 </head>
@@ -89,6 +92,7 @@
       {{ summary.n_strategies }} strategies · last update {{ summary.last_update }} ·
       data range {{ summary.data_start }} → {{ summary.data_end }}
     </div>
+    <nav><a href="correlations.html">Correlation matrix →</a></nav>
 
     <h2>This week's signal</h2>
     <div class="panel">
