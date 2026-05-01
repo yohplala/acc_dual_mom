@@ -16,7 +16,7 @@ from .universe import Config
 
 TEMPLATES_DIR = Path(__file__).parent / "templates"
 
-PLOT_LAYOUT_BASE = {
+PLOT_LAYOUT_BASE: dict[str, Any] = {
     "paper_bgcolor": "#161b22",
     "plot_bgcolor": "#161b22",
     "font": {"color": "#e6edf3", "family": "system-ui"},
@@ -214,8 +214,10 @@ def _metrics_row(
     }
 
 
-def _equity_figure(results: list[BacktestResult]) -> tuple[list[dict], dict]:
-    traces: list[dict] = []
+def _equity_figure(
+    results: list[BacktestResult],
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    traces: list[dict[str, Any]] = []
     for i, r in enumerate(results):
         if r.equity.is_empty():
             continue
@@ -229,14 +231,16 @@ def _equity_figure(results: list[BacktestResult]) -> tuple[list[dict], dict]:
                 "line": {"width": 2, "color": PALETTE[i % len(PALETTE)]},
             }
         )
-    layout = dict(PLOT_LAYOUT_BASE)
+    layout: dict[str, Any] = dict(PLOT_LAYOUT_BASE)
     layout["yaxis"] = {**PLOT_LAYOUT_BASE["yaxis"], "title": "Equity (multiple)", "type": "log"}
     layout["xaxis"] = {**PLOT_LAYOUT_BASE["xaxis"], "title": ""}
     return traces, layout
 
 
-def _drawdown_figure(results: list[BacktestResult]) -> tuple[list[dict], dict]:
-    traces: list[dict] = []
+def _drawdown_figure(
+    results: list[BacktestResult],
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    traces: list[dict[str, Any]] = []
     for i, r in enumerate(results):
         if r.equity.is_empty():
             continue
@@ -253,6 +257,6 @@ def _drawdown_figure(results: list[BacktestResult]) -> tuple[list[dict], dict]:
                 "fillcolor": "rgba(248, 81, 73, 0.1)" if i == 0 else None,
             }
         )
-    layout = dict(PLOT_LAYOUT_BASE)
+    layout: dict[str, Any] = dict(PLOT_LAYOUT_BASE)
     layout["yaxis"] = {**PLOT_LAYOUT_BASE["yaxis"], "title": "Drawdown (%)"}
     return traces, layout
