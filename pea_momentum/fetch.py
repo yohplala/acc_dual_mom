@@ -216,14 +216,18 @@ def fetch_safe_asset(safe: SafeAsset, start: date) -> pl.DataFrame:
     if start >= ESTR_START:
         return _rates_to_synthetic_close(estr, asset_id=safe.id)
 
-    # Need pre-2019 history → fetch EONIA, splice on the day before €STR starts
-    try:
-        eonia = fetch_eonia(start=start)
-    except FetchError as exc:
-        log.warning("EONIA fetch failed; safe asset limited to €STR era: %s", exc)
-        return _rates_to_synthetic_close(estr, asset_id=safe.id)
+    # Need pre-2019 history → fetch EONIA, splice on the day before €STR starts.
+    # Failures here propagate (loud failure): silent fallback to "€STR-only"
+    # would silently truncate the safe asset to 2019+ which then DROPS all
+    # pre-2019 days from the backtest (since `wide.drop_nulls(subset=[safe_id])`
+    # in backtest.py needs every day to have safe-asset data). Better to crash
+    # so the user learns the EONIA endpoint is broken and can fix it.
+    eonia = fetch_eonia(start=start)
     if eonia.is_empty():
-        return _rates_to_synthetic_close(estr, asset_id=safe.id)
+        raise FetchError(
+            "EONIA fetch returned empty data — cannot extend safe asset pre-"
+            f"{ESTR_START}. Check ECB Data Portal series `EON.D.EONIA_TO.RATE`."
+        )
 
     # Concatenate: EONIA before ESTR_START, €STR from ESTR_START. Both are
     # daily rates in % ann ACT/360. Compound the combined series into a price.
