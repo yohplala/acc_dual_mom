@@ -204,7 +204,7 @@ strategies:
   # 30% em_asia + 30% sp500 + 20% eurostoxx50 + 20% jp_pea_topix_hedged,
   # never rebalanced. Comparison vs world3_bh / world3_em_bh tests
   # whether Japan exposure adds anything as a static sleeve.
-  - name: world4_bh
+  - name: wld4_hedge_bh
     description: 30% Emerging Asia + 30% S&P 500 + 20% Euro Stoxx 50 + 20% Japan-hedged, buy-and-hold
     mode: buy_and_hold
     assets: [em_asia, sp500, eurostoxx50, topix_hedged]
@@ -215,6 +215,22 @@ strategies:
       sp500: 0.3
       eurostoxx50: 0.2
       topix_hedged: 0.2
+
+  # 4-asset static benchmark adding unhedged Japan to the world3 mix:
+  # 30% em_asia + 30% sp500 + 20% eurostoxx50 + 20% jp_pea_topix
+  # never rebalanced. Comparison vs wld4_hedge_bh test
+  # whether Japan unhedged exposure adds anything as a static sleeve.
+  - name: wld4_nohdg_bh
+    description: 30% Emerging Asia + 30% S&P 500 + 20% Euro Stoxx 50 + 20% Japan, buy-and-hold
+    mode: buy_and_hold
+    assets: [em_asia, sp500, eurostoxx50, topix]
+    rebalance: monthly_first_sunday
+    top_n: 4
+    static_weights:
+      em_asia: 0.3
+      sp500: 0.3
+      eurostoxx50: 0.2
+      topix: 0.2
 
   # Static 60/40: 60% world + 40% safe, never rebalanced. The canonical
   # static benchmark — every rotation strategy here should beat it after
