@@ -306,3 +306,31 @@ class TestDiagnoseStrategies:
         redundant_strat_diags = [d for d in diagnostics if d.strategy_name == "strat_redundant"]
         replace_diags = [d for d in redundant_strat_diags if d.issue == "replace"]
         assert replace_diags == []
+
+    def test_strategy_listing_safe_does_not_raise(self) -> None:
+        """Regression: under the new rank-only methodology, strategies list
+        `safe` directly in `assets:`. `safe` is the synthetic €STR sleeve
+        (lives on `config.safe_asset`, not in `config.assets`), so
+        `config.asset_by_id("safe")` raises KeyError. The diagnostics loop
+        must skip safe — it has no entry in the discovery universe and no
+        diagnostics to emit anyway."""
+        cfg, entries, groups = self._make_setup()
+        # Build a strategy that lists safe alongside risky assets.
+        strat_with_safe = Strategy(
+            name="strat_with_safe",
+            asset_ids=("us", "eu", "safe"),
+            rebalance="monthly_first_sunday",
+            top_n=2,
+        )
+        cfg_with_safe = Config(
+            shared=cfg.shared,
+            assets=cfg.assets,
+            safe_asset=cfg.safe_asset,
+            strategies=(*cfg.strategies, strat_with_safe),
+            display_layout=cfg.display_layout,
+        )
+        # Must not raise.
+        diagnostics = diagnose_strategies(cfg_with_safe, entries, groups)
+        # The new strategy emits no diagnostics (us is the rep, eu is a
+        # singleton group, safe is skipped).
+        assert [d for d in diagnostics if d.strategy_name == "strat_with_safe"] == []
