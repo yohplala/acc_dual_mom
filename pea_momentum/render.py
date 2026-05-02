@@ -165,6 +165,7 @@ def _signal_row(
         prev = result.rebalances[-2] if len(result.rebalances) >= 2 else None
 
     alloc_top, alloc_weight = _allocation_label(strategy, config.shared.allocation.rule)
+    current_chips = _alloc_chips(last.weights if last else {}, asset_meta)
     return {
         "name": result.strategy_name,
         "cadence": _CADENCE_LABELS.get(strategy.rebalance, strategy.rebalance),
@@ -175,7 +176,12 @@ def _signal_row(
         "last_rebalance": last.rebalance_date.isoformat() if last else "—",
         "universe_buckets": _universe_buckets(strategy, config, asset_meta),
         "previous_alloc": _alloc_chips(prev.weights if prev else {}, asset_meta),
-        "current_alloc": _alloc_chips(last.weights if last else {}, asset_meta),
+        # Lookup map keyed by asset_id, used by the consolidated region
+        # columns to overlay current allocation weight + bracket on the
+        # corresponding universe chip (chip text becomes "id pct%" with
+        # weight-bracket coloring; chips with no live allocation render
+        # neutral).
+        "current_alloc_by_id": {c["id"]: c for c in current_chips},
     }
 
 

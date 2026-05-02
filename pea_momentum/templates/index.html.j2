@@ -116,6 +116,23 @@
       {%- endif -%}
     {%- endmacro -%}
 
+    {#- Universe chip with current allocation overlaid: if the asset has a
+        non-zero current weight, the chip text is "id pct%" with the
+        weight-bracket coloring (low/mid/high). Otherwise the chip is plain
+        (neutral, just the id). -#}
+    {%- macro chip_with_current(c, current_by_id) -%}
+      {%- set live = current_by_id.get(c.id) -%}
+      {%- if live -%}
+        {%- if c.url -%}
+          <a class="chip chip-{{ live.bracket }}" href="{{ c.url }}" target="_blank" rel="noopener" title="{{ c.name }}">{{ c.id }} {{ live.pct }}%</a>
+        {%- else -%}
+          <span class="chip chip-{{ live.bracket }}" title="{{ c.name }}">{{ c.id }} {{ live.pct }}%</span>
+        {%- endif -%}
+      {%- else -%}
+        {{- asset_chip(c, c.id) -}}
+      {%- endif -%}
+    {%- endmacro -%}
+
     <h2>Strategies &amp; latest signal</h2>
     <div class="panel">
       <table class="signal">
@@ -127,13 +144,9 @@
             <th class="sortable" data-sort="text" title="Allocation recipe: top-N (number of sleeves held) + weighting rule (equal = 1/N, score-prop = score-proportional). B&H = buy-and-hold static weights.">Allocation</th>
             <th class="numeric sortable sort-desc" data-sort="num" title="Compound Annual Growth Rate. Default sort key: rows are pre-sorted by CAGR desc; click any other sortable header to re-rank.">CAGR</th>
             <th class="sortable" data-sort="text">Last rebalance</th>
-            <th class="chips" title="Strategy's world-region sleeves (universe layout, weights shown in Prev/Curr columns)">World</th>
-            <th class="chips" title="US sleeves in the strategy's universe">US</th>
-            <th class="chips" title="Europe / Eurozone sleeves in the strategy's universe">Europe</th>
-            <th class="chips" title="Japan / Emerging Asia sleeves in the strategy's universe">Asia</th>
-            <th class="chips" title="Safe asset / cash sleeve, when listed">Cash</th>
+            <th class="chips" title="World + Cash sleeves with current allocation overlaid: id only when not held this period, id + pct% when held (color-coded by weight)">World<br>Cash</th>
+            <th class="chips" title="US, Europe, Asia sleeves with current allocation overlaid: id only when not held this period, id + pct% when held (color-coded by weight). Order: US first, then Europe, then Asia">US<br>Europe<br>Asia</th>
             <th class="chips" title="Previous rebalance allocation, non-zero only, sorted by weight desc">Prev alloc</th>
-            <th class="chips" title="Current rebalance allocation, non-zero only, sorted by weight desc">Curr alloc</th>
           </tr>
         </thead>
         <tbody>
@@ -145,30 +158,33 @@
             <td class="alloc" data-value="{{ s.allocation_top }} {{ s.allocation_weight }}">{{ s.allocation_top }}<br>{{ s.allocation_weight }}</td>
             <td class="numeric {{ 'pos' if s.cagr >= 0 else 'neg' }}" data-value="{{ s.cagr }}">{% if s.cagr == s.cagr and s.cagr != -1e308 %}{{ "%.2f%%"|format(s.cagr * 100) }}{% else %}—{% endif %}</td>
             <td data-value="{{ s.last_rebalance }}">{{ s.last_rebalance }}</td>
-            {% for bucket in ["world", "us", "europe", "asia", "cash"] %}
+            {# World + Cash consolidated, with current allocation overlaid. #}
             <td class="chips">
-              {% if s.universe_buckets[bucket] %}
+              {% set world_cash = s.universe_buckets["world"] + s.universe_buckets["cash"] %}
+              {% if world_cash %}
               <div class="chip-row">
-                {% for c in s.universe_buckets[bucket] %}{{ asset_chip(c, c.id) }}{% endfor %}
+                {% for c in world_cash %}{{ chip_with_current(c, s.current_alloc_by_id) }}{% endfor %}
               </div>
               {% else %}
               <span class="dash">—</span>
               {% endif %}
             </td>
-            {% endfor %}
+            {# US + Europe + Asia consolidated, with current allocation overlaid.
+               Order: us, europe, asia. #}
+            <td class="chips">
+              {% set risky = s.universe_buckets["us"] + s.universe_buckets["europe"] + s.universe_buckets["asia"] %}
+              {% if risky %}
+              <div class="chip-row">
+                {% for c in risky %}{{ chip_with_current(c, s.current_alloc_by_id) }}{% endfor %}
+              </div>
+              {% else %}
+              <span class="dash">—</span>
+              {% endif %}
+            </td>
             <td class="chips">
               {% if s.previous_alloc %}
               <div class="chip-row">
                 {% for c in s.previous_alloc %}{{ asset_chip(c, c.id ~ " " ~ c.pct ~ "%") }}{% endfor %}
-              </div>
-              {% else %}
-              <span class="dash">—</span>
-              {% endif %}
-            </td>
-            <td class="chips">
-              {% if s.current_alloc %}
-              <div class="chip-row">
-                {% for c in s.current_alloc %}{{ asset_chip(c, c.id ~ " " ~ c.pct ~ "%") }}{% endfor %}
               </div>
               {% else %}
               <span class="dash">—</span>
