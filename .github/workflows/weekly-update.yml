@@ -181,8 +181,8 @@ jobs:
 
       - name: Render correlation matrix (correlations.html)
         # Skips cleanly if the discover step didn't produce data (first run
-        # before wire-in, or all 22 known tickers failed to fetch). The
-        # strategy dashboard publishes regardless.
+        # before wire-in, or every ticker-confirmed entry in pea_universe.yaml
+        # failed to fetch). The strategy dashboard publishes regardless.
         run: |
           if [ -f data/discover.parquet ]; then
             poetry run pea-mom render-correlations --site-root site/
