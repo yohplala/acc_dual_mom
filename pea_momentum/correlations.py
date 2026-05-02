@@ -86,24 +86,12 @@ def compute_correlation_matrix(
     """Pairwise Pearson correlation of daily returns over the trailing
     `window_days` business days available in `prices_long`.
 
-    Asset ids missing from the data are silently dropped from the result —
-    not all of `asset_ids` will appear in `matrix.asset_ids` if some
-    weren't fetched successfully.
+    Asset ids missing from the data are silently dropped from the result.
+    Returns an empty matrix when fewer than two assets have usable history.
     """
     result = pairwise_corrcoef(prices_long, asset_ids, window_days=window_days)
     if result is None:
-        # Distinguish fully-empty (return empty matrix) from singleton (return
-        # 1-by-1 identity) so callers can render heatmaps either way.
-        relevant_ids = (
-            prices_long.filter(pl.col("asset_id").is_in(asset_ids))
-            .get_column("asset_id")
-            .unique()
-            .to_list()
-        )
-        cols = [c for c in asset_ids if c in relevant_ids]
-        if not cols:
-            return CorrelationMatrix(asset_ids=[], matrix=np.empty((0, 0)), window_days=window_days)
-        return CorrelationMatrix(asset_ids=cols, matrix=np.eye(len(cols)), window_days=window_days)
+        return CorrelationMatrix(asset_ids=[], matrix=np.empty((0, 0)), window_days=window_days)
     cols, corr = result
     return CorrelationMatrix(asset_ids=cols, matrix=corr, window_days=window_days)
 
