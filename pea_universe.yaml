@@ -62,8 +62,11 @@ universe:
     est_spread_bps: 5
     replication: synthetic
     inception: 2014-04-29
-    index_proxy: CSPX.AS                  # iShares Core S&P 500 UCITS ETF, EUR-quoted Acc Amsterdam, since 2010-05-19
-    index_proxy_kind: eur_tr
+    index_proxy: SPY                      # SPDR S&P 500 ETF Trust, NYSE Arca, since 1993-01-29
+    index_proxy_kind: usd_tr
+    # SPY (USD-listed, 33y history) replaces CSPX.AS (2010-05) for full
+    # GFC + dot-com bust coverage. EURUSD-converted via the standard usd_tr
+    # path. Same SPX TR exposure; one extra FX-conversion step is the cost.
   - { id: sp500_hedged,  name: Amundi PEA S&P 500 EUR Hedged Acc,            isin: FR0011871136, currency: EUR, ter_pct: 0.12, sfdr: Article 6, category: USA-Hedged,   yahoo: PSPH.PA }
   - { id: sp500_screened,name: Amundi PEA S&P 500 Screened UCITS ETF Acc,    isin: FR0013412285, currency: EUR, ter_pct: 0.25, sfdr: Article 8, category: USA-ESG,      yahoo: PE500.PA }
   - { id: sp500_scr_hed, name: Amundi PEA S&P 500 Screened EUR Hedged Acc,   isin: FR0013412293, currency: EUR, ter_pct: 0.28, sfdr: Article 8, category: USA-Hedged-ESG, yahoo: P500H.PA }
@@ -122,8 +125,12 @@ universe:
     est_spread_bps: 5                     # eurozone large-cap flagship, deep liquidity
     replication: synthetic
     inception: 2017-09-29
-    index_proxy: CSX5.AS                  # iShares Core EURO STOXX 50 UCITS ETF EUR Acc Amsterdam, since 2010-01-26
+    index_proxy: MSE.PA                   # Amundi EURO STOXX 50 II UCITS ETF Acc Paris, since 2008-01-02
     index_proxy_kind: eur_tr
+    # MSE.PA (EUR-native, sister Amundi tracker on the same EURO STOXX 50
+    # index) replaces CSX5.AS (yfinance returns 2014-04-28 only, despite
+    # the 2010 listing — likely Yahoo data gap). Pre-Lehman GFC peak
+    # (Jan 2008) is captured. Identical underlying index, no FX conversion.
   - { id: emu_core_eur_dist,    name: Amundi Core EURO STOXX 50 EUR Dist,           isin: LU1681047319, currency: EUR, ter_pct: 0.09, sfdr: Article 6, category: Eurozone,     yahoo: null }
   - { id: emu_core_usd,         name: Amundi Core EURO STOXX 50 USD Acc,            isin: LU1681047400, currency: USD, ter_pct: 0.09, sfdr: Article 6, category: Eurozone,     yahoo: null }
   - { id: emu_ii_acc,           name: Amundi EURO STOXX 50 II UCITS ETF Acc,        isin: FR0007054358, currency: EUR, ter_pct: 0.20, sfdr: Article 6, category: Eurozone,     yahoo: MSE.PA }
@@ -237,8 +244,13 @@ universe:
     est_spread_bps: 25                    # EM exposure, somewhat thinner spread
     replication: synthetic
     inception: 2018-12-19
-    index_proxy: EEMA                     # iShares MSCI EM Asia ETF, USD-listed, since 2012-02-09 (binding constraint)
+    index_proxy: AAXJ                     # iShares MSCI All Country Asia ex Japan ETF, NASDAQ, since 2008-08-15
     index_proxy_kind: usd_tr
+    # AAXJ (Asia ex-Japan, includes Hong Kong + Singapore — ~10% developed-
+    # Asia overlap on top of the China/Korea/Taiwan/India anchor that's also
+    # ~80% of EEMA) replaces EEMA (2012-02). 0.95 daily-return correlation
+    # with EEMA over the 14y overlap, 14y cumulative return within 9pp of
+    # EEMA's. Captures Lehman (Sep 2008) and the GFC trough (Mar 2009).
   - { id: em_emea,              name: Amundi PEA Emergent EMEA ESG Transition Acc,  isin: FR0011440478, currency: EUR, ter_pct: 0.55, sfdr: Article 8, category: Emerging-EMEA, yahoo: null }
   - { id: em_latam,             name: Amundi PEA MSCI Emerging Latin America Acc,   isin: FR0013412004, currency: EUR, ter_pct: 0.30, sfdr: Article 8, category: Emerging-LatAm, yahoo: PALAT.PA, amundi_url: 'https://www.amundietf.fr/fr/particuliers/produits/equity/amundi-pea-msci-emerging-latin-america-selection-ucits-etf-acc/fr0013412004' }
 

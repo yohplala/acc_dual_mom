@@ -380,7 +380,17 @@ def splice_at_inception(
         .select(["date", "asset_id", "close", "source"])
     )
 
-    post = etf_long.select(["date", "asset_id", "close", "source"])
+    # yfinance occasionally returns synthetic / zero-volume "live" rows for
+    # an ETF dated before its actual inception (renamed share classes,
+    # backfilled NAV records). Keep only post-inception live rows so the
+    # splice contract — proxy for date < inception, ETF for date >=
+    # inception — is honored exactly. Without this, both series can
+    # produce same-date rows that survive concat and corrupt the wide
+    # pivot in the backtest engine.
+    post = (
+        etf_long.filter(pl.col("date") >= inception)
+        .select(["date", "asset_id", "close", "source"])
+    )
     return pl.concat([pre, post]).sort("date")
 
 
