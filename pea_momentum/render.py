@@ -239,21 +239,22 @@ def _metrics_row(
 def _strategy_line_style(strategy_name: str, config: Config) -> dict[str, Any]:
     """Return Plotly `line` properties keyed by strategy family.
 
-    Three visual families to make equity-curve overlays self-explanatory:
-        buy-and-hold              1px  solid    (zero-cost reference)
-        classic dual momentum     2px  dash     (single lookback override)
-        accelerated dual momentum 3px  dot      (mean of 1m/3m/6m, default)
+    All lines share the same 1px width — wider lines were hard to read
+    when many strategies overlay. Family is encoded by dash pattern only:
+        buy-and-hold              solid    (zero-cost reference)
+        classic dual momentum     dash     (single lookback override)
+        accelerated dual momentum dot      (mean of 1m/3m/6m, default)
     """
     strategy = next((s for s in config.strategies if s.name == strategy_name), None)
     if strategy is None:
-        return {"width": 2, "dash": "solid"}
+        return {"width": 1, "dash": "solid"}
     if strategy.mode == "buy_and_hold":
         return {"width": 1, "dash": "solid"}
     if strategy.lookbacks_days is not None:
         # Single-lookback override → classic Antonacci dual momentum
-        return {"width": 2, "dash": "dash"}
+        return {"width": 1, "dash": "dash"}
     # Default rotation = mean 1m/3m/6m → accelerated dual momentum
-    return {"width": 3, "dash": "dot"}
+    return {"width": 1, "dash": "dot"}
 
 
 def _equity_figure(
