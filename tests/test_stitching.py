@@ -137,7 +137,7 @@ class TestRoundTripSpikeScrub:
 
     def test_proxy_round_trip_spike_scrubbed(self) -> None:
         # Proxy series with a single bad day — exactly the pattern observed
-        # in production (us_large oscillating between 6.7 and 13.5). The
+        # in production (sp500 proxy oscillating between 6.7 and 13.5). The
         # bad day is set to null; backtest forward-fill absorbs it.
         etf = _etf_long(date(2015, 1, 1), [200.0, 201.0])
         proxy = _series(date(2014, 12, 28), [40.0, 41.0, 19.5, 41.5, 50.0])

@@ -10,8 +10,8 @@ The framework is **rank-only momentum rotation with a positive-momentum floor**.
 
 Two execution modes coexist:
 
-- **`rotation`** — the default. At each rebalance, score every listed asset, drop those with score ≤ 0, pick the top-N, and weight them. The cadence (`weekly_sunday`, `biweekly_sunday`, `monthly_first_sunday`) drives when this fires.
-- **`buy_and_hold`** — equal-weight (or explicit `static_weights`) on `assets`, allocated on day one and never rebalanced. No transaction cost. Used as zero-cost reference benchmarks (`msci_world_buy_hold`, `world3_buy_hold`, `static_60_40`). Buy-and-hold ignores the cadence field.
+- **`rotation`** — the default. At each rebalance, score every listed asset, drop those with score ≤ 0, pick the top-N, and weight them. The cadence (`weekly_sunday`, `biweekly_sunday`, `monthly_first_sunday`, `semiannual_first_sunday`) drives when this fires.
+- **`buy_and_hold`** — equal-weight (or explicit `static_weights`) on `assets`, allocated on day one and never rebalanced. No transaction cost. Used as zero-cost reference benchmarks (`world_bh`, `sp500_bh`, `wld3_noeu_uh_bh`, `world_60_40_bh`). Buy-and-hold ignores the cadence field.
 
 ### Rotation pipeline (per rebalance day)
 
@@ -59,21 +59,33 @@ When **no candidate** passes the positive-momentum filter (every asset score ≤
 
 The "list safe explicitly to get the defensive crash behaviour" pattern is the YAML-honesty corollary of removing the auto-injection: what you list is what you get.
 
-## Stitching (`pea_momentum/stitching.py`)
+## Stitching (`pea_momentum/stitching.py`, `pea_momentum/fetch.py`)
 
-Most PEA-eligible UCITS ETFs in the universe launched between 2014 and 2024, so a 2012-onward backtest needs pre-launch history. The splice approach:
+Most PEA-eligible UCITS ETFs in the universe launched between 2014 and 2024, so a 2008-onward backtest needs pre-launch history. The splice approach:
 
 1. Fetch the live ETF series (post-inception only).
-2. Fetch the configured `index_proxy` (a longer-history total-return index ETF in the same family — e.g. `IWDA.AS` for MSCI World, `EEMA` for MSCI Emerging Asia).
+2. Fetch the configured proxy (a longer-history total-return index ETF in the same family — e.g. `SPY` for S&P 500, `EWJ` for unhedged Japan, `EXX1.DE` for STOXX Europe 600 Banks). Two YAML shapes are supported:
+   - **Single proxy** via `index_proxy` + `index_proxy_kind` (`eur_tr` or `usd_tr`).
+   - **Multi-stage chain** via `index_proxy_chain` — see the next subsection.
 3. If the proxy is USD-denominated (`index_proxy_kind: usd_tr`), convert to EUR via daily `EURUSD=X`.
 4. **Rescale the proxy levels** so the proxy's level on the inception date matches the ETF's level on that date. Pre-inception levels are walked back from there using the proxy's own returns.
-5. Concatenate: scaled proxy for `date < inception`, ETF for `date >= inception`. The `source` column on `prices.parquet` records provenance (`yfinance` vs `stitched_index_proxy`).
+5. Concatenate: scaled proxy for `date < inception`, ETF for `date >= inception` (the post side filters to `date >= inception` so any pre-inception synthetic NAV rows yfinance might return for renamed share classes are dropped — see the C50.PA back-history bug). The `source` column on `prices.parquet` records provenance (`yfinance` vs `stitched_index_proxy`).
 
 The result is continuous in level (no jump on the splice date) and continuous in return.
 
+### Multi-stage proxy chain
+
+Some assets benefit from chaining: a methodologically-pure proxy with a shorter history (cleanest), then a less-clean one with longer history that extends only the pre-handoff segment. `index_proxy_chain` is an ordered list of `{ticker, kind}` pairs, **cleanest first**. Each successor is level-rescaled to match its predecessor at the predecessor's first available date. The chain extends history only as much as the dirtier proxies can — without contaminating the clean recent segment.
+
+Active examples in [`pea_universe.yaml`](../pea_universe.yaml):
+
+- `world` (DCAM.PA): `IWDA.AS` (cleanest, EUR Acc UCITS since 2009-09-25) → `IWRD.L` (same fund, USD Dist share class, +9 months back to 2009-01-02) → `ACWI` (broader MSCI ACWI, ~12% EM contamination, extends to 2008-03-28 capturing the Lehman peak).
+- `em_asia` (PAASI.PA): `EEMA` (pure MSCI EM Asia since 2012-02-09) → `AAXJ` (Asia ex-Japan, ~10% developed-Asia drift, extends to 2008-08-15).
+- `eurostoxx50` (C50.PA): `CSX5.AS` (iShares Core EUR Acc since 2014-04-28, low TER same as live) → `MSE.PA` (Amundi II share class, higher TER, extends to 2008-01-02).
+
 ### Caveat: DCAM.PA
 
-Amundi PEA Monde (`DCAM.PA`, `world` in the universe) launched 2025-03-04. The entire pre-2025 backtest history for the `world` sleeve is therefore the spliced `IWDA.AS` proxy. Same MSCI World index, same currency exposure (EUR-quoted accumulating UCITS) — methodologically clean — but the equity curve before 2025-03-04 reflects IWDA's tracking, not DCAM's. Use of the actual DCAM tracker on PEA accounts may differ marginally.
+Amundi PEA Monde (`DCAM.PA`, `world` in the universe) launched 2025-03-04. The entire pre-2025 backtest history for the `world` sleeve is therefore the spliced proxy chain (`IWDA.AS` from 2009-09-25 onwards, then `IWRD.L`, then `ACWI` for the deepest pre-2009 segment). Methodologically the closest ones in each window — but the equity curve before 2025-03-04 reflects the proxies' tracking, not DCAM's. Use of the actual DCAM tracker on PEA accounts may differ marginally.
 
 ### Bad-data scrubbing
 
@@ -97,19 +109,17 @@ Charged as a negative return on the fill day.
 - `per_trade_pct` (shared, currently `0.05%` one-way) covers the broker commission (Boursorama / Interactive Brokers tier).
 - `est_spread_bps` per asset is the **estimated round-trip bid-ask spread**. Half of it is added per traded notional (the strategy buys at ask and sells at bid).
 
-Currently configured in [`strategies.yaml`](../strategies.yaml):
+Currently configured on the active assets (see [`pea_universe.yaml`](../pea_universe.yaml)):
 
-| Asset                | Spread (bps) | Why                                |
-|----------------------|--------------|------------------------------------|
-| `us_large` (PSP5.PA) | 5            | High-AUM flagship, tight book      |
-| `eu_50` (C50.PA)     | 5            | Eurozone large-cap flagship        |
-| `world` (DCAM.PA)    | 10           | Mid sleeve, recent launch          |
-| `eu_broad` (PCEU.PA) | 10           | Broad European core, decent volume |
-| `eu_banks` (BNK.PA)  | 20           | Sector ETF, mid liquidity          |
-| `em_asia` (PAASI.PA) | 25           | EM exposure, thinner book          |
-| `us_small` (RS2K.PA) | 30           | Satellite, small-cap               |
-| `eu_small` (MMS.PA)  | 30           | Satellite, small-cap               |
-| `japan_hedged` (PTPXH) | 30         | Hedged share class, low AUM        |
+| Asset             | Spread (bps) | Why                                      |
+|-------------------|--------------|------------------------------------------|
+| `sp500` (PSP5.PA)        | 5     | High-AUM flagship, tight book            |
+| `eurostoxx50` (C50.PA)   | 5     | Eurozone large-cap flagship              |
+| `world` (DCAM.PA)        | 10    | Mid sleeve, recent launch                |
+| `eu_banks` (BNK.PA)      | 20    | Sector ETF, mid liquidity                |
+| `em_asia` (PAASI.PA)     | 25    | EM exposure, thinner book                |
+| `russell2000` (RS2K.PA)  | 30    | Satellite, small-cap                     |
+| `topix` (PTPXE.PA)       | 30    | Satellite, low AUM                       |
 
 Spread numbers are derived by hand from Boursorama and Amundi factsheets; refresh them when the universe materially shifts.
 
@@ -172,7 +182,7 @@ For future readers: the canonical vocabulary used across YAML, code, and dashboa
 | Score aggregation across lookbacks | `aggregation: mean` | `Scoring.aggregation` | (folded into Scoring label) | `mean` / `median` / `min` |
 | Allocation weighting rule | `rule: equal_weight` (shared) or `allocation_rule: score_proportional` (per strategy) | `Allocation.rule`, `Strategy.allocation_rule` | `Allocation` (e.g. `top-3 equal`, `top-1 score-prop`) | `equal_weight` is canonical; `score_proportional` is the opt-in sensitivity exhibit. |
 | Number of selected sleeves | `top_n: 3` | `Strategy.top_n` | (folded into Allocation label) | |
-| Rebalance cadence | `rebalance: monthly_first_sunday` | `Strategy.rebalance` | `Cadence` (e.g. `monthly`, `weekly`, `biweekly`) | Sunday-anchored only. |
+| Rebalance cadence | `rebalance: monthly_first_sunday` | `Strategy.rebalance` | `Cadence` (e.g. `monthly`, `weekly`, `biweekly`, `semiannual`) | Sunday-anchored only. |
 | Strategy mode | `mode: rotation` (default) or `mode: buy_and_hold` | `Strategy.mode` | Reflected in `Scoring` label (`Buy & Hold`) | |
 | Static buy-and-hold weights | `static_weights: {world: 0.6, safe: 0.4}` | `Strategy.static_weights` | (folded into `B&H static` label) | Optional; absent ⇒ equal-weight. |
 | Pre-selection filter | `filter: { type: positive_momentum }` | `Filter.type` | (implicit) | `score > 0` floor. The historical `absolute_momentum` (vs safe-score) is gone. |
