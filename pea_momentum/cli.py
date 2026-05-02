@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 
 import click
@@ -209,7 +209,9 @@ def cmd_discover(ctx: click.Context, start: str | None, universe: str) -> None:
     data_root: Path = ctx.obj["data_root"]
     entries = discover.load_discovery_universe(universe)
     start_d = (
-        date.fromisoformat(start) if start else (datetime.utcnow().date() - timedelta(days=365 * 3))
+        date.fromisoformat(start)
+        if start
+        else (datetime.now(UTC).date() - timedelta(days=365 * 3))
     )
     prices = discover.fetch_discovery_universe(entries, start=start_d)
 
