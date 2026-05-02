@@ -117,6 +117,7 @@
             <th class="sortable" data-sort="text">Cadence</th>
             <th class="sortable" data-sort="text" title="Score recipe: ADM = mean of multiple lookbacks (accelerated dual-momentum); DM = single-lookback dual-momentum; Buy & Hold = no scoring.">Scoring</th>
             <th class="sortable" data-sort="text" title="Allocation recipe: top-N (number of sleeves held) + weighting rule (equal = 1/N, score-prop = score-proportional). B&H = buy-and-hold static weights.">Allocation</th>
+            <th class="numeric sortable sort-desc" data-sort="num" title="Compound Annual Growth Rate. Default sort key: rows are pre-sorted by CAGR desc; click any other sortable header to re-rank.">CAGR</th>
             <th class="sortable" data-sort="text">Last rebalance</th>
             <th class="chips" title="Strategy's world-region sleeves (universe layout, weights shown in Prev/Curr columns)">World</th>
             <th class="chips" title="US sleeves in the strategy's universe">US</th>
@@ -134,6 +135,7 @@
             <td data-value="{{ s.cadence }}">{{ s.cadence }}</td>
             <td data-value="{{ s.scoring }}">{{ s.scoring }}</td>
             <td data-value="{{ s.allocation }}">{{ s.allocation }}</td>
+            <td class="numeric {{ 'pos' if s.cagr >= 0 else 'neg' }}" data-value="{{ s.cagr }}">{% if s.cagr == s.cagr and s.cagr != -1e308 %}{{ "%.2f%%"|format(s.cagr * 100) }}{% else %}—{% endif %}</td>
             <td data-value="{{ s.last_rebalance }}">{{ s.last_rebalance }}</td>
             {% for bucket in ["world", "us", "europe", "asia", "cash"] %}
             <td class="chips">
@@ -181,7 +183,7 @@
         <thead>
           <tr>
             <th class="sortable" data-sort="text">Strategy</th>
-            <th class="numeric sortable" data-sort="num">CAGR</th>
+            <th class="numeric sortable sort-desc" data-sort="num" title="Default sort key: rows pre-sorted by CAGR desc; click any other sortable header to re-rank.">CAGR</th>
             <th class="numeric sortable" data-sort="num">Vol (ann.)</th>
             <th class="numeric sortable" data-sort="num">Sharpe</th>
             <th class="numeric sortable" data-sort="num">Sortino</th>

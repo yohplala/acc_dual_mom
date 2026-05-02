@@ -63,12 +63,18 @@ def render(
     strategy_by_name: dict[str, Strategy] = {s.name: s for s in config.strategies}
     asset_meta = _build_asset_meta(config)
 
-    summary = _summary(results, config)
-    signals = [_signal_row(r, config, strategy_by_name, asset_meta) for r in results]
-    metrics_rows = [_metrics_row(r, strategy_by_name, prices_long) for r in results]
+    # Default presentation order: highest CAGR first. Drives the signal
+    # table, the metrics table (rendered in this same loop), and the
+    # equity / drawdown chart trace order — Plotly's legend follows the
+    # traces array so the legend ranks the strategies by CAGR too.
+    sorted_results = sorted(results, key=_result_cagr, reverse=True)
 
-    equity_traces, equity_layout = _equity_figure(results, strategy_by_name)
-    drawdown_traces, drawdown_layout = _drawdown_figure(results, strategy_by_name)
+    summary = _summary(sorted_results, config)
+    signals = [_signal_row(r, config, strategy_by_name, asset_meta) for r in sorted_results]
+    metrics_rows = [_metrics_row(r, strategy_by_name, prices_long) for r in sorted_results]
+
+    equity_traces, equity_layout = _equity_figure(sorted_results, strategy_by_name)
+    drawdown_traces, drawdown_layout = _drawdown_figure(sorted_results, strategy_by_name)
 
     rendered = template.render(
         summary=summary,
@@ -83,6 +89,14 @@ def render(
     out_file = output_path / "index.html"
     out_file.write_text(rendered)
     return out_file
+
+
+def _result_cagr(result: BacktestResult) -> float:
+    """CAGR sort key used to order the dashboard. Empty equity curves sort
+    last (treated as -inf so they don't displace ranked strategies)."""
+    if result.equity.is_empty():
+        return float("-inf")
+    return float(compute(result.equity).cagr)
 
 
 def _summary(results: list[BacktestResult], config: Config) -> dict[str, object]:
@@ -165,6 +179,7 @@ def _signal_row(
         "cadence": _CADENCE_LABELS.get(strategy.rebalance, strategy.rebalance),
         "scoring": _scoring_label(strategy, config.shared.scoring.lookbacks_days),
         "allocation": _allocation_label(strategy, config.shared.allocation.rule),
+        "cagr": _result_cagr(result),
         "last_rebalance": last.rebalance_date.isoformat() if last else "—",
         "universe_buckets": _universe_buckets(strategy, config, asset_meta),
         "previous_alloc": _alloc_chips(prev.weights if prev else {}, asset_meta),
