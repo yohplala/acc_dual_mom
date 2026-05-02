@@ -92,16 +92,21 @@ class TestFindGroups:
         assert sorted(groups[0]) == ["a", "b"]
         assert sorted(groups[1]) == ["c", "d"]
 
-    def test_chained_grouping_via_transitivity(self) -> None:
-        # a-b 0.90, b-c 0.90, a-c 0.50 → all three end up in one group
+    def test_complete_link_breaks_bridge_chain(self) -> None:
+        """Complete-link clustering: a-b 0.90 and b-c 0.90 alone don't justify
+        unioning a with c when their direct correlation (0.50) is below
+        threshold. a joins (a,b), then c sees a-c 0.50 < threshold and opens
+        its own group."""
         cm = CorrelationMatrix(
             asset_ids=["a", "b", "c"],
             matrix=np.array([[1.0, 0.90, 0.50], [0.90, 1.0, 0.90], [0.50, 0.90, 1.0]]),
             window_days=252,
         )
         groups = find_groups(cm, threshold=0.85)
-        assert len(groups) == 1
-        assert sorted(groups[0]) == ["a", "b", "c"]
+        # 2 groups: (a, b) and (c,)
+        assert len(groups) == 2
+        assert sorted(groups[0]) == ["a", "b"]
+        assert groups[1] == ["c"]
 
     def test_singletons_returned(self) -> None:
         cm = CorrelationMatrix(
@@ -116,25 +121,17 @@ class TestFindGroups:
 
 
 class TestBestInGroup:
-    def test_picks_highest_score(self) -> None:
-        # a: +20% over window, TER 0.20 → score = ~1.0
-        # b: +10% over window, TER 0.10 → score = ~1.0
-        # c: +30% over window, TER 0.10 → score = ~3.0 (winner)
-        rng = np.random.default_rng(1)
-        rets_a = rng.normal(0.20 / 252, 0.0001, 252)
-        rets_b = rng.normal(0.10 / 252, 0.0001, 252)
-        rets_c = rng.normal(0.30 / 252, 0.0001, 252)
-        prices = _synthetic_long({"a": rets_a, "b": rets_b, "c": rets_c}, date(2024, 1, 1))
-
-        rep = best_in_group(
-            ["a", "b", "c"], prices, ter_pct_by_id={"a": 0.20, "b": 0.10, "c": 0.10}
-        )
+    def test_picks_lowest_ter(self) -> None:
+        rep = best_in_group(["a", "b", "c"], ter_pct_by_id={"a": 0.20, "b": 0.30, "c": 0.10})
         assert rep.representative == "c"
 
+    def test_missing_ter_loses(self) -> None:
+        # `b` has no TER → infinite cost → never wins.
+        rep = best_in_group(["a", "b"], ter_pct_by_id={"a": 0.10})
+        assert rep.representative == "a"
+
     def test_singleton_group(self) -> None:
-        rng = np.random.default_rng(1)
-        prices = _synthetic_long({"a": rng.normal(0, 0.01, 252)}, date(2024, 1, 1))
-        rep = best_in_group(["a"], prices, ter_pct_by_id={"a": 0.10})
+        rep = best_in_group(["a"], ter_pct_by_id={"a": 0.10})
         assert rep.representative == "a"
         assert rep.group == ["a"]
 

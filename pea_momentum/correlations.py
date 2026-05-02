@@ -1,6 +1,6 @@
 """Correlation-matrix analysis on the discovery universe.
 
-Three pieces:
+Pieces:
 
 1. `pairwise_corrcoef()` — low-level helper: filter, pivot, forward-fill,
    compute pairwise Pearson corrcoef on daily returns. Reused by
@@ -9,11 +9,14 @@ Three pieces:
 2. `compute_correlation_matrix()` — wrap `pairwise_corrcoef` over a trailing
    `window_days` window into a `CorrelationMatrix` for rendering.
 
-3. `find_groups()` — union-find on edges where correlation > threshold.
-   Connected components are groups of redundant exposures.
+3. `find_groups()` — complete-link agglomeration on edges where correlation
+   exceeds `threshold`. Two assets share a group iff every member-to-member
+   correlation in the group exceeds the threshold (no transitive chaining
+   through medium-correlated bridge pairs).
 
 4. `best_in_group()` — for each group, picks the representative with the
-   best return / cost ratio (CAGR over the window divided by TER).
+   lowest TER. TER is decided ex-ante and is not subject to in-sample
+   selection bias unlike a 1-year-CAGR ranking.
 
 Strategy diagnostics (cross-referencing strategies.yaml against these
 groups) live in `diagnostics.py`.
@@ -21,7 +24,6 @@ groups) live in `diagnostics.py`.
 
 from __future__ import annotations
 
-import math
 from collections.abc import Mapping
 from dataclasses import dataclass
 
@@ -101,72 +103,70 @@ def find_groups(
     threshold: float = 0.90,
     region_by_id: Mapping[str, str] | None = None,
 ) -> list[list[str]]:
-    """Union-Find groups: assets are in the same group if there's a chain
-    of pairwise correlations all above `threshold`. Groups of size 1
-    (singletons) are also returned so the caller has a complete partition.
+    """Complete-link agglomeration: two assets share a group iff every
+    member-to-member correlation in the group exceeds `threshold`. This
+    avoids the chaining property of single-link clustering, where assets
+    A and C end up in the same group via a bridge pair (A-B = 0.91,
+    B-C = 0.91, A-C = 0.78). For "drop redundant exposure" recommendations,
+    we want the conservative complete-link reading.
 
-    If `region_by_id` is provided, two assets are unioned only when their
-    daily correlation is above `threshold` AND they share the same coarse
-    region. This prevents lumping cross-perimeter pairs that share market
-    beta but track different universes (e.g. MSCI World vs S&P 500).
+    Groups of size 1 (singletons) are returned so the caller has a complete
+    partition.
+
+    If `region_by_id` is provided, an asset only joins a group when its
+    pairwise correlation with EVERY existing member is above `threshold`
+    AND it shares the same coarse region. This prevents lumping cross-
+    perimeter pairs that share market beta but track different universes
+    (e.g. MSCI World vs S&P 500).
     """
     n = len(cm.asset_ids)
     if n == 0:
         return []
-    parent = list(range(n))
 
-    def find(x: int) -> int:
-        while parent[x] != x:
-            parent[x] = parent[parent[x]]
-            x = parent[x]
-        return x
-
-    def union(x: int, y: int) -> None:
-        px, py = find(x), find(y)
-        if px != py:
-            parent[px] = py
-
+    # Greedy complete-link: walk the asset list once, assign each asset to
+    # the first group whose every existing member crosses the threshold
+    # (and shares a region if region_by_id is provided), or open a new
+    # singleton group if no group is fully compatible.
+    groups: list[list[int]] = []  # list of indices
     for i in range(n):
-        for j in range(i + 1, n):
-            if cm.matrix[i, j] <= threshold:
-                continue
+        ri = region_by_id.get(cm.asset_ids[i]) if region_by_id is not None else None
+        joined = False
+        for grp in groups:
             if region_by_id is not None:
-                ri = region_by_id.get(cm.asset_ids[i])
-                rj = region_by_id.get(cm.asset_ids[j])
+                rj = region_by_id.get(cm.asset_ids[grp[0]])
                 if ri != rj:
                     continue
-            union(i, j)
+            if all(cm.matrix[i, j] > threshold for j in grp):
+                grp.append(i)
+                joined = True
+                break
+        if not joined:
+            groups.append([i])
 
-    groups_by_root: dict[int, list[str]] = {}
-    for i in range(n):
-        root = find(i)
-        groups_by_root.setdefault(root, []).append(cm.asset_ids[i])
-
+    out = [[cm.asset_ids[i] for i in grp] for grp in groups]
     # Sort: largest groups first, then by lead member id for stability.
-    return sorted(
-        groups_by_root.values(),
-        key=lambda g: (-len(g), g[0]),
-    )
+    return sorted(out, key=lambda g: (-len(g), g[0]))
 
 
 def best_in_group(
     group: list[str],
-    prices_long: pl.DataFrame,
     ter_pct_by_id: Mapping[str, float],
-    window_days: int = 252,
 ) -> GroupRepresentative:
-    """Pick the asset with highest score = CAGR - TER (additive net-of-fees
-    annual return over the same window). Both CAGR and TER are fractions
-    (TER passed in as percent points → divided by 100 internally).
+    """Pick the lowest-TER member of `group`. TER is decided ex-ante and is
+    immune to the in-sample selection bias that ranking by 1-year CAGR
+    introduces (effectively momentum-on-momentum, defeating the purpose
+    of dual-momentum's prospective filter).
+
+    Score is `-ter_pct` so that higher = better, matching the rest of the
+    representative-score plumbing. Members without an explicit TER use
+    `float("inf")` (worst) — they should always lose to a documented
+    alternative.
 
     Single-member groups return that member as representative trivially.
     """
-    scores: dict[str, float] = {}
-    for asset_id in group:
-        cagr = _cagr_over_window(prices_long, asset_id, window_days)
-        ter_frac = ter_pct_by_id.get(asset_id, 0.10) / 100.0
-        scores[asset_id] = (cagr - ter_frac) if cagr is not None else float("-inf")
-
+    scores: dict[str, float] = {
+        asset_id: -ter_pct_by_id.get(asset_id, float("inf")) for asset_id in group
+    }
     rep = max(scores, key=lambda k: scores[k])
     return GroupRepresentative(
         group=group,
@@ -174,20 +174,3 @@ def best_in_group(
         representative_score=scores[rep],
         member_scores=scores,
     )
-
-
-def _cagr_over_window(prices_long: pl.DataFrame, asset_id: str, window_days: int) -> float | None:
-    series = (
-        prices_long.filter(pl.col("asset_id") == asset_id)
-        .sort("date")
-        .tail(window_days + 1)
-        .get_column("close")
-        .to_list()
-    )
-    if len(series) < 2 or series[0] <= 0:
-        return None
-    total_return = series[-1] / series[0] - 1.0
-    years = window_days / 252.0
-    if years <= 0:
-        return None
-    return math.copysign(abs(1.0 + total_return) ** (1.0 / years) - 1.0, total_return)
