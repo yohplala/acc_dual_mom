@@ -290,3 +290,22 @@ strategies:
     rebalance: semiannual_first_sunday
     top_n: 1
     lookbacks_days: [126]
+
+  # ── EXPERT PROPOSAL: 4 disjoint regions + cash, single 12m DM, top-3 ─────
+  # Rationale: clean geographic universe (no US double-counting like the
+  # 6-asset core's sp500+russell2000 overlap), single 12-month lookback
+  # (Antonacci's classic GEM horizon — most robust signal in the analyst's
+  # 14y review and in the academic literature for time-series country
+  # momentum), top-3 equal-weight (analyst found top-3 dominates top-1 at
+  # this lookback by ~150bp CAGR + ~6pp lower MaxDD), monthly cadence
+  # (cost-efficient: signal stickiness on 12m + monthly produces ~6-10
+  # real position changes/year). cash_estr in the universe ⇒ rank-only
+  # absolute-momentum equivalent: when all equity scores collapse below
+  # zero in a crash, €STR's small positive score wins the rank → defensive
+  # tilt automatic. The reason to do momentum rotation in the first place.
+  - name: geo4safe_dm12_m_t3
+    description: 4 disjoint regions + cash, single 12m DM, monthly top-3 equal-weight
+    assets: [sp500, eurostoxx50, em_asia, topix_hedged, cash_estr]
+    rebalance: monthly_first_sunday
+    top_n: 3
+    lookbacks_days: [252]
