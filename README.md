@@ -12,7 +12,7 @@ A multi-strategy backtester and weekly signal generator for the Antonacci-style 
 - 🛡 Absolute-momentum filter vs. the safe asset before any allocation decision
 - 🥇 Top-N selection with score-proportional weights, rounded to 10% steps via largest-remainder (Hare quota); buy-and-hold mode for zero-cost reference benchmarks
 - 📅 Sunday-anchored rebalance cadences available: `weekly_sunday`, `biweekly_sunday`, `monthly_first_sunday`, plus `buy_and_hold` mode
-- ⚙️ Vectorized polars backtest engine with one-trading-day execution lag (Friday signal → Monday fill) and turnover-based transaction costs
+- ⚙️ Vectorized polars backtest engine with one-trading-day execution lag (Friday signal → Monday fill); per-asset cost model: shared broker fee + per-asset bid-ask spread half (configurable via `est_spread_bps`)
 - 📊 Overlaid Plotly equity curves + drawdown chart + metrics table (CAGR / Sharpe / Sortino / MaxDD / Calmar / hit rate / avg correlation / total cost)
 - 🔍 Discovery universe: 107-entry catalogue of all PEA-eligible Amundi ETFs with correlation matrix, perimeter-aware redundancy groups, best-in-group representative (CAGR − TER), and per-strategy `remove` / `replace` diagnostics
 - 🤖 GitHub Actions cron (Saturday 02:15 UTC) → fetch → discover → backtest → render → deploy to GitHub Pages
@@ -51,6 +51,7 @@ Strategy config lives in [`strategies.yaml`](strategies.yaml) — universe slice
 
 ### 📋 References
 
+- **[Methodology](docs/METHODOLOGY.md)** — strategy modes, scoring, allocation rules, cost model (broker fee + per-asset spread), stitching, metrics, redundancy analysis. The canonical "what does the dashboard show me" reference.
 - **[Strategy configuration](strategies.yaml)** — universe (9 Amundi PEA ETFs + safe asset), shared scoring / allocation / cost settings, per-strategy rebalance cadence and optional lookback override
 - **[Discovery universe](pea_universe.yaml)** — 107-entry catalogue of all Amundi PEA-eligible UCITS ETFs (~42 with confirmed Yahoo tickers, growing iteratively)
 - **[Weekly update workflow](.github/workflows/weekly-update.yml)** — fetch → discover → backtest → build → deploy pipeline
