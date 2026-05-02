@@ -10,9 +10,23 @@ import pytest
 
 from pea_momentum.correlations import (
     CorrelationMatrix,
+    GroupRepresentative,
     best_in_group,
     compute_correlation_matrix,
     find_groups,
+)
+from pea_momentum.diagnostics import diagnose_strategies
+from pea_momentum.discover import DiscoveryEntry
+from pea_momentum.universe import (
+    Allocation,
+    Asset,
+    Config,
+    Costs,
+    Filter,
+    SafeAsset,
+    Scoring,
+    Shared,
+    Strategy,
 )
 
 
@@ -140,20 +154,8 @@ class TestDiagnoseStrategies:
     """Cross-strategy diagnostics: 'remove' (redundant pair) + 'replace'
     (suboptimal pick within a group)."""
 
-    def _make_setup(self):
+    def _make_setup(self) -> tuple[Config, list[DiscoveryEntry], list[GroupRepresentative]]:
         """A 3-strategy / 3-group setup for testing both diagnostic types."""
-        from pea_momentum.discover import DiscoveryEntry
-        from pea_momentum.universe import (
-            Allocation,
-            Asset,
-            Config,
-            Costs,
-            Filter,
-            SafeAsset,
-            Scoring,
-            Shared,
-            Strategy,
-        )
 
         # 4 assets in strategies.yaml, with ISIN matching pea_universe.yaml
         assets = (
@@ -241,7 +243,6 @@ class TestDiagnoseStrategies:
         ]
 
         # Groups: d_us + d_us_alt are correlated; d_us is the rep (better score)
-        from pea_momentum.correlations import GroupRepresentative
 
         groups = [
             GroupRepresentative(
@@ -268,8 +269,6 @@ class TestDiagnoseStrategies:
         return cfg, entries, groups
 
     def test_redundant_pair_flagged(self) -> None:
-        from pea_momentum.diagnostics import diagnose_strategies
-
         cfg, entries, groups = self._make_setup()
         diagnostics = diagnose_strategies(cfg, entries, groups)
 
@@ -280,8 +279,6 @@ class TestDiagnoseStrategies:
         assert "us_alt" in redundant[0].detail
 
     def test_suboptimal_replace_flagged(self) -> None:
-        from pea_momentum.diagnostics import diagnose_strategies
-
         cfg, entries, groups = self._make_setup()
         diagnostics = diagnose_strategies(cfg, entries, groups)
 
@@ -292,8 +289,6 @@ class TestDiagnoseStrategies:
         assert "d_us" in suboptimal[0].suggestion
 
     def test_clean_strategy_no_diagnostics(self) -> None:
-        from pea_momentum.diagnostics import diagnose_strategies
-
         cfg, entries, groups = self._make_setup()
         diagnostics = diagnose_strategies(cfg, entries, groups)
 
@@ -304,7 +299,6 @@ class TestDiagnoseStrategies:
         """If strat_redundant uses both us + us_alt, the 'remove' diagnostic
         already implicitly recommends keeping the rep (us). Don't ALSO emit
         a 'replace us_alt with us' — that's redundant feedback."""
-        from pea_momentum.diagnostics import diagnose_strategies
 
         cfg, entries, groups = self._make_setup()
         diagnostics = diagnose_strategies(cfg, entries, groups)

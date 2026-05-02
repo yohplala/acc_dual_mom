@@ -411,7 +411,9 @@ def _heatmap_figure(cm: CorrelationMatrix) -> tuple[list[dict[str, Any]], dict[s
         "type": "heatmap",
         "x": cm.asset_ids,
         "y": cm.asset_ids,
-        "z": [[None if isinstance(v, float) and math.isnan(v) else float(v) for v in row] for row in z],
+        "z": [
+            [None if isinstance(v, float) and math.isnan(v) else float(v) for v in row] for row in z
+        ],
         "zmin": -1,
         "zmax": 1,
         "colorscale": [
@@ -437,5 +439,3 @@ def _heatmap_figure(cm: CorrelationMatrix) -> tuple[list[dict[str, Any]], dict[s
     }
     layout["margin"] = {"t": 16, "r": 16, "b": 120, "l": 140}
     return [trace], layout
-
-
