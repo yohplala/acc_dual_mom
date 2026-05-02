@@ -1,12 +1,13 @@
 name: Weekly update
 
-# Cron uses UTC. Saturday 04:00 UTC — runs after Friday's market close is final
+# Cron uses UTC. Saturday 02:15 UTC — runs after Friday's market close is final
 # (US 21:00 UTC, EU 17:30 UTC) and well before any Monday open, giving 1.5 days
-# of lead time to review signals before trading. Override timing by editing the
-# cron string below.
+# of lead time to review signals before trading. The "15 past" minute dodges
+# the top-of-hour scheduling spike that GitHub Actions warns delays cron jobs
+# during peak load. Override timing by editing the cron string below.
 on:
   schedule:
-    - cron: "0 4 * * 6"
+    - cron: "15 2 * * 6"
   workflow_dispatch:
     inputs:
       backfill_start:
