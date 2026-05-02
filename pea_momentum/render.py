@@ -299,8 +299,9 @@ def _metrics_row(
     turnovers = [r.turnover for r in result.rebalances]
     fill_dates = [r.fill_date for r in result.rebalances]
     # Average pairwise correlation of the strategy's risky universe (excludes
-    # safe asset since the absolute filter already gates on it). Lower = more
-    # decorrelated = better diversification potential.
+    # safe asset — its return profile is qualitatively different and would
+    # depress the average without telling us about equity diversification).
+    # Lower = more decorrelated = better diversification potential.
     strategy = strategy_by_name[result.strategy_name]
     avg_corr = (
         avg_pairwise_correlation(prices_long, list(strategy.asset_ids))

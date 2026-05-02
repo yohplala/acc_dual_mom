@@ -1,20 +1,20 @@
 # acc_dual_mom
 
-**Accelerated Dual Momentum on PEA-eligible UCITS ETFs.**
+**Rank-only momentum rotation on PEA-eligible UCITS ETFs.**
 
-A multi-strategy backtester and weekly signal generator for the Antonacci-style accelerated dual momentum (ADM) approach, restricted to ETFs eligible for the French PEA wrapper. Two Sunday-anchored cadences (weekly + monthly first Sunday) plus a buy-and-hold mode are backtested in parallel so the rebalance-frequency effect can be isolated on the same asset slice. Live ETF history is stitched onto pre-inception index-proxy data so backtests cover 2012-02 onward, gated by EEMA's first trading day.
+A multi-strategy backtester and weekly signal generator inspired by Antonacci's accelerated dual momentum (ADM), restricted to ETFs eligible for the French PEA wrapper. Sunday-anchored rotation cadences (weekly / biweekly / monthly-first-Sunday) plus buy-and-hold benchmarks are backtested in parallel so the rebalance-frequency, lookback, and concentration effects can each be isolated on the same asset slice. Live ETF history is stitched onto pre-inception index-proxy data so backtests cover 2012-02 onward, gated by EEMA's first trading day. See [`docs/METHODOLOGY.md`](docs/METHODOLOGY.md) for the canonical methodology reference.
 
 ## Features
 
-- 📈 EUR-denominated closes for 9 PEA-eligible Amundi UCITS ETFs (yfinance) + €STR-derived synthetic safe asset (ECB Data Portal, with EONIA splice for pre-2019 history)
+- 📈 EUR-denominated closes for 10 PEA-eligible Amundi UCITS ETFs (yfinance) + €STR-derived synthetic safe asset (ECB Data Portal, with EONIA splice for pre-2019 history)
 - 🪡 Index-proxy stitching: every strategy ETF has a TR proxy (CSPX.AS / IWM / IWDA.AS / IMEU.AS / SXRJ.DE / IJPE.L / EEMA / CSX5.AS) covering pre-inception history back to ~2010
-- 🧮 Accelerated dual-momentum scoring: mean of 1m / 3m / 6m ROC on EUR closes; per-strategy override supports classic 12m and 6m Antonacci variants
-- 🛡 Absolute-momentum filter vs. the safe asset before any allocation decision
-- 🥇 Top-N selection with score-proportional weights, rounded to 10% steps via largest-remainder (Hare quota); buy-and-hold mode for zero-cost reference benchmarks
-- 📅 Sunday-anchored rebalance cadences available: `weekly_sunday`, `biweekly_sunday`, `monthly_first_sunday`, plus `buy_and_hold` mode
+- 🧮 Accelerated scoring: mean of 1m / 3m / 6m ROC on EUR closes; per-strategy `lookbacks_days` override supports classic single-12m / single-6m variants. `mean` / `median` / `min` aggregations.
+- 🛡 Positive-momentum floor (score > 0). Safe is just another listable asset — include it in `assets:` to give it a chance to win the top-N during crashes; otherwise residual goes to a 0%-return CASH placeholder.
+- 🥇 Top-N selection with `equal_weight` (default) or `score_proportional` weighting; largest-remainder rounding to 10% steps. Buy-and-hold mode for zero-cost benchmarks.
+- 📅 Sunday-anchored cadences: `weekly_sunday`, `biweekly_sunday`, `monthly_first_sunday`, plus `buy_and_hold` mode
 - ⚙️ Vectorized polars backtest engine with one-trading-day execution lag (Friday signal → Monday fill); per-asset cost model: shared broker fee + per-asset bid-ask spread half (configurable via `est_spread_bps`)
-- 📊 Overlaid Plotly equity curves + drawdown chart + metrics table (CAGR / Sharpe / Sortino / MaxDD / Calmar / hit rate / avg correlation / total cost)
-- 🔍 Discovery universe: 107-entry catalogue of all PEA-eligible Amundi ETFs with correlation matrix, perimeter-aware redundancy groups, best-in-group representative (CAGR − TER), and per-strategy `remove` / `replace` diagnostics
+- 📊 Overlaid Plotly equity curves + drawdown chart + sortable metrics table (CAGR / Sharpe / Sortino / MaxDD / Calmar / daily & rebal hit / turnover/yr / avg correlation / total cost) + sortable signal table (4 region columns + Cash + Scoring + Allocation + non-zero allocations).
+- 🔍 Discovery universe: 107-entry catalogue of all PEA-eligible Amundi ETFs with correlation matrix, complete-link redundancy groups, lowest-TER representative pick, and per-strategy `remove` / `replace` diagnostics
 - 🤖 GitHub Actions cron (Saturday 02:15 UTC) → fetch → discover → backtest → render → deploy to GitHub Pages
 - 🗄 Orphan parquet branches (`prices-data`, `backtest-results`) keep binary history out of `main`
 
@@ -47,12 +47,12 @@ Strategy config lives in [`strategies.yaml`](strategies.yaml) — universe slice
 ### 📊 Live Data & Charts
 
 - **[Live dashboard](https://yohplala.github.io/acc_dual_mom/)** — overlaid equity curves, drawdown, current signals, performance metrics. Refreshed every Saturday 02:15 UTC.
-- **[Correlation matrix](https://yohplala.github.io/acc_dual_mom/correlations.html)** — pairwise correlation across the broad PEA-eligible Amundi universe + perimeter-aware redundancy groups, best-in-group picks (CAGR − TER), and per-strategy `remove` / `replace` diagnostics. ETF names link directly to their Amundi product pages.
+- **[Correlation matrix](https://yohplala.github.io/acc_dual_mom/correlations.html)** — pairwise correlation across the broad PEA-eligible Amundi universe + perimeter-aware complete-link redundancy groups, lowest-TER representative pick, and per-strategy `remove` / `replace` diagnostics. ETF names link directly to their Amundi product pages.
 
 ### 📋 References
 
 - **[Methodology](docs/METHODOLOGY.md)** — strategy modes, scoring, allocation rules, cost model (broker fee + per-asset spread), stitching, metrics, redundancy analysis. The canonical "what does the dashboard show me" reference.
-- **[Strategy configuration](strategies.yaml)** — universe (9 Amundi PEA ETFs + safe asset), shared scoring / allocation / cost settings, per-strategy rebalance cadence and optional lookback override
+- **[Strategy configuration](strategies.yaml)** — active universe (10 Amundi PEA ETFs + safe asset), shared scoring / allocation / cost settings, per-strategy cadence + optional `lookbacks_days` / `allocation_rule` overrides
 - **[Discovery universe](pea_universe.yaml)** — 107-entry catalogue of all Amundi PEA-eligible UCITS ETFs (~42 with confirmed Yahoo tickers, growing iteratively)
 - **[Weekly update workflow](.github/workflows/weekly-update.yml)** — fetch → discover → backtest → build → deploy pipeline
 - **[Tests workflow](.github/workflows/tests.yml)** — ruff + mypy + pytest on every PR
@@ -77,8 +77,8 @@ Mirrors the [halvix](https://github.com/yohplala/halvix) pattern — orphan bran
 | Price fetching (yfinance + ECB €STR) | ✅ Complete |
 | EONIA pre-2019 €STR splice | ✅ Complete |
 | Index-proxy stitching (TR proxies, EUR conversion) | ✅ Complete |
-| Scoring (mean of 1m/3m/6m ROC, per-strategy lookback override) | ✅ Complete |
-| Allocation (filter + top-N + score-proportional + rounding) | ✅ Complete |
+| Scoring (mean / median / min over `lookbacks_days`, per-strategy override) | ✅ Complete |
+| Allocation (positive-momentum floor + top-N + equal_weight / score-prop + rounding) | ✅ Complete |
 | Sunday-anchored rebalance schedules | ✅ Complete |
 | Polars backtest engine (rotation + buy-and-hold modes) | ✅ Complete |
 | Performance metrics (incl. avg correlation, total cost) | ✅ Complete |
