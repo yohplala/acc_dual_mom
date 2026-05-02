@@ -1,4 +1,4 @@
-"""Backtest engine: vectorized prices, sequential weight transitions.
+"""Backtest engine: vectorised polars compounding, sequential weight transitions.
 
 Convention:
 - Rebalance day R is a Sunday.
@@ -25,7 +25,7 @@ from .allocate import SAFE_ASSET_KEY, allocate
 from .schedule import fill_date, rebalance_dates, signal_date
 from .score import score_at
 from .store import prices_wide
-from .universe import Config, Scoring, Strategy
+from .universe import Config, Strategy
 
 log = logging.getLogger(__name__)
 
@@ -89,28 +89,16 @@ def run(
     # spikes whose return-cancellation only worked at single-asset
     # weight=1; multi-asset portfolios accumulated permanent gains
     # from the spike+recovery pair.
-    #
-    # After scrubbing, forward-fill per-asset so the long-format series
-    # has no nulls — `score_at` and other downstream consumers operate
-    # on the long format and would otherwise trip on null closes. The
-    # wide-format `forward_fill` below is redundant after this but
-    # left in place for cross-asset calendar alignment (asset A
-    # doesn't trade on a date asset B does).
     prices_long = stitching.scrub_long_format(prices_long)
     prices_long = prices_long.sort(["asset_id", "date"]).with_columns(
         close=pl.col("close").forward_fill().over("asset_id"),
     )
 
+    available_ids = set(prices_long.get_column("asset_id").unique().to_list())
     wide = (
         prices_wide(prices_long, all_ids)
         .sort("date")
-        .with_columns(
-            [
-                pl.col(c).forward_fill()
-                for c in all_ids
-                if c in prices_long.get_column("asset_id").unique().to_list()
-            ]
-        )
+        .with_columns([pl.col(c).forward_fill() for c in all_ids if c in available_ids])
     )
     if start is not None:
         wide = wide.filter(pl.col("date") >= start)
@@ -127,32 +115,21 @@ def run(
 
     dates = wide.get_column("date").to_list()
     cost_pct = config.shared.costs.per_trade_pct / 100.0
+    scoring = strategy.effective_scoring(config.shared.scoring)
+    date_set = set(dates)
 
-    # Per-strategy scoring override: if a strategy specifies its own
-    # lookbacks_days (e.g. [126] for classic 6-month dual momentum), build
-    # a Scoring with those windows; otherwise use the shared default
-    # (21/63/126 mean = accelerated dual momentum).
-    if strategy.lookbacks_days is not None:
-        scoring = Scoring(
-            lookbacks_days=strategy.lookbacks_days,
-            aggregation=config.shared.scoring.aggregation,
-        )
-    else:
-        scoring = config.shared.scoring
-
-    # Schedule: fill_date -> new_weights
     rebalances: list[Rebalance] = []
-    fill_to_weights: dict[date, dict[str, float]] = {}
+    fills: list[tuple[date, dict[str, float], float]] = []
     prev_weights: dict[str, float] = {SAFE_ASSET_KEY: 1.0}
-
     n_fill_skips = 0
     n_signal_skips = 0
+
     for r_day in rebalance_dates(strategy, dates[0], dates[-1]):
         s_day = signal_date(r_day)
         f_day = fill_date(r_day)
-        if f_day not in dates:
+        if f_day not in date_set:
             n_fill_skips += 1
-            continue  # fill day outside trading window
+            continue
         scores = score_at(prices_long, asset_ids, s_day, scoring)
         # Safe asset must be scored on the SAME lookbacks as risky assets — the
         # absolute filter compares like-for-like.
@@ -172,17 +149,16 @@ def run(
                 f"(need {max(scoring.lookbacks_days)} trading days). "
                 f"Push the --start date forward or use a longer-history safe asset."
             )
-        safe_score = safe_scores[safe_id]
         new_w = allocate(
             scores=scores,
-            safe_score=safe_score,
+            safe_score=safe_scores[safe_id],
             top_n=strategy.top_n,
             alloc=config.shared.allocation,
             flt=config.shared.filter,
         )
-        # Map "safe" sentinel from allocate() to the actual safe asset id
         new_w_mapped = {(safe_id if a == SAFE_ASSET_KEY else a): w for a, w in new_w.items()}
-        turnover = _turnover(prev_weights, new_w_mapped, safe_id)
+        turnover = _turnover(prev_weights, new_w_mapped)
+        cost = turnover * cost_pct
         rebalances.append(
             Rebalance(
                 rebalance_date=r_day,
@@ -191,54 +167,13 @@ def run(
                 scores=scores,
                 weights=new_w_mapped,
                 turnover=turnover,
-                cost=turnover * cost_pct,
+                cost=cost,
             )
         )
-        fill_to_weights[f_day] = new_w_mapped
+        fills.append((f_day, new_w_mapped, cost))
         prev_weights = new_w_mapped
 
-    # Per-day effective weights and per-day cost
-    effective: list[dict[str, float]] = []
-    cost_on_day: list[float] = []
-    held: dict[str, float] = {safe_id: 1.0}
-    prev_w_for_cost: dict[str, float] = {safe_id: 1.0}
-
-    for d in dates:
-        effective.append(dict(held))
-        c = 0.0
-        if d in fill_to_weights:
-            new_w = fill_to_weights[d]
-            c = _turnover(prev_w_for_cost, new_w, safe_id) * cost_pct
-            held = dict(new_w)
-            prev_w_for_cost = dict(new_w)
-        cost_on_day.append(c)
-
-    # Daily asset returns
-    asset_cols = [c for c in wide.columns if c != "date"]
-    rets_wide = wide.select(
-        pl.col("date"),
-        *[(pl.col(c) / pl.col(c).shift(1) - 1.0).fill_null(0.0).alias(c) for c in asset_cols],
-    )
-    rets_rows = rets_wide.iter_rows(named=True)
-    next(rets_rows)  # skip first (zero) row, weights[0] applies but no return
-
-    equity_values: list[float] = [1.0]
-    daily_returns: list[float] = [0.0]
-    for i, row in enumerate(rets_rows, start=1):
-        w = effective[i]
-        gross = sum(w.get(a, 0.0) * row.get(a, 0.0) for a in asset_cols)
-        net = gross - cost_on_day[i]
-        daily_returns.append(net)
-        equity_values.append(equity_values[-1] * (1.0 + net))
-
-    equity_df = pl.DataFrame(
-        {
-            "date": dates,
-            "equity": equity_values,
-            "daily_return": daily_returns,
-        }
-    )
-
+    equity_df = _compound(wide, all_ids, init_weights={safe_id: 1.0}, fills=fills)
     return BacktestResult(
         strategy_name=strategy.name,
         equity=equity_df,
@@ -248,7 +183,7 @@ def run(
     )
 
 
-def _turnover(prev: dict[str, float], new: dict[str, float], safe_id: str) -> float:
+def _turnover(prev: dict[str, float], new: dict[str, float]) -> float:
     """L1 distance between two weight dicts. Safe-asset rebalancing also counts."""
     keys = set(prev) | set(new)
     return sum(abs(new.get(k, 0.0) - prev.get(k, 0.0)) for k in keys)
@@ -264,32 +199,14 @@ def _run_buy_and_hold(
     asset_cols = [c for c in asset_ids if c in wide.columns]
     if not asset_cols:
         return _empty_result(strategy.name)
-
     wide = wide.drop_nulls(subset=asset_cols)
     if wide.is_empty():
         return _empty_result(strategy.name)
 
-    dates = wide.get_column("date").to_list()
     n = len(asset_cols)
-    weight_per = 1.0 / n
-    weights = {a: weight_per for a in asset_cols}
-
-    rets_wide = wide.select(
-        pl.col("date"),
-        *[(pl.col(c) / pl.col(c).shift(1) - 1.0).fill_null(0.0).alias(c) for c in asset_cols],
-    )
-    rows = list(rets_wide.iter_rows(named=True))
-
-    equity_values: list[float] = [1.0]
-    daily_returns: list[float] = [0.0]
-    for i in range(1, len(rows)):
-        gross = sum(weight_per * rows[i].get(a, 0.0) for a in asset_cols)
-        daily_returns.append(gross)
-        equity_values.append(equity_values[-1] * (1.0 + gross))
-
-    equity_df = pl.DataFrame(
-        {"date": dates, "equity": equity_values, "daily_return": daily_returns}
-    )
+    weights = {a: 1.0 / n for a in asset_cols}
+    dates = wide.get_column("date").to_list()
+    equity_df = _compound(wide, asset_cols, init_weights=weights, fills=[])
 
     # Single synthetic rebalance at start so the dashboard shows the static
     # weights in "New allocation". turnover and cost are zero by definition.
@@ -304,11 +221,92 @@ def _run_buy_and_hold(
             cost=0.0,
         )
     ]
+    return BacktestResult(strategy_name=strategy.name, equity=equity_df, rebalances=rebalances)
 
-    return BacktestResult(
-        strategy_name=strategy.name,
-        equity=equity_df,
-        rebalances=rebalances,
+
+def _compound(
+    wide: pl.DataFrame,
+    asset_cols: list[str],
+    init_weights: dict[str, float],
+    fills: list[tuple[date, dict[str, float], float]],
+) -> pl.DataFrame:
+    """Polars-vectorised daily compounding kernel shared by rotation + buy-and-hold.
+
+    `wide` is `[date, *asset_cols]`. `init_weights` is the portfolio at `dates[0]`.
+    Each `fills` entry is `(fill_date, new_weights, cost_on_fill_day)` — the new
+    weights become effective on the next trading day after `fill_date`, and the
+    cost is charged as a negative return on `fill_date` itself.
+
+    Returns `[date, equity, daily_return]`. Equity[0] == 1.0; subsequent values
+    compound the strategy's net daily return.
+    """
+    if wide.is_empty():
+        return pl.DataFrame(schema=_EMPTY_EQUITY_SCHEMA)
+
+    dates = wide.get_column("date").to_list()
+    date_idx = {d: i for i, d in enumerate(dates)}
+
+    # Sparse weights: row at dates[0] = init, plus one row per fill (effective
+    # the trading day AFTER the fill_date, since the close on the fill_date
+    # itself is the execution price for the OLD weights).
+    init_row: dict[str, object] = {"date": dates[0]}
+    for c in asset_cols:
+        init_row[c] = float(init_weights.get(c, 0.0))
+    sparse_rows: list[dict[str, object]] = [init_row]
+    for f_day, new_w, _cost in fills:
+        idx = date_idx.get(f_day)
+        if idx is None or idx + 1 >= len(dates):
+            continue  # fill on or past last trading day — no future returns to weight
+        row: dict[str, object] = {"date": dates[idx + 1]}
+        for c in asset_cols:
+            row[c] = float(new_w.get(c, 0.0))
+        sparse_rows.append(row)
+
+    sparse_schema: dict[str, type[pl.DataType]] = {"date": pl.Date}
+    for c in asset_cols:
+        sparse_schema[c] = pl.Float64
+    sparse = (
+        pl.DataFrame(sparse_rows, schema=sparse_schema)
+        .sort("date")
+        .unique(subset=["date"], keep="last")
+    )
+
+    weights_per_day = (
+        pl.DataFrame({"date": dates}, schema={"date": pl.Date})
+        .join(sparse, on="date", how="left")
+        .with_columns(*[pl.col(c).forward_fill() for c in asset_cols])
+    )
+
+    if fills:
+        cost_sparse = pl.DataFrame(
+            {"date": [f[0] for f in fills], "cost": [float(f[2]) for f in fills]},
+            schema={"date": pl.Date, "cost": pl.Float64},
+        )
+        cost_per_day = (
+            pl.DataFrame({"date": dates}, schema={"date": pl.Date})
+            .join(cost_sparse, on="date", how="left")
+            .with_columns(pl.col("cost").fill_null(0.0))
+        )
+    else:
+        cost_per_day = pl.DataFrame(
+            {"date": dates, "cost": [0.0] * len(dates)},
+            schema={"date": pl.Date, "cost": pl.Float64},
+        )
+
+    rets = wide.select(
+        pl.col("date"),
+        *[(pl.col(c) / pl.col(c).shift(1) - 1.0).fill_null(0.0).alias(c) for c in asset_cols],
+    )
+
+    w_suffix = "__w"
+    weights_renamed = weights_per_day.rename({c: c + w_suffix for c in asset_cols})
+    df = rets.join(weights_renamed, on="date").join(cost_per_day, on="date").sort("date")
+
+    gross_expr = pl.sum_horizontal([pl.col(c) * pl.col(c + w_suffix) for c in asset_cols])
+    return (
+        df.with_columns(daily_return=gross_expr - pl.col("cost"))
+        .with_columns(equity=(1.0 + pl.col("daily_return")).cum_prod())
+        .select(["date", "equity", "daily_return"])
     )
 
 
