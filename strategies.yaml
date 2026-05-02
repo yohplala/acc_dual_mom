@@ -42,9 +42,13 @@ universe:
       replication: synthetic
       region: us
       inception: 2014-04-29
-      index_proxy: ^GSPC                    # S&P 500 (PR USD) — Yahoo. Stooq
-      index_proxy_kind: usd_pr              # has no clean cash-TR equivalent;
-                                            # PR understates by ~2pp/yr.
+      index_proxy: CSPX.AS                  # iShares Core S&P 500 UCITS ETF
+      index_proxy_kind: eur_tr              # USD-base (IE00B5BMR087) but EUR-
+                                            # quoted on Amsterdam (no FX needed),
+                                            # accumulating, since 2010-05-19.
+                                            # Loses pre-2010 history vs ^GSPC
+                                            # but TR matches live ETF (no
+                                            # ~2pp/yr PR understatement).
 
     - id: us_small
       name: Amundi Russell 2000
@@ -54,8 +58,10 @@ universe:
       replication: synthetic
       region: us
       inception: 2017-09-21
-      index_proxy: ^RUT                     # Russell 2000 (PR USD) — Yahoo
-      index_proxy_kind: usd_pr
+      index_proxy: IWM                      # iShares Russell 2000 ETF — US-
+      index_proxy_kind: usd_tr              # listed (USD), distributing but
+                                            # auto_adjust=True in fetcher gives
+                                            # TR-equivalent close. Since 2000.
 
     - id: world
       name: Amundi PEA Monde (MSCI World)
@@ -81,8 +87,13 @@ universe:
       replication: synthetic
       region: europe
       inception: 2018-12-12
-      index_proxy: ^STOXX                   # STOXX Europe 600 (PR EUR) — Yahoo
-      index_proxy_kind: eur_pr              # (close approx of MSCI Europe)
+      index_proxy: IMEU.AS                  # iShares Core MSCI Europe UCITS ETF
+      index_proxy_kind: eur_tr              # EUR Dist on Amsterdam, since
+                                            # 2007-07-06. Distributing, but
+                                            # auto_adjust=True gives TR-
+                                            # equivalent close. Loses pre-2007
+                                            # history but exactly tracks the
+                                            # MSCI Europe net total return.
 
     - id: eu_small
       name: Amundi MSCI EMU Small Cap ESG Broad Transition
@@ -100,11 +111,14 @@ universe:
       replication: synthetic
       region: em_asia
       inception: 2018-12-19
-      index_proxy: EEMA                     # iShares MSCI EM Asia ETF (USD,
-      index_proxy_kind: usd_pr              # since 2012-02-09 — earliest free
-                                            # source for clean MSCI EM Asia
-                                            # exposure; no 2008-2011 history
-                                            # available without paid data).
+      index_proxy: EEMA                     # iShares MSCI EM Asia ETF — US-
+      index_proxy_kind: usd_tr              # listed (USD), distributing but
+                                            # auto_adjust=True gives TR-
+                                            # equivalent close. Since
+                                            # 2012-02-09 — earliest free source
+                                            # for clean MSCI EM Asia exposure;
+                                            # no 2008-2011 history without
+                                            # paid data.
 
     - id: japan_hedged
       name: Amundi PEA Japon (TOPIX) EUR Hedged
@@ -130,8 +144,16 @@ universe:
       replication: synthetic
       region: eurozone
       inception: 2017-09-29
-      index_proxy: ^STOXX50E                # Euro Stoxx 50 (PR EUR) — Yahoo
-      index_proxy_kind: eur_pr
+      index_proxy: CSX5.AS                  # iShares Core EURO STOXX 50 ETF
+      index_proxy_kind: eur_tr              # EUR Acc on Amsterdam, since
+                                            # 2010-01-26. Loses pre-2010 vs
+                                            # ^STOXX50E but TR matches live
+                                            # ETF (no PR understatement). NB:
+                                            # `EUE.AS` doesn't exist on Yahoo
+                                            # — Amsterdam Acc variant of the
+                                            # iShares Core EURO STOXX 50 is
+                                            # CSX5.AS (the Dist sister is
+                                            # EUEA.AS).
 
   safe_asset:
     id: safe
