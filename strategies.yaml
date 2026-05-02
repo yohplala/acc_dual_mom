@@ -139,14 +139,14 @@ strategies:
     rebalance: monthly_first_sunday
     top_n: 3
 
-  # ── HEAD-TO-HEAD: Japan FX-hedged vs unhedged ─────────────────────────
-  # Isolates the FX-hedge cost/benefit. Both sleeves have the same equity
-  # exposure (TOPIX); the difference is whether daily JPY/EUR moves enter
-  # the score signal (unhedged) or are stripped out (hedged). Includes safe
-  # so the strategy can defend during JP-equity drawdowns.
-  - name: jp_hvu_m_t1
-    description: Hedged vs unhedged Japan ADM rotation, monthly top-1
-    assets: [topix_hedged, topix, cash_estr]
+  # ── HEAD-TO-HEAD: Japan unhedged vs cash ──────────────────────────────
+  # Single-risky-asset rotation between unhedged TOPIX and the safe sleeve.
+  # FX-noise sneaks into the score signal here; the canonical hedged
+  # variant (jp_pea_topix_hedged) competes alongside the equity sleeves
+  # in the core lineup instead.
+  - name: jp_adm_m_t1
+    description: Japan unhedged ADM rotation (topix vs safe), monthly top-1
+    assets: [topix, cash_estr]
     rebalance: monthly_first_sunday
     top_n: 1
 
@@ -199,6 +199,22 @@ strategies:
       em_asia: 0.4
       sp500: 0.4
       eurostoxx50: 0.2
+
+  # 4-asset static benchmark adding hedged Japan to the world3 mix:
+  # 30% em_asia + 30% sp500 + 20% eurostoxx50 + 20% jp_pea_topix_hedged,
+  # never rebalanced. Comparison vs world3_bh / world3_em_bh tests
+  # whether Japan exposure adds anything as a static sleeve.
+  - name: world4_bh
+    description: 30% Emerging Asia + 30% S&P 500 + 20% Euro Stoxx 50 + 20% Japan-hedged, buy-and-hold
+    mode: buy_and_hold
+    assets: [em_asia, sp500, eurostoxx50, topix_hedged]
+    rebalance: monthly_first_sunday
+    top_n: 4
+    static_weights:
+      em_asia: 0.3
+      sp500: 0.3
+      eurostoxx50: 0.2
+      topix_hedged: 0.2
 
   # Static 60/40: 60% world + 40% safe, never rebalanced. The canonical
   # static benchmark — every rotation strategy here should beat it after
