@@ -185,9 +185,7 @@ def _load_results(cfg: Config, data_root: Path) -> list[backtest.BacktestResult]
             backtest.rebalances_from_json(rebal_path.read_text()) if rebal_path.exists() else []
         )
         results.append(
-            backtest.BacktestResult(
-                strategy_name=strategy.name, equity=equity, rebalances=rebals
-            )
+            backtest.BacktestResult(strategy_name=strategy.name, equity=equity, rebalances=rebals)
         )
     return results
 
@@ -238,9 +236,7 @@ def cmd_discover(ctx: click.Context, start: str | None, universe: str) -> None:
     data_root: Path = ctx.obj["data_root"]
     entries = discover.load_discovery_universe(universe)
     start_d = (
-        date.fromisoformat(start)
-        if start
-        else (datetime.now(UTC).date() - timedelta(days=365 * 3))
+        date.fromisoformat(start) if start else (datetime.now(UTC).date() - timedelta(days=365 * 3))
     )
     prices = discover.fetch_discovery_universe(entries, start=start_d)
 

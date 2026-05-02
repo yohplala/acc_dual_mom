@@ -18,6 +18,7 @@ import pytest
 import yfinance as yf
 
 from pea_momentum import fetch
+from pea_momentum.errors import FetchError
 from pea_momentum.universe import Asset
 
 
@@ -99,7 +100,7 @@ def test_fetch_yahoo_handles_multilevel_columns(monkeypatch: pytest.MonkeyPatch)
 
 def test_fetch_yahoo_empty_response_raises(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(yf, "download", lambda *a, **kw: pd.DataFrame())
-    with pytest.raises(fetch.FetchError, match="no data"):
+    with pytest.raises(FetchError, match="no data"):
         fetch.fetch_yahoo(_asset(), start=date(2024, 1, 1))
 
 
@@ -109,7 +110,7 @@ def test_fetch_yahoo_missing_close_raises(monkeypatch: pytest.MonkeyPatch) -> No
         index=pd.DatetimeIndex(["2024-01-02"]),
     )
     monkeypatch.setattr(yf, "download", lambda *a, **kw: df)
-    with pytest.raises(fetch.FetchError, match="missing Close"):
+    with pytest.raises(FetchError, match="missing Close"):
         fetch.fetch_yahoo(_asset(), start=date(2024, 1, 1))
 
 
@@ -126,7 +127,7 @@ def test_proxy_in_eur_rejects_unsupported_kind(monkeypatch: pytest.MonkeyPatch) 
         index_proxy="^stoxxr",
         index_proxy_kind="eur_pr",  # not in SUPPORTED_PROXY_KINDS
     )
-    with pytest.raises(fetch.FetchError, match="Unsupported index_proxy_kind"):
+    with pytest.raises(FetchError, match="Unsupported index_proxy_kind"):
         fetch._fetch_proxy_in_eur(asset, start=date(2024, 1, 1))
 
 
