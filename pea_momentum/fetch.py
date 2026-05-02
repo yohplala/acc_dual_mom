@@ -163,13 +163,10 @@ def _fetch_proxy_chain_in_eur(asset: Asset, start: date) -> pl.DataFrame:
         if nxt_close <= 0:
             raise FetchError(
                 f"proxy chain {asset.id}: segment {chain[i][0]!r} has non-positive "
-                f"close {nxt_close} on or before handoff {handoff}"
+                f"close {nxt_close} on or before handoff {handoff!r}"
             )
         scale = prev_close / nxt_close
-        pre = (
-            nxt.filter(pl.col("date") < handoff)
-            .with_columns(close=pl.col("close") * scale)
-        )
+        pre = nxt.filter(pl.col("date") < handoff).with_columns(close=pl.col("close") * scale)
         if pre.is_empty():
             continue
         result = pl.concat([pre, result]).sort("date")

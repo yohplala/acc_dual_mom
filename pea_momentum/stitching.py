@@ -387,9 +387,8 @@ def splice_at_inception(
     # inception — is honored exactly. Without this, both series can
     # produce same-date rows that survive concat and corrupt the wide
     # pivot in the backtest engine.
-    post = (
-        etf_long.filter(pl.col("date") >= inception)
-        .select(["date", "asset_id", "close", "source"])
+    post = etf_long.filter(pl.col("date") >= inception).select(
+        ["date", "asset_id", "close", "source"]
     )
     return pl.concat([pre, post]).sort("date")
 
