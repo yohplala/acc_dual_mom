@@ -200,6 +200,22 @@ strategies:
       sp500: 0.4
       eurostoxx50: 0.2
 
+  # 3-asset static benchmark adding hedged Japan to the world3 mix:
+  # 30% em_asia + 50% sp500 + 20% jp_pea_topix_hedged,
+  # never rebalanced. Comparison vs world3_bh / world3_em_bh tests
+  # whether Japan exposure adds anything as a static sleeve.
+  # removing eurostoxx50
+  - name: wld3_noeu_bh
+    description: 30% Emerging Asia + 50% S&P 500 + 20% Japan-hedged, buy-and-hold
+    mode: buy_and_hold
+    assets: [em_asia, sp500, topix_hedged]
+    rebalance: monthly_first_sunday
+    top_n: 3
+    static_weights:
+      em_asia: 0.3
+      sp500: 0.5
+      topix_hedged: 0.2
+
   # 4-asset static benchmark adding hedged Japan to the world3 mix:
   # 30% em_asia + 30% sp500 + 20% eurostoxx50 + 20% jp_pea_topix_hedged,
   # never rebalanced. Comparison vs world3_bh / world3_em_bh tests
