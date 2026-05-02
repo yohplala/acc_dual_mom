@@ -37,7 +37,7 @@ universe:
     - id: us_large
       name: Amundi PEA S&P 500
       isin: FR0011871128
-      yahoo: PE500.PA
+      yahoo: PSP5.PA
       ter_pct: 0.12
       replication: synthetic
       region: us
