@@ -133,15 +133,17 @@ def _scoring_label(strategy: Strategy, shared_lookbacks: tuple[int, ...]) -> str
     return f"ADM {months_str} mean"
 
 
-def _allocation_label(strategy: Strategy, shared_rule: str) -> str:
-    """Human-readable description of the strategy's allocation spec."""
+def _allocation_label(strategy: Strategy, shared_rule: str) -> tuple[str, str]:
+    """Two-line allocation spec: (line1, line2).
+
+    Rotation: ('top-N', 'equal' | 'score-prop')
+    Buy-and-hold: ('B&H', 'static' | 'equal')
+    """
     if strategy.mode == "buy_and_hold":
-        if strategy.static_weights is not None:
-            return "B&H static"
-        return "B&H equal"
+        return ("B&H", "static" if strategy.static_weights is not None else "equal")
     rule = strategy.allocation_rule or shared_rule
     rule_short = "equal" if rule == "equal_weight" else "score-prop"
-    return f"top-{strategy.top_n} {rule_short}"
+    return (f"top-{strategy.top_n}", rule_short)
 
 
 def _signal_row(
@@ -162,11 +164,13 @@ def _signal_row(
     else:
         prev = result.rebalances[-2] if len(result.rebalances) >= 2 else None
 
+    alloc_top, alloc_weight = _allocation_label(strategy, config.shared.allocation.rule)
     return {
         "name": result.strategy_name,
         "cadence": _CADENCE_LABELS.get(strategy.rebalance, strategy.rebalance),
         "scoring": _scoring_label(strategy, config.shared.scoring.lookbacks_days),
-        "allocation": _allocation_label(strategy, config.shared.allocation.rule),
+        "allocation_top": alloc_top,
+        "allocation_weight": alloc_weight,
         "cagr": _result_cagr(result),
         "last_rebalance": last.rebalance_date.isoformat() if last else "—",
         "universe_buckets": _universe_buckets(strategy, config, asset_meta),
