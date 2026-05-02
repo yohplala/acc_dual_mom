@@ -185,6 +185,21 @@ strategies:
     rebalance: monthly_first_sunday
     top_n: 3
 
+  # Emerging-Asia-tilted variant of world3_bh: 40% em_asia + 40% sp500 +
+  # 20% eurostoxx50, never rebalanced. Direct comparison with world3_bh
+  # to test whether overweighting EM and underweighting Europe pays off
+  # over the backtest window.
+  - name: world3_em_bh
+    description: 40% Emerging Asia + 40% S&P 500 + 20% Euro Stoxx 50, buy-and-hold
+    mode: buy_and_hold
+    assets: [em_asia, sp500, eurostoxx50]
+    rebalance: monthly_first_sunday
+    top_n: 3
+    static_weights:
+      em_asia: 0.4
+      sp500: 0.4
+      eurostoxx50: 0.2
+
   # Static 60/40: 60% world + 40% safe, never rebalanced. The canonical
   # static benchmark — every rotation strategy here should beat it after
   # costs to justify its complexity.
