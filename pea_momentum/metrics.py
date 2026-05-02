@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import asdict, dataclass
+from datetime import date
 from typing import Any
 
 import numpy as np
@@ -101,6 +102,67 @@ def drawdown_series(equity: pl.DataFrame) -> pl.DataFrame:
         )
         .select(["date", "drawdown"])
     )
+
+
+def turnover_per_year(
+    equity: pl.DataFrame,
+    turnovers: list[float],
+) -> float | None:
+    """Average annualised L1 turnover (sum across rebalances / years).
+
+    Returns `None` when there are fewer than two rebalances or insufficient
+    history. Higher numbers mean higher trading activity — directly drives
+    transaction-cost drag at fixed `per_trade_pct`.
+    """
+    if not turnovers or equity.is_empty():
+        return None
+    eq = equity.sort("date")
+    span = eq.get_column("date")[-1] - eq.get_column("date")[0]
+    years = span.days / 365.25
+    if years <= 0:
+        return None
+    return float(sum(turnovers) / years)
+
+
+def rebalance_hit_rate(
+    equity: pl.DataFrame,
+    fill_dates: list[date],
+) -> float | None:
+    """Fraction of rebalance intervals where the strategy's equity grew.
+
+    For each pair of consecutive fill dates `(F_i, F_{i+1})`, look up the
+    equity values at those dates and check whether `equity(F_{i+1}) >
+    equity(F_i)`. The final interval `(F_last, end_of_history)` is included.
+
+    Per-rebalance is far more meaningful than per-day for a slow rotation
+    strategy: a monthly strategy has ~120 rebalances over 10 years, so this
+    is a real Bernoulli-trial sample size; the daily hit-rate is correlated
+    with vol_ann more than skill.
+
+    Returns `None` when there are fewer than two fill dates or none fall
+    inside the equity-curve range.
+    """
+    if not fill_dates or equity.is_empty():
+        return None
+    eq = equity.sort("date")
+    eq_dates = eq.get_column("date").to_list()
+    eq_values = eq.get_column("equity").to_list()
+    by_date: dict[date, float] = dict(zip(eq_dates, eq_values, strict=True))
+
+    # Anchor points: each fill_date that exists in the equity curve, plus
+    # the final equity-curve date so the last interval contributes too.
+    anchors: list[float] = []
+    for d in sorted(set(fill_dates)):
+        if d in by_date:
+            anchors.append(by_date[d])
+    if not anchors:
+        return None
+    anchors.append(eq_values[-1])
+    if len(anchors) < 2:
+        return None
+
+    wins = sum(1 for i in range(1, len(anchors)) if anchors[i] > anchors[i - 1])
+    return wins / (len(anchors) - 1)
 
 
 def avg_pairwise_correlation(
