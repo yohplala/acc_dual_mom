@@ -73,9 +73,7 @@ def allocate(
     if alloc.rounding != "largest_remainder":
         raise ValueError(f"Unsupported rounding: {alloc.rounding!r}")
     if flt.type != "positive_momentum":
-        raise ValueError(
-            f"Unsupported filter: {flt.type!r} (expected 'positive_momentum')"
-        )
+        raise ValueError(f"Unsupported filter: {flt.type!r} (expected 'positive_momentum')")
 
     candidates = {a: s for a, s in scores.items() if s > 0}
     selected = sorted(candidates.items(), key=lambda kv: kv[1], reverse=True)[:top_n]
