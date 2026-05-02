@@ -19,7 +19,13 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from .backtest import BacktestResult
 from .correlations import CorrelationMatrix, GroupRepresentative
-from .metrics import avg_pairwise_correlation, compute, drawdown_series
+from .metrics import (
+    avg_pairwise_correlation,
+    compute,
+    drawdown_series,
+    rebalance_hit_rate,
+    turnover_per_year,
+)
 from .universe import Config, Strategy
 
 TEMPLATES_DIR = Path(__file__).parent / "templates"
@@ -226,6 +232,8 @@ def _metrics_row(
     # In the same dimensionless unit as the equity multiple: `Final` plus
     # `total_cost` is roughly the no-cost final equity.
     total_cost = sum(r.cost for r in result.rebalances)
+    turnovers = [r.turnover for r in result.rebalances]
+    fill_dates = [r.fill_date for r in result.rebalances]
     # Average pairwise correlation of the strategy's risky universe (excludes
     # safe asset since the absolute filter already gates on it). Lower = more
     # decorrelated = better diversification potential.
@@ -240,6 +248,8 @@ def _metrics_row(
         **m.to_dict(),
         "total_cost": total_cost,
         "avg_corr": avg_corr,
+        "turnover_per_year": turnover_per_year(result.equity, turnovers),
+        "rebalance_hit_rate": rebalance_hit_rate(result.equity, fill_dates),
     }
 
 
