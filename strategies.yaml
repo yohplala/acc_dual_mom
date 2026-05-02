@@ -102,6 +102,16 @@ universe:
       ter_pct: 0.40
       replication: physical
       region: eurozone
+      inception: 2024-02-08
+      index_proxy: SXRJ.DE                  # iShares MSCI EMU Small Cap UCITS
+      index_proxy_kind: eur_tr              # ETF EUR Acc on Xetra, since
+                                            # 2009-07-01. Proxies the parent
+                                            # vanilla MSCI EMU Small Cap
+                                            # (the Amundi product is the ESG
+                                            # Broad Transition variant — small
+                                            # tracking gap pre-2024 but no free
+                                            # ESG-screened sub-index history
+                                            # exists pre-2017).
 
     - id: em_asia
       name: Amundi PEA Asie Emergente (MSCI Emerging Asia)
@@ -127,14 +137,29 @@ universe:
       ter_pct: 0.48
       replication: synthetic
       region: japan
+      inception: 2019-04-25
+      index_proxy: IJPE.L                   # iShares MSCI Japan EUR Hedged
+      index_proxy_kind: eur_tr              # UCITS ETF Acc on LSE, EUR-quoted
+                                            # (EUR 130.51 spot), since
+                                            # 2010-09-30. Index-swap proxy:
+                                            # MSCI Japan (~230 large/mid) vs
+                                            # TOPIX (~1700 names) — historical
+                                            # R² ~0.95; EUR-hedge mechanism
+                                            # identical (the part the strategy
+                                            # is testing).
 
     - id: eu_banks
       name: Amundi STOXX Europe 600 Banks
       isin: LU1834983477
-      yahoo: BNK.PA                 # UNVERIFIED — fetch will fail loudly
+      yahoo: BNK.PA                 # ex-Lyxor, on Yahoo since 2006-08-25
       ter_pct: 0.30
       replication: synthetic
       region: europe
+      inception: 2006-08-25         # native data covers full 2012-02 window
+      # No `index_proxy` configured: BNK.PA's own history goes back to
+      # before our 2012-02 backtest start. Optional belt-and-braces would
+      # be `index_proxy: EXV1.DE` (iShares STOXX 600 Banks Dist on Xetra,
+      # since 2001-04-25, kind eur_tr via auto_adjust).
 
     - id: eu_50
       name: Amundi Core EURO STOXX 50
