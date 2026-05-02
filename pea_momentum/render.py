@@ -209,18 +209,11 @@ def _universe_buckets(
     (world / us / europe / asia / cash). Each bucket value is a list of
     `{id, name, url}` dicts; empty buckets render as `—` in the template.
 
-    The visible universe is `strategy.asset_ids` PLUS any asset id
-    referenced in `static_weights` but not already in `asset_ids` (so a
-    buy-and-hold strategy like `world_60_40_bh` whose `assets:` only
-    lists `world` but whose `static_weights:` adds `cash_estr` shows
-    both chips, not just `world`)."""
+    `strategy.asset_ids` is the single source of truth for the visible
+    universe — config-load validation ensures any `static_weights:` keys
+    are also in `assets:`, so we can iterate `asset_ids` alone."""
     buckets: dict[str, list[dict[str, str | None]]] = {b: [] for b in _REGION_BUCKETS_ORDER}
-    visible_ids: list[str] = list(strategy.asset_ids)
-    if strategy.static_weights is not None:
-        for asset_id, _ in strategy.static_weights:
-            if asset_id not in visible_ids:
-                visible_ids.append(asset_id)
-    for asset_id in visible_ids:
+    for asset_id in strategy.asset_ids:
         info = meta.get(asset_id, {"name": asset_id, "url": None})
         a = config.asset_by_id(asset_id)
         # synth_proxy assets (the €STR cash sleeve) drop into the Cash

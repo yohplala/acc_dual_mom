@@ -206,7 +206,7 @@ strategies:
   - name: world_60_40_bh
     description: Static 60% world + 40% safe, never rebalanced (canonical benchmark)
     mode: buy_and_hold
-    assets: [world]
+    assets: [world, cash_estr]
     rebalance: monthly_first_sunday
     top_n: 1
     static_weights:
