@@ -39,9 +39,9 @@ universe:
   - { id: world_pea_luxe,       name: Amundi PEA Luxe Monde UCITS ETF Acc,          isin: FR001400S9V0, currency: EUR, ter_pct: 0.30, sfdr: Article 6, category: World-Luxury,  yahoo: null }
 
   # ─── United States ─────────────────────────────────────────────────
-  - { id: us_pea_sp500,         name: Amundi PEA S&P 500 UCITS ETF Acc,             isin: FR0011871128, currency: EUR, ter_pct: 0.12, sfdr: Article 6, category: USA,          yahoo: PE500.PA }
+  - { id: us_pea_sp500,         name: Amundi PEA S&P 500 UCITS ETF Acc,             isin: FR0011871128, currency: EUR, ter_pct: 0.12, sfdr: Article 6, category: USA,          yahoo: PSP5.PA }
   - { id: us_pea_sp500_hedged,  name: Amundi PEA S&P 500 EUR Hedged Acc,            isin: FR0011871136, currency: EUR, ter_pct: 0.12, sfdr: Article 6, category: USA-Hedged,   yahoo: PSPH.PA }
-  - { id: us_pea_sp500_screened,name: Amundi PEA S&P 500 Screened UCITS ETF Acc,    isin: FR0013412285, currency: EUR, ter_pct: 0.25, sfdr: Article 8, category: USA-ESG,      yahoo: null }
+  - { id: us_pea_sp500_screened,name: Amundi PEA S&P 500 Screened UCITS ETF Acc,    isin: FR0013412285, currency: EUR, ter_pct: 0.25, sfdr: Article 8, category: USA-ESG,      yahoo: PE500.PA }
   - { id: us_pea_sp500_scr_hed, name: Amundi PEA S&P 500 Screened EUR Hedged Acc,   isin: FR0013412293, currency: EUR, ter_pct: 0.28, sfdr: Article 8, category: USA-Hedged-ESG, yahoo: P500H.PA }
   - { id: us_msci_esg,          name: Amundi PEA MSCI USA ESG Selection EUR,        isin: LU1681042864, currency: EUR, ter_pct: 0.35, sfdr: Article 8, category: USA-ESG,      yahoo: CU2.PA }
   - { id: us_msci_esg_usd,      name: Amundi PEA MSCI USA ESG Selection USD,        isin: LU1681042948, currency: USD, ter_pct: 0.35, sfdr: Article 8, category: USA-ESG,      yahoo: null }
