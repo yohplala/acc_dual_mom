@@ -29,6 +29,7 @@ dev = [
     "mypy>=1.13",
     "pre-commit>=4.0.0",
     "types-pyyaml>=6.0.0",
+    "pandas-stubs>=3.0.0",
 ]
 
 [tool.ruff]
