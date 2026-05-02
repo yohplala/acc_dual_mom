@@ -102,3 +102,45 @@ class TestFxConversion:
         out = usd_to_eur(idx, fx)
         assert out.height == 1
         assert out.get_column("date")[0] == date(2024, 1, 2)
+
+    def test_fx_with_implausible_jump_raises(self) -> None:
+        """yfinance has been observed to return half/double values for
+        EURUSD=X on isolated dates — every cross-currency proxy then
+        inherits the same factor as a phantom equity-curve spike. The
+        FX layer must catch this loudly rather than silently corrupt
+        downstream prices."""
+        idx = _series(date(2024, 1, 1), [100.0, 100.0, 100.0])
+        # Day 2 FX doubles (1.10 → 2.20) → would halve the EUR price.
+        fx = _series(date(2024, 1, 1), [1.10, 2.20, 1.10])
+        with pytest.raises(FetchError, match=r"FX series has \d+ day"):
+            usd_to_eur(idx, fx)
+
+
+class TestPlausibilityCeiling:
+    """`splice_at_inception` rejects proxy / ETF segments with impossible
+    single-day moves. The threshold (30%) is well above the worst real
+    equity-index move on record (Black Monday 1987 at -22.6%)."""
+
+    def test_proxy_with_50pct_drop_raises(self) -> None:
+        # Proxy series with a single bad day — exactly the pattern observed
+        # in production (us_large oscillating between 6.7 and 13.5).
+        etf = _etf_long(date(2015, 1, 1), [200.0, 201.0])
+        proxy = _series(date(2014, 12, 28), [40.0, 41.0, 19.5, 41.5, 50.0])  # day 3 is half
+        with pytest.raises(FetchError, match=r"proxy series has \d+ day"):
+            splice_at_inception(etf, proxy, date(2015, 1, 1), "x")
+
+    def test_etf_with_doubled_day_raises(self) -> None:
+        # Live-ETF segment spike — rarer but possible (yfinance bad day on
+        # the actual product). Should also fail loud.
+        etf = _etf_long(date(2015, 1, 1), [200.0, 410.0, 201.0])  # day 2 doubled
+        proxy = _series(date(2014, 12, 28), [40.0, 41.0, 42.0, 43.0, 44.0])
+        with pytest.raises(FetchError, match=r"live ETF series has \d+ day"):
+            splice_at_inception(etf, proxy, date(2015, 1, 1), "x")
+
+    def test_normal_market_moves_pass(self) -> None:
+        # A real-but-large move (-10% Lehman-style) must NOT trigger the
+        # ceiling — only impossible jumps should.
+        etf = _etf_long(date(2015, 1, 1), [200.0, 180.0, 195.0])
+        proxy = _series(date(2014, 12, 28), [40.0, 41.0, 36.0, 38.0, 42.0])
+        out = splice_at_inception(etf, proxy, date(2015, 1, 1), "x")
+        assert out.height == 7  # 4 pre + 3 post — no rows lost
