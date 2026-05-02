@@ -170,6 +170,7 @@ def _signal_row(
 
     alloc_top, alloc_weight = _allocation_label(strategy, config.shared.allocation.rule)
     current_chips = _alloc_chips(last.weights if last else {}, asset_meta)
+    universe_buckets = _universe_buckets(strategy, config, asset_meta)
     return {
         "name": result.strategy_name,
         "cadence": _CADENCE_LABELS.get(strategy.rebalance, strategy.rebalance),
@@ -178,8 +179,13 @@ def _signal_row(
         "allocation_weight": alloc_weight,
         "cagr": _result_cagr(result),
         "last_rebalance": last.rebalance_date.isoformat() if last else "—",
-        "universe_buckets": _universe_buckets(strategy, config, asset_meta),
-        "previous_alloc": _alloc_chips(prev.weights if prev else {}, asset_meta),
+        "universe_buckets": universe_buckets,
+        # Prev alloc ordered by region bucket (world / cash / us / europe /
+        # asia) so the rows align visually with the consolidated universe
+        # columns to the left.
+        "previous_alloc": _ordered_alloc_chips(
+            prev.weights if prev else {}, universe_buckets, asset_meta
+        ),
         # Lookup map keyed by asset_id, used by the consolidated region
         # columns to overlay current allocation weight + bracket on the
         # corresponding universe chip (chip text becomes "id pct%" with
@@ -199,30 +205,99 @@ def _build_asset_meta(config: Config) -> dict[str, dict[str, str | None]]:
 def _universe_buckets(
     strategy: Strategy, config: Config, meta: dict[str, dict[str, str | None]]
 ) -> dict[str, list[dict[str, str | None]]]:
-    """Group the strategy's universe assets into the 4 geographic buckets +
-    Cash. Each bucket value is a list of `{id, name, url}` dicts; empty
-    buckets render as `—` in the template."""
+    """Group the strategy's universe assets into the 5 dashboard buckets
+    (world / us / europe / asia / cash). Each bucket value is a list of
+    `{id, name, url}` dicts; empty buckets render as `—` in the template.
+
+    The visible universe is `strategy.asset_ids` PLUS any asset id
+    referenced in `static_weights` but not already in `asset_ids` (so a
+    buy-and-hold strategy like `world_60_40_bh` whose `assets:` only
+    lists `world` but whose `static_weights:` adds `cash_estr` shows
+    both chips, not just `world`)."""
     buckets: dict[str, list[dict[str, str | None]]] = {b: [] for b in _REGION_BUCKETS_ORDER}
-    for asset_id in strategy.asset_ids:
+    visible_ids: list[str] = list(strategy.asset_ids)
+    if strategy.static_weights is not None:
+        for asset_id, _ in strategy.static_weights:
+            if asset_id not in visible_ids:
+                visible_ids.append(asset_id)
+    for asset_id in visible_ids:
         info = meta.get(asset_id, {"name": asset_id, "url": None})
         a = config.asset_by_id(asset_id)
-        # synth_proxy assets (the €STR cash sleeve) drop into the Cash bucket
-        # regardless of their `region` field — chip layout follows yield
+        # synth_proxy assets (the €STR cash sleeve) drop into the Cash
+        # bucket regardless of `category` — chip layout follows yield
         # behaviour, not literal geography.
-        # synth_proxy assets (the €STR cash sleeve) drop into the Cash bucket
-        # regardless of `category` — chip layout follows yield behaviour.
         bucket = "cash" if a.synth_proxy is not None else dashboard_bucket(a.category)
         buckets[bucket].append({"id": asset_id, "name": info["name"], "url": info["url"]})
     return buckets
 
 
+_PREV_ALLOC_BUCKET_ORDER: tuple[str, ...] = ("world", "cash", "us", "europe", "asia")
+
+
+def _ordered_alloc_chips(
+    weights: dict[str, float],
+    universe_buckets: dict[str, list[dict[str, str | None]]],
+    meta: dict[str, dict[str, str | None]],
+) -> list[dict[str, object]]:
+    """Non-zero allocation chips ordered by region bucket — same display
+    order the consolidated signal-table columns use (World, Cash, then
+    US, Europe, Asia). Within each bucket, the order matches
+    `universe_buckets[bucket]` (i.e. the YAML `assets:` order filtered
+    by region).
+
+    Any asset with a non-zero weight that doesn't belong to any of the
+    strategy's universe buckets (e.g. the `cash` CASH_KEY residual when
+    no synth_proxy asset is listed) is appended at the end, sorted by
+    weight desc, so it still shows up.
+    """
+    out: list[dict[str, object]] = []
+    seen: set[str] = set()
+    for bucket_name in _PREV_ALLOC_BUCKET_ORDER:
+        for asset_info in universe_buckets.get(bucket_name, []):
+            asset_id = asset_info["id"]
+            assert isinstance(asset_id, str)
+            seen.add(asset_id)
+            w = weights.get(asset_id, 0.0)
+            pct = round(w * 100)
+            if pct == 0:
+                continue
+            info = meta.get(asset_id, {"name": asset_id, "url": None})
+            out.append(
+                {
+                    "id": asset_id,
+                    "pct": pct,
+                    "bracket": _weight_bracket(pct),
+                    "name": info["name"],
+                    "url": info["url"],
+                }
+            )
+    # Off-universe non-zero weights (typically CASH_KEY residual)
+    for asset_id, w in sorted(weights.items(), key=lambda kv: -kv[1]):
+        if asset_id in seen:
+            continue
+        pct = round(w * 100)
+        if pct == 0:
+            continue
+        info = meta.get(asset_id, {"name": asset_id, "url": None})
+        out.append(
+            {
+                "id": asset_id,
+                "pct": pct,
+                "bracket": _weight_bracket(pct),
+                "name": info["name"],
+                "url": info["url"],
+            }
+        )
+    return out
+
+
 def _alloc_chips(
     weights: dict[str, float], meta: dict[str, dict[str, str | None]]
 ) -> list[dict[str, object]]:
-    """Render only non-zero allocations as chip descriptors, sorted descending
-    by weight. Zero-weight entries are dropped (per the cleaner-signal-table
-    requirement). Each chip carries the optional Amundi URL so the template
-    can render it as a link."""
+    """Non-zero allocation chips sorted descending by weight. Used to build
+    the per-asset lookup dict that overlays current allocation onto the
+    consolidated universe columns; ordering is irrelevant since the dict
+    is keyed by asset_id."""
     out: list[dict[str, object]] = []
     for asset_id, w in sorted(weights.items(), key=lambda kv: -kv[1]):
         pct = round(w * 100)
