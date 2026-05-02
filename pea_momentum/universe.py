@@ -42,6 +42,11 @@ class Asset:
     index_proxy_kind: str | None = None
     # ETF inception date — splice point between proxy and live ETF history.
     inception: date | None = None
+    # Amundi product page URL. Resolved from `pea_universe.yaml` by ISIN at
+    # config-load time (see `load_config(discovery_path=...)`); None when
+    # the asset's ISIN isn't in the discovery YAML or discovery loading is
+    # disabled.
+    amundi_url: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -50,6 +55,8 @@ class SafeAsset:
     proxy: str
     name: str = ""
     ter_pct: float = 0.0
+    isin: str = ""
+    amundi_url: str | None = None  # resolved by ISIN from pea_universe.yaml
 
 
 @dataclass(frozen=True, slots=True)
@@ -160,14 +167,39 @@ class Config:
         raise KeyError(f"Unknown asset id: {asset_id}")
 
 
-def load_config(path: str | Path = "strategies.yaml") -> Config:
+def load_config(
+    path: str | Path = "strategies.yaml",
+    discovery_path: str | Path | None = "pea_universe.yaml",
+) -> Config:
+    """Load the strategies YAML and resolve `amundi_url` per asset by
+    cross-referencing ISINs against `pea_universe.yaml`. Pass
+    `discovery_path=None` to skip the cross-reference (assets get
+    `amundi_url=None`)."""
     raw = yaml.safe_load(Path(path).read_text())
-    return _parse(raw)
+    isin_to_url = _load_isin_to_amundi_url(discovery_path)
+    return _parse(raw, isin_to_url=isin_to_url)
 
 
-def _parse(raw: dict[str, Any]) -> Config:
+def _load_isin_to_amundi_url(discovery_path: str | Path | None) -> dict[str, str]:
+    """Best-effort lookup of `pea_universe.yaml` to map ISIN → Amundi URL.
+    Returns an empty dict if the file doesn't exist or discovery loading
+    is disabled — callers fall back to `amundi_url=None` per asset."""
+    if discovery_path is None:
+        return {}
+    p = Path(discovery_path)
+    if not p.exists():
+        return {}
+    # Lazy import to avoid universe → discover → fetch → universe cycle.
+    from .discover import amundi_product_url, load_discovery_universe
+
+    entries = load_discovery_universe(p)
+    return {e.isin: amundi_product_url(e) for e in entries}
+
+
+def _parse(raw: dict[str, Any], *, isin_to_url: dict[str, str] | None = None) -> Config:
     shared_raw = raw["shared"]
     universe_raw = raw["universe"]
+    isin_to_url = isin_to_url or {}
 
     execution = _parse_execution(shared_raw.get("execution"))
 
@@ -199,16 +231,20 @@ def _parse(raw: dict[str, Any]) -> Config:
             index_proxy=a.get("index_proxy"),
             index_proxy_kind=a.get("index_proxy_kind"),
             inception=_parse_date(a.get("inception")),
+            amundi_url=isin_to_url.get(a["isin"]),
         )
         for a in universe_raw["assets"]
     )
 
     sa = universe_raw["safe_asset"]
+    sa_isin = sa.get("isin", "")
     safe_asset = SafeAsset(
         id=sa["id"],
         proxy=sa["proxy"],
         name=sa.get("name", ""),
         ter_pct=float(sa.get("ter_pct", 0.0)),
+        isin=sa_isin,
+        amundi_url=isin_to_url.get(sa_isin) if sa_isin else None,
     )
 
     strategies = tuple(_parse_strategy(s) for s in raw["strategies"])

@@ -67,7 +67,10 @@
       font-variant-numeric: tabular-nums;
       border: 1px solid transparent;
       background: rgba(255, 255, 255, 0.04);
+      text-decoration: none;
     }
+    a.chip { cursor: pointer; }
+    a.chip:hover { filter: brightness(1.2); text-decoration: underline; }
     .chip-zero { color: var(--text); opacity: 0.45; }
     .chip-neutral { color: var(--muted); border-color: rgba(127, 137, 152, 0.35); background: rgba(127, 137, 152, 0.08); }
     .chip-low  { color: #f0b06b; border-color: rgba(240, 176, 107, 0.35); background: rgba(240, 176, 107, 0.10); }
@@ -97,7 +100,15 @@
     </div>
     <nav><a href="correlations.html">Correlation matrix →</a></nav>
 
-    <h2>This week's signal</h2>
+    {%- macro asset_chip(c, label) -%}
+      {%- if c.url -%}
+        <a class="chip chip-{{ c.bracket if c.bracket else 'neutral' }}" href="{{ c.url }}" target="_blank" rel="noopener" title="{{ c.name }}">{{ label }}</a>
+      {%- else -%}
+        <span class="chip chip-{{ c.bracket if c.bracket else 'neutral' }}" title="{{ c.name }}">{{ label }}</span>
+      {%- endif -%}
+    {%- endmacro -%}
+
+    <h2>Strategies &amp; latest signal</h2>
     <div class="panel">
       <table class="signal">
         <thead>
@@ -128,9 +139,7 @@
             <td class="chips">
               {% if s.universe_buckets[bucket] %}
               <div class="chip-row">
-                {% for c in s.universe_buckets[bucket] %}
-                <span class="chip chip-neutral" title="{{ c.name }}">{{ c.id }}</span>
-                {% endfor %}
+                {% for c in s.universe_buckets[bucket] %}{{ asset_chip(c, c.id) }}{% endfor %}
               </div>
               {% else %}
               <span class="dash">—</span>
@@ -140,9 +149,7 @@
             <td class="chips">
               {% if s.previous_alloc %}
               <div class="chip-row">
-                {% for c in s.previous_alloc %}
-                <span class="chip chip-{{ c.bracket }}">{{ c.id }} {{ c.pct }}%</span>
-                {% endfor %}
+                {% for c in s.previous_alloc %}{{ asset_chip(c, c.id ~ " " ~ c.pct ~ "%") }}{% endfor %}
               </div>
               {% else %}
               <span class="dash">—</span>
@@ -151,9 +158,7 @@
             <td class="chips">
               {% if s.current_alloc %}
               <div class="chip-row">
-                {% for c in s.current_alloc %}
-                <span class="chip chip-{{ c.bracket }}">{{ c.id }} {{ c.pct }}%</span>
-                {% endfor %}
+                {% for c in s.current_alloc %}{{ asset_chip(c, c.id ~ " " ~ c.pct ~ "%") }}{% endfor %}
               </div>
               {% else %}
               <span class="dash">—</span>
