@@ -19,6 +19,7 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from .backtest import BacktestResult
 from .correlations import CorrelationMatrix, GroupRepresentative
+from .discover import dashboard_bucket
 from .metrics import (
     avg_pairwise_correlation,
     compute,
@@ -116,21 +117,8 @@ _CADENCE_LABELS: dict[str, str] = {
     "monthly_first_sunday": "monthly",
 }
 
-# Coarse region buckets used by the signal table (4 geographic columns + Cash).
-# Maps each fine-grained `Asset.region` value (from the YAML universe) to one
-# of: "world", "us", "europe", "asia", "cash".
-_REGION_BUCKET: dict[str, str] = {
-    "world": "world",
-    "us": "us",
-    "europe": "europe",
-    "eurozone": "europe",
-    "france": "europe",
-    "germany": "europe",
-    "japan": "asia",
-    "em_asia": "asia",
-    "em": "asia",
-    "safe": "cash",
-}
+# Order of the 5 dashboard region columns rendered in the signal table.
+# Membership rules live in `discover.dashboard_bucket(category)`.
 _REGION_BUCKETS_ORDER: tuple[str, ...] = ("world", "us", "europe", "asia", "cash")
 
 
@@ -207,7 +195,9 @@ def _universe_buckets(
         # synth_proxy assets (the €STR cash sleeve) drop into the Cash bucket
         # regardless of their `region` field — chip layout follows yield
         # behaviour, not literal geography.
-        bucket = "cash" if a.synth_proxy is not None else _REGION_BUCKET.get(a.region, "world")
+        # synth_proxy assets (the €STR cash sleeve) drop into the Cash bucket
+        # regardless of `category` — chip layout follows yield behaviour.
+        bucket = "cash" if a.synth_proxy is not None else dashboard_bucket(a.category)
         buckets[bucket].append({"id": asset_id, "name": info["name"], "url": info["url"]})
     return buckets
 

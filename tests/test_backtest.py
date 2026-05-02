@@ -32,9 +32,9 @@ def _config() -> Config:
             costs=Costs(per_trade_pct=0.10),
         ),
         assets=(
-            Asset(id="up", isin="x", yahoo="x", region="x"),
-            Asset(id="dn", isin="x", yahoo="x", region="x"),
-            Asset(id="safe", isin="x", yahoo="", region="cash", synth_proxy="estr"),
+            Asset(id="up", isin="x", yahoo="x"),
+            Asset(id="dn", isin="x", yahoo="x"),
+            Asset(id="safe", isin="x", yahoo="", synth_proxy="estr"),
         ),
         strategies=(),
     )
@@ -163,8 +163,8 @@ def test_per_asset_spread_increases_total_cost() -> None:
     cfg_tight = Config(
         shared=base_cfg.shared,
         assets=(
-            Asset(id="up", isin="x", yahoo="x", region="x", est_spread_bps=0.0),
-            Asset(id="dn", isin="x", yahoo="x", region="x", est_spread_bps=0.0),
+            Asset(id="up", isin="x", yahoo="x", est_spread_bps=0.0),
+            Asset(id="dn", isin="x", yahoo="x", est_spread_bps=0.0),
             safe_asset,
         ),
         strategies=(),
@@ -172,8 +172,8 @@ def test_per_asset_spread_increases_total_cost() -> None:
     cfg_wide = Config(
         shared=base_cfg.shared,
         assets=(
-            Asset(id="up", isin="x", yahoo="x", region="x", est_spread_bps=100.0),
-            Asset(id="dn", isin="x", yahoo="x", region="x", est_spread_bps=100.0),
+            Asset(id="up", isin="x", yahoo="x", est_spread_bps=100.0),
+            Asset(id="dn", isin="x", yahoo="x", est_spread_bps=100.0),
             safe_asset,
         ),
         strategies=(),
