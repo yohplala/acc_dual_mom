@@ -159,11 +159,11 @@ class TestDiagnoseStrategies:
         # 4 active assets + safe sleeve, ISINs that overlap with the
         # discovery_entries fixture below.
         assets = (
-            Asset(id="us", isin="ISIN_US", yahoo="x", region="us"),
-            Asset(id="us_alt", isin="ISIN_US_ALT", yahoo="x", region="us"),
-            Asset(id="eu", isin="ISIN_EU", yahoo="x", region="eu"),
-            Asset(id="jp", isin="ISIN_JP", yahoo="x", region="jp"),
-            Asset(id="safe", isin="ISIN_SAFE", yahoo="", region="cash", synth_proxy="estr"),
+            Asset(id="us", isin="ISIN_US", yahoo="x"),
+            Asset(id="us_alt", isin="ISIN_US_ALT", yahoo="x"),
+            Asset(id="eu", isin="ISIN_EU", yahoo="x"),
+            Asset(id="jp", isin="ISIN_JP", yahoo="x"),
+            Asset(id="safe", isin="ISIN_SAFE", yahoo="", synth_proxy="estr"),
         )
         cfg = Config(
             shared=Shared(

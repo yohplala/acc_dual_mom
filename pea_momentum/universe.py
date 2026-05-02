@@ -41,17 +41,15 @@ class Asset:
     # SFDR classification (`Article 6` / `Article 8` / `Article 9`).
     sfdr: str = ""
     # Free-form geographic / asset-class tag from the discovery YAML
-    # (e.g. `USA`, `Eurozone-Small`, `Cash-Eurozone`). Used by
-    # `discover._coarse_region` for correlation-page region grouping.
+    # (e.g. `USA`, `Eurozone-Small`, `Cash-Eurozone`). Single source of
+    # truth for region grouping: drives the correlation-page perimeter
+    # (via `discover.coarse_region`) and the signal-table dashboard
+    # bucket (via `discover.dashboard_bucket`). No separate `region`
+    # field — both consumers derive from `category`.
     category: str = ""
     leveraged: bool = False
     amundi_url: str | None = None
     # ── Active-asset fields (only set on assets used by some strategy) ──
-    # Coarse region bucket for the signal-table display columns:
-    #   `world` | `us` | `europe` | `eurozone` | ... | `japan` | `em_asia` | `cash`
-    # Empty / missing => asset is catalog-only and can't be used by a
-    # strategy without first setting this.
-    region: str = ""
     # Estimated round-trip bid-ask spread in bps. Half is added per traded
     # notional in the backtest cost model.
     est_spread_bps: float = 0.0
@@ -233,7 +231,6 @@ def _asset_from_yaml(e: dict[str, Any]) -> Asset:
         category=e.get("category", ""),
         leveraged=bool(e.get("leveraged", False)),
         amundi_url=e.get("amundi_url"),
-        region=e.get("region", ""),
         est_spread_bps=float(e.get("est_spread_bps", 0.0)),
         replication=e.get("replication"),
         inception=_parse_date(e.get("inception")),
