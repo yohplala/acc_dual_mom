@@ -14,7 +14,7 @@ shared:
     aggregation: mean
 
   allocation:
-    rule: score_proportional      # w_i = s_i / sum(s_j) over selected
+    rule: equal_weight            # 1/N across selected — canonical Antonacci ADM
     granularity_pct: 10           # round weights to 10% steps
     rounding: largest_remainder   # Hare quota for fair rounding
 
@@ -203,10 +203,30 @@ universe:
 # Biweekly was dropped — finding settled, kept noise.
 strategies:
   - name: core_monthly
-    description: 6-asset core, monthly first-Sunday rebalance
+    description: 6-asset core, monthly first-Sunday rebalance, equal-weight top-3
     assets: [us_large, us_small, eu_broad, eu_small, em_asia, world]
     rebalance: monthly_first_sunday
     top_n: 3
+
+  # Concentration sensitivity: same universe + cadence + scoring as core_monthly
+  # but holds only the single strongest sleeve. Useful to gauge whether
+  # diversifying across the top 3 helps or hurts vs. picking the leader.
+  - name: core_monthly_top1
+    description: 6-asset core, monthly, top-1 (single-leader concentration)
+    assets: [us_large, us_small, eu_broad, eu_small, em_asia, world]
+    rebalance: monthly_first_sunday
+    top_n: 1
+
+  # Same universe + cadence as core_monthly but with the score-proportional
+  # weighting rule from the original ADM literature variants. Keeps
+  # equal-weight as the headline default while making the alternative a
+  # visible side-by-side experiment.
+  - name: core_monthly_score_prop
+    description: 6-asset core, monthly, score-proportional weighting (sensitivity exhibit)
+    assets: [us_large, us_small, eu_broad, eu_small, em_asia, world]
+    rebalance: monthly_first_sunday
+    top_n: 3
+    allocation_rule: score_proportional
 
   - name: core_weekly
     description: 6-asset core, weekly Sunday rebalance (cost-drag exhibit)

@@ -155,6 +155,7 @@ def run(
             top_n=strategy.top_n,
             alloc=config.shared.allocation,
             flt=config.shared.filter,
+            rule_override=strategy.allocation_rule,
         )
         new_w_mapped = {(safe_id if a == SAFE_ASSET_KEY else a): w for a, w in new_w.items()}
         turnover = _turnover(prev_weights, new_w_mapped)
