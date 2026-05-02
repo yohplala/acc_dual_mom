@@ -8,7 +8,7 @@ Two pages produced:
 from __future__ import annotations
 
 import json
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -79,7 +79,7 @@ def _summary(results: list[BacktestResult], config: Config) -> dict[str, object]
     all_dates = [d for r in results for d in r.equity.get_column("date").to_list()]
     return {
         "n_strategies": len(results),
-        "last_update": datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
+        "last_update": datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC"),
         "data_start": min(all_dates).isoformat() if all_dates else "—",
         "data_end": max(all_dates).isoformat() if all_dates else "—",
         "cost_bps": int(config.shared.costs.per_trade_pct * 100),
@@ -345,7 +345,7 @@ def render_correlations(
         "n_assets": len(cm.asset_ids),
         "window_days": cm.window_days,
         "threshold": threshold,
-        "last_update": datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
+        "last_update": datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC"),
     }
 
     heatmap_traces, heatmap_layout = _heatmap_figure(cm)
