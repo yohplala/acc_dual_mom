@@ -64,11 +64,11 @@ def cmd_fetch(ctx: click.Context, start: str | None) -> None:
 @cli.command(name="backtest")
 @click.option(
     "--start",
-    default="2012-01-01",
+    default="2012-02-09",
     show_default=True,
-    help="ISO date for backtest start. Default 2012-01-01 — earliest date "
-    "where every strategy in strategies.yaml has usable data (gated by "
-    "EEMA's 2012 inception which proxies em_asia).",
+    help="ISO date for backtest start. Default 2012-02-09 — EEMA's first "
+    "trading day (the iShares MSCI EM Asia ETF that proxies em_asia, "
+    "the binding constraint among current strategy proxies).",
 )
 @click.option("--end", default=None, help="ISO date for backtest end")
 @click.pass_context
