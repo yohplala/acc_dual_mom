@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
 from typing import Any
@@ -93,7 +93,7 @@ class Shared:
     allocation: Allocation
     filter: Filter
     costs: Costs
-    execution: Execution = Execution()
+    execution: Execution = field(default_factory=Execution)
 
 
 @dataclass(frozen=True, slots=True)
