@@ -4,9 +4,14 @@ Pipeline at each rebalance:
 
     raw scores  ──filter(score > safe_score)──▶  candidates
     candidates  ──top-N by score──▶              selected
-    selected    ──score-proportional──▶          raw weights
-    raw weights ──largest-remainder rounding──▶  final weights (10% steps)
+    selected    ──equal_weight or score_prop──▶  raw weights
+    raw weights ──largest-remainder rounding──▶  final weights (granularity steps)
     residual to safe asset
+
+Two weighting rules are supported:
+- ``equal_weight``       1/N across selected assets — canonical Antonacci ADM.
+- ``score_proportional`` w_i = s_i / Σs_j over selected — amplifies the loudest
+                         score; useful as a sensitivity exhibit.
 
 Pure function — no I/O, no side effects. The backtest calls this for each
 rebalance day and feeds it the score dict.
@@ -18,6 +23,12 @@ from .universe import Allocation, Filter
 
 SAFE_ASSET_KEY = "safe"
 
+ALLOCATION_RULE_EQUAL = "equal_weight"
+ALLOCATION_RULE_SCORE_PROP = "score_proportional"
+SUPPORTED_ALLOCATION_RULES: frozenset[str] = frozenset(
+    {ALLOCATION_RULE_EQUAL, ALLOCATION_RULE_SCORE_PROP}
+)
+
 
 def allocate(
     scores: dict[str, float],
@@ -25,14 +36,21 @@ def allocate(
     top_n: int,
     alloc: Allocation,
     flt: Filter,
+    *,
+    rule_override: str | None = None,
 ) -> dict[str, float]:
     """Return target weights summing to 1.0 across selected assets + safe asset.
 
-    Weights are integer multiples of `alloc.granularity_pct / 100`.
-    Anything not allocated to risky assets goes to `safe`.
+    Weights are integer multiples of `alloc.granularity_pct / 100`. Anything
+    not allocated to risky assets goes to `safe`. Pass `rule_override` to use
+    a per-strategy weighting rule instead of the shared `alloc.rule`.
     """
-    if alloc.rule != "score_proportional":
-        raise ValueError(f"Unsupported allocation rule: {alloc.rule!r}")
+    rule = rule_override or alloc.rule
+    if rule not in SUPPORTED_ALLOCATION_RULES:
+        raise ValueError(
+            f"Unsupported allocation rule: {rule!r} "
+            f"(supported: {sorted(SUPPORTED_ALLOCATION_RULES)})"
+        )
     if alloc.rounding != "largest_remainder":
         raise ValueError(f"Unsupported rounding: {alloc.rounding!r}")
     if flt.type != "absolute_momentum" or flt.benchmark != "safe_asset":
@@ -44,8 +62,12 @@ def allocate(
     if not selected:
         return {SAFE_ASSET_KEY: 1.0}
 
-    total = sum(s for _, s in selected)
-    raw = {a: s / total for a, s in selected}
+    if rule == ALLOCATION_RULE_EQUAL:
+        n = len(selected)
+        raw = {a: 1.0 / n for a, _ in selected}
+    else:  # score_proportional
+        total = sum(s for _, s in selected)
+        raw = {a: s / total for a, s in selected}
 
     return _round_to_granularity(raw, granularity_pct=alloc.granularity_pct)
 
