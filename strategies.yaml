@@ -206,12 +206,12 @@ universe:
   # allocation cells). Each strategy filters this layout to its actual
   # universe — assets not used by a strategy simply don't appear.
   display_layout:
-    - [us_large, us_small]
     - [world]
+    - [us_large, us_small]
     - [eu_broad, eu_50]                         # broad-cap Europe alternatives
     - [eu_small, eu_banks]                      # eurozone sub-exposures
-    - [japan_hedged]
     - [em_asia]
+    - [japan_hedged]
     - [safe]
 
 # Two cadences (monthly + weekly) on the same 6-asset core, kept side-by-side
