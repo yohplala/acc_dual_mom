@@ -29,7 +29,7 @@ def _config() -> Config:
                 granularity_pct=10,
                 rounding="largest_remainder",
             ),
-            filter=Filter(type="absolute_momentum", benchmark="safe_asset"),
+            filter=Filter(type="positive_momentum"),
             costs=Costs(per_trade_pct=0.10),
         ),
         assets=(
