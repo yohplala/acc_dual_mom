@@ -294,10 +294,7 @@ def cmd_render_correlations(
     region_by_id = {e.id: e.region for e in entries}
     grouped = correlations.find_groups(cm, threshold=threshold, region_by_id=region_by_id)
     ter_pct_by_id = {e.id: e.ter_pct for e in entries}
-    reps = [
-        correlations.best_in_group(g, prices, ter_pct_by_id, window_days=window_days)
-        for g in grouped
-    ]
+    reps = [correlations.best_in_group(g, ter_pct_by_id) for g in grouped]
 
     diagnostics = diagnose_strategies(cfg, entries, reps)
 
