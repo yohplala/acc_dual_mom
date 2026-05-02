@@ -28,6 +28,39 @@ import polars as pl
 
 from .errors import FetchError
 
+# Hard ceiling on plausible single-day moves for any equity index or ETF.
+# Worst real single-day move on a major equity index since 1928 is Black
+# Monday 1987 at -22.6%. COVID 2020 worst day was -12%. Anything beyond
+# this threshold is bad data — yfinance has been observed to return
+# half-priced or doubled values on isolated dates for both FX series
+# (EURUSD=X) and `^XXX` index tickers (^GSPC, ^STOXX50E). Failing loud
+# beats silently producing impossible spikes in the equity curve.
+MAX_PLAUSIBLE_DAILY_RETURN = 0.30
+
+
+def _validate_returns_or_raise(
+    series: pl.DataFrame, asset_id: str, label: str, threshold: float = MAX_PLAUSIBLE_DAILY_RETURN
+) -> None:
+    """Raise `FetchError` if any single-day return on `series` exceeds the
+    plausibility ceiling. `series` must have `[date, close]` sorted ascending.
+    `label` identifies the segment for the error message ("proxy", "live ETF",
+    or "spliced")."""
+    if series.height < 2:
+        return
+    rets = series.sort("date").with_columns(ret=(pl.col("close") / pl.col("close").shift(1) - 1.0))
+    bad = rets.filter(pl.col("ret").abs() > threshold)
+    if bad.is_empty():
+        return
+    sample = bad.select(["date", "close", "ret"]).head(5).rows()
+    raise FetchError(
+        f"splice {asset_id}: {label} series has {bad.height} day(s) with "
+        f"|return| > {threshold:.0%} — implausible for any equity index, "
+        f"strongly suggests bad upstream data (yfinance is known to return "
+        f"half-priced/doubled values for `^XXX` indices and EURUSD=X on "
+        f"isolated dates). First 5: "
+        + "; ".join(f"{d} close={c:.4f} ret={r:+.3f}" for d, c, r in sample)
+    )
+
 
 def splice_at_inception(
     etf_long: pl.DataFrame,
@@ -42,8 +75,10 @@ def splice_at_inception(
     `[date, asset_id, close, source]` covering the union of dates.
 
     Raises `FetchError` if any precondition fails (empty inputs, no overlap
-    around the inception date, non-positive proxy close). A user-configured
-    proxy that can't be spliced is a real problem — not silently masked.
+    around the inception date, non-positive proxy close, or any single-day
+    return on either segment exceeds 30% — the plausibility ceiling for an
+    equity index. A user-configured proxy that can't be spliced is a real
+    problem — not silently masked.
     """
     if etf_long.is_empty():
         raise FetchError(
@@ -51,6 +86,12 @@ def splice_at_inception(
         )
     if proxy_long.is_empty():
         raise FetchError(f"splice {asset_id}: proxy series is empty (check the index_proxy ticker)")
+
+    # Validate before scaling so the error message points at the raw upstream
+    # series. The proxy-side check catches yfinance bad-day artefacts; the
+    # ETF-side check catches the same on the live product (rarer but possible).
+    _validate_returns_or_raise(proxy_long, asset_id, "proxy")
+    _validate_returns_or_raise(etf_long, asset_id, "live ETF")
 
     etf_at = etf_long.filter(pl.col("date") >= inception).sort("date").head(1)
     proxy_at = proxy_long.filter(pl.col("date") <= inception).sort("date").tail(1)
@@ -105,14 +146,28 @@ def _convert(idx_local: pl.DataFrame, fx_per_eur: pl.DataFrame, ccy: str) -> pl.
     """Local-CCY index series → EUR. fx_per_eur is units-of-local-ccy per 1 EUR.
     Raises `FetchError` rather than silently returning empty when an input
     is empty or the inner-join produces no overlapping dates.
+
+    The FX series is independently sanity-checked for impossible single-day
+    moves: a bad day on EURUSD=X (yfinance has been observed to return
+    half/double values on isolated dates) silently corrupts every cross-
+    currency proxy by exactly the same factor. Catching it at the FX layer
+    is more informative than detecting the resulting equity-curve spike
+    downstream.
     """
     if idx_local.is_empty():
         raise FetchError(f"{ccy}→EUR: index series is empty")
     if fx_per_eur.is_empty():
         raise FetchError(f"{ccy}→EUR: FX series is empty (check EUR{ccy}=X yfinance ticker)")
+
+    # Validate the FX series itself — a 30% one-day move in a major-pair
+    # spot rate is implausible (worst-ever EURUSD daily move ≈ 4-5%).
+    _validate_returns_or_raise(fx_per_eur, asset_id=f"EUR{ccy}=X", label="FX")
+
     fx = fx_per_eur.select(["date", pl.col("close").alias("_fx")])
     joined = idx_local.join(fx, on="date", how="inner")
-    joined = joined.filter(pl.col("_fx") > 0)
+    joined = joined.filter(
+        (pl.col("_fx") > 0) & pl.col("_fx").is_not_nan() & pl.col("close").is_not_nan()
+    )
     if joined.is_empty():
         raise FetchError(
             f"{ccy}→EUR: no overlapping dates between index and FX series after positivity filter"
