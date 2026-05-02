@@ -8,6 +8,7 @@ Two pages produced:
 from __future__ import annotations
 
 import json
+import math
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -19,7 +20,7 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 from .backtest import BacktestResult
 from .correlations import CorrelationMatrix, GroupRepresentative
 from .metrics import avg_pairwise_correlation, compute, drawdown_series
-from .universe import Config
+from .universe import Config, Strategy
 
 TEMPLATES_DIR = Path(__file__).parent / "templates"
 
@@ -53,12 +54,14 @@ def render(
     output_path.mkdir(parents=True, exist_ok=True)
     template = _ENV.get_template(template_name)
 
-    summary = _summary(results, config)
-    signals = [_signal_row(r, config) for r in results]
-    metrics_rows = [_metrics_row(r, config, prices_long) for r in results]
+    strategy_by_name: dict[str, Strategy] = {s.name: s for s in config.strategies}
 
-    equity_traces, equity_layout = _equity_figure(results, config)
-    drawdown_traces, drawdown_layout = _drawdown_figure(results, config)
+    summary = _summary(results, config)
+    signals = [_signal_row(r, config, strategy_by_name) for r in results]
+    metrics_rows = [_metrics_row(r, strategy_by_name, prices_long) for r in results]
+
+    equity_traces, equity_layout = _equity_figure(results, strategy_by_name)
+    drawdown_traces, drawdown_layout = _drawdown_figure(results, strategy_by_name)
 
     rendered = template.render(
         summary=summary,
@@ -86,13 +89,17 @@ def _summary(results: list[BacktestResult], config: Config) -> dict[str, object]
     }
 
 
-def _signal_row(result: BacktestResult, config: Config) -> dict[str, object]:
-    cadence_map = {
-        "weekly_sunday": "weekly",
-        "biweekly_sunday": "biweekly",
-        "monthly_first_sunday": "monthly",
-    }
-    strategy = next(s for s in config.strategies if s.name == result.strategy_name)
+_CADENCE_LABELS: dict[str, str] = {
+    "weekly_sunday": "weekly",
+    "biweekly_sunday": "biweekly",
+    "monthly_first_sunday": "monthly",
+}
+
+
+def _signal_row(
+    result: BacktestResult, config: Config, strategy_by_name: dict[str, Strategy]
+) -> dict[str, object]:
+    strategy = strategy_by_name[result.strategy_name]
     asset_rows = _asset_rows(strategy, config)
 
     last = result.rebalances[-1] if result.rebalances else None
@@ -107,7 +114,7 @@ def _signal_row(result: BacktestResult, config: Config) -> dict[str, object]:
 
     return {
         "name": result.strategy_name,
-        "cadence": cadence_map.get(strategy.rebalance, strategy.rebalance),
+        "cadence": _CADENCE_LABELS.get(strategy.rebalance, strategy.rebalance),
         "last_rebalance": last.rebalance_date.isoformat() if last else "—",
         "previous_rows": _chip_rows(asset_rows, prev.weights if prev else {}),
         "current_rows": _chip_rows(asset_rows, last.weights if last else {}),
@@ -211,7 +218,7 @@ def _weight_bracket(pct: int) -> str:
 
 def _metrics_row(
     result: BacktestResult,
-    config: Config,
+    strategy_by_name: dict[str, Strategy],
     prices_long: pl.DataFrame | None,
 ) -> dict[str, object]:
     m = compute(result.equity)
@@ -222,7 +229,7 @@ def _metrics_row(
     # Average pairwise correlation of the strategy's risky universe (excludes
     # safe asset since the absolute filter already gates on it). Lower = more
     # decorrelated = better diversification potential.
-    strategy = next(s for s in config.strategies if s.name == result.strategy_name)
+    strategy = strategy_by_name[result.strategy_name]
     avg_corr = (
         avg_pairwise_correlation(prices_long, list(strategy.asset_ids))
         if prices_long is not None
@@ -236,7 +243,7 @@ def _metrics_row(
     }
 
 
-def _strategy_line_style(strategy_name: str, config: Config) -> dict[str, Any]:
+def _strategy_line_style(strategy: Strategy | None) -> dict[str, Any]:
     """Return Plotly `line` properties keyed by strategy family.
 
     All lines share the same 1px width — wider lines were hard to read
@@ -245,27 +252,22 @@ def _strategy_line_style(strategy_name: str, config: Config) -> dict[str, Any]:
         classic dual momentum     dash     (single lookback override)
         accelerated dual momentum dot      (mean of 1m/3m/6m, default)
     """
-    strategy = next((s for s in config.strategies if s.name == strategy_name), None)
-    if strategy is None:
-        return {"width": 1, "dash": "solid"}
-    if strategy.mode == "buy_and_hold":
+    if strategy is None or strategy.mode == "buy_and_hold":
         return {"width": 1, "dash": "solid"}
     if strategy.lookbacks_days is not None:
-        # Single-lookback override → classic Antonacci dual momentum
         return {"width": 1, "dash": "dash"}
-    # Default rotation = mean 1m/3m/6m → accelerated dual momentum
     return {"width": 1, "dash": "dot"}
 
 
 def _equity_figure(
     results: list[BacktestResult],
-    config: Config,
+    strategy_by_name: dict[str, Strategy],
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     traces: list[dict[str, Any]] = []
     for i, r in enumerate(results):
         if r.equity.is_empty():
             continue
-        style = _strategy_line_style(r.strategy_name, config)
+        style = _strategy_line_style(strategy_by_name.get(r.strategy_name))
         traces.append(
             {
                 "type": "scatter",
@@ -284,14 +286,14 @@ def _equity_figure(
 
 def _drawdown_figure(
     results: list[BacktestResult],
-    config: Config,
+    strategy_by_name: dict[str, Strategy],
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     traces: list[dict[str, Any]] = []
     for i, r in enumerate(results):
         if r.equity.is_empty():
             continue
         dd = drawdown_series(r.equity)
-        style = _strategy_line_style(r.strategy_name, config)
+        style = _strategy_line_style(strategy_by_name.get(r.strategy_name))
         # Drawdown lines stay slimmer than equity-curve lines so the chart
         # doesn't get visually cluttered, but the dash pattern is preserved.
         dd_style = {"width": max(1.0, style["width"] * 0.75), "dash": style["dash"]}
@@ -399,7 +401,7 @@ def _heatmap_figure(cm: CorrelationMatrix) -> tuple[list[dict[str, Any]], dict[s
         "type": "heatmap",
         "x": cm.asset_ids,
         "y": cm.asset_ids,
-        "z": [[None if math_isnan(v) else float(v) for v in row] for row in z],
+        "z": [[None if isinstance(v, float) and math.isnan(v) else float(v) for v in row] for row in z],
         "zmin": -1,
         "zmax": 1,
         "colorscale": [
@@ -427,6 +429,3 @@ def _heatmap_figure(cm: CorrelationMatrix) -> tuple[list[dict[str, Any]], dict[s
     return [trace], layout
 
 
-def math_isnan(x: object) -> bool:
-    """True if x is a Python float NaN (or numpy NaN coerced to float)."""
-    return isinstance(x, float) and x != x  # NaN != NaN by IEEE 754
