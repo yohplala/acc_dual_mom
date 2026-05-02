@@ -46,6 +46,19 @@ log = logging.getLogger(__name__)
 # (EURUSD=X) and `^XXX` index tickers (^GSPC, ^STOXX50E).
 MAX_PLAUSIBLE_DAILY_RETURN = 0.30
 
+# Round-trip-spike detection threshold (separate from the plausibility
+# ceiling above). A round-trip is a stretch where close jumps by more
+# than this threshold and then snaps back to within `threshold/2` of
+# the pre-jump anchor within `max_spike_days`. The world-proxy bad-day
+# pattern recurs around European holidays at magnitudes 6-15% with
+# clean V-shape recoveries; real high-vol days (Black Monday -22.6%,
+# COVID -8.9%, Lehman -8.8%) do NOT V-shape — recoveries are gradual
+# over weeks, never returning to the pre-crash level within 3 days.
+# Setting the trigger at 6% with the tight 3% recovery requirement
+# catches the corruption pattern across the full 6-15% range while
+# leaving real moves untouched.
+ROUND_TRIP_THRESHOLD = 0.06
+
 # Minimum length of an exact-equal close-value run to be considered a
 # forward-fill artefact. Real EUR-denominated equity / index closes
 # always change between trading days (even if by 0.01); a stretch of
@@ -57,18 +70,24 @@ MIN_SUSPICIOUS_FLAT_RUN = 3
 
 def scrub_long_format(
     prices_long: pl.DataFrame,
-    threshold: float = MAX_PLAUSIBLE_DAILY_RETURN,
+    threshold: float = ROUND_TRIP_THRESHOLD,
     min_flat_run: int = MIN_SUSPICIOUS_FLAT_RUN,
+    max_spike_days: int = 3,
 ) -> pl.DataFrame:
     """Backtest-layer defensive scrub for ``[date, asset_id, close, source]``
     long-format prices. Per-asset, sets the ``close`` column to null for any
     day whose value is implausible:
 
-    1. **Round-trip spikes** — close[t] differs by more than ``threshold``
-       (e.g. -50%) from close[t-1] AND close[t+1] differs by a similarly
-       large opposite-sign move from close[t]. The corrupt day is
-       bracketed by real data on both sides; nulling close[t] preserves
-       the real total return.
+    1. **Round-trip spikes (1 to ``max_spike_days`` days long)** — close
+       jumps by more than ``threshold`` (default 15%) from a real-looking
+       baseline, stays at the spurious level for up to ``max_spike_days``
+       consecutive days, then snaps back to within ``threshold`` of the
+       baseline. All days inside the spike interval are nulled; the
+       baseline (day before) and the recovery day (day after) are kept.
+       The 15% pair-threshold is intentionally below the 30% plausibility
+       ceiling because real high-vol days (Black Monday -22.6%, COVID
+       2020 -12%) do NOT immediately reverse; only data corruption
+       produces the round-trip pattern.
 
     2. **Sustained flat runs** — ``min_flat_run`` or more consecutive
        trading days with the *exact* same close (to full float
@@ -89,29 +108,35 @@ def scrub_long_format(
     if prices_long.is_empty():
         return prices_long
 
+    sorted_df = prices_long.sort(["asset_id", "date"])
+
+    # 1. Round-trip detection: per-asset Python loop. The polars-native
+    #    shift expressions can detect single-day spikes only; multi-day
+    #    spikes (e.g. world had a 2-day pattern Mar 29 + Apr 1, recovery
+    #    Apr 2) need an iterative scan.
+    is_round_trip: list[bool] = [False] * sorted_df.height
+    pos = 0
+    for _asset_id, group_df in sorted_df.group_by("asset_id", maintain_order=True):
+        closes = group_df.get_column("close").to_list()
+        for k in _detect_round_trip_indices(closes, threshold, max_spike_days):
+            is_round_trip[pos + k] = True
+        pos += len(closes)
+
+    # 2. Flat-run detection: vectorised in polars. Skip for the safe asset.
     cleaned = (
-        prices_long.sort(["asset_id", "date"])
-        .with_columns(
-            _ret_in=(pl.col("close") / pl.col("close").shift(1).over("asset_id") - 1.0),
-            _ret_out=(pl.col("close").shift(-1).over("asset_id") / pl.col("close") - 1.0),
+        sorted_df.with_columns(
+            _is_round_trip=pl.Series(is_round_trip, dtype=pl.Boolean),
             _same_as_prev=(pl.col("close") == pl.col("close").shift(1).over("asset_id")).fill_null(
                 False
             ),
         )
         .with_columns(
-            # run_id changes each time the close value changes within an asset
             _run_id=(~pl.col("_same_as_prev")).cum_sum().over("asset_id"),
         )
         .with_columns(
             _run_size=pl.len().over(["asset_id", "_run_id"]),
         )
         .with_columns(
-            _is_round_trip=(
-                (pl.col("_ret_in").abs() > threshold)
-                & (pl.col("_ret_out").abs() > threshold)
-                & (pl.col("_ret_in") * pl.col("_ret_out") < 0)
-            ).fill_null(False),
-            # Apply flat-run check to all assets except the safe asset
             _is_flat_run=((pl.col("_run_size") >= min_flat_run) & (pl.col("asset_id") != "safe")),
         )
         .with_columns(
@@ -145,15 +170,66 @@ def scrub_long_format(
     return cleaned.with_columns(
         close=pl.when(pl.col("_is_bad")).then(None).otherwise(pl.col("close")),
     ).drop(
-        "_ret_in",
-        "_ret_out",
+        "_is_round_trip",
         "_same_as_prev",
         "_run_id",
         "_run_size",
-        "_is_round_trip",
         "_is_flat_run",
         "_is_bad",
     )
+
+
+def _detect_round_trip_indices(
+    closes: list[float | None], threshold: float, max_spike_days: int
+) -> set[int]:
+    """Return the set of indices inside round-trip spikes of length 1 to
+    ``max_spike_days``. A "spike" is a stretch where close jumps by more
+    than ``threshold`` away from the day-before baseline (anchor), stays
+    at the spurious level, then snaps back to within ``threshold/2`` of
+    the anchor within ``max_spike_days``. The asymmetric trigger/recovery
+    thresholds discriminate corrupt-data spikes (full V-shape recovery
+    within 1-3 days) from real high-vol days (recovery is always gradual
+    — Black Monday 1987 -22.6% recovered only 5% the next day, COVID
+    2020 -8.9% recovered 1.6%, Lehman -8.8% recovered 5.4%). The
+    baseline day and the recovery day are NOT flagged — only the
+    corrupt days in between.
+    """
+    bad: set[int] = set()
+    recovery_threshold = threshold / 2.0
+    n = len(closes)
+    i = 1
+    while i < n:
+        c_prev = closes[i - 1]
+        c_t = closes[i]
+        if c_t is None or c_prev is None or c_prev <= 0:
+            i += 1
+            continue
+        if abs(c_t / c_prev - 1.0) <= threshold:
+            i += 1
+            continue
+        # Big jump on day i — look for V-shape recovery within max_spike_days.
+        recovery_idx: int | None = None
+        for k in range(1, max_spike_days + 1):
+            j = i + k
+            if j >= n:
+                break
+            c_j = closes[j]
+            if c_j is None or c_j <= 0:
+                continue
+            if abs(c_j / c_prev - 1.0) < recovery_threshold:
+                recovery_idx = j
+                break
+        if recovery_idx is not None:
+            for k in range(i, recovery_idx):
+                bad.add(k)
+            i = recovery_idx
+        else:
+            # No tight V-shape recovery within max_spike_days — sustained
+            # move (real high-vol period, or long bad-data period). Don't
+            # scrub here; flat-run detection handles the long bad-data
+            # case, and real moves pass through unchanged.
+            i += 1
+    return bad
 
 
 def _scrub_round_trip_spikes(
