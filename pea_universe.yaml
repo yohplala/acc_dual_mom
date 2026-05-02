@@ -137,12 +137,16 @@ universe:
     est_spread_bps: 5                     # eurozone large-cap flagship, deep liquidity
     replication: synthetic
     inception: 2017-09-29
-    index_proxy: MSE.PA                   # Amundi EURO STOXX 50 II UCITS ETF Acc Paris, since 2008-01-02
-    index_proxy_kind: eur_tr
-    # MSE.PA (EUR-native, sister Amundi tracker on the same EURO STOXX 50
-    # index) replaces CSX5.AS (yfinance returns 2014-04-28 only, despite
-    # the 2010 listing — likely Yahoo data gap). Pre-Lehman GFC peak
-    # (Jan 2008) is captured. Identical underlying index, no FX conversion.
+    # Multi-stage chain, cleanest first. CSX5.AS is the iShares "Core"
+    # share class (TER ~0.10%, EUR Acc) — same product family as the live
+    # C50.PA (also "Core", TER 0.09%). MSE.PA is the older Amundi "II"
+    # share class (TER 0.20%, EUR Acc) — same EURO STOXX 50 index but
+    # higher fee drag on net-of-TER returns. Post-2014 history uses the
+    # closer-fee Core proxy; pre-2014 falls back to MSE.PA to capture
+    # the Jan 2008 pre-Lehman peak.
+    index_proxy_chain:
+      - { ticker: CSX5.AS, kind: eur_tr }  # iShares Core EURO STOXX 50 UCITS ETF EUR Acc, since 2014-04-28
+      - { ticker: MSE.PA,  kind: eur_tr }  # Amundi EURO STOXX 50 II UCITS ETF Acc, since 2008-01-02
   - { id: emu_core_eur_dist,    name: Amundi Core EURO STOXX 50 EUR Dist,           isin: LU1681047319, currency: EUR, ter_pct: 0.09, sfdr: Article 6, category: Eurozone,     yahoo: null }
   - { id: emu_core_usd,         name: Amundi Core EURO STOXX 50 USD Acc,            isin: LU1681047400, currency: USD, ter_pct: 0.09, sfdr: Article 6, category: Eurozone,     yahoo: null }
   - { id: emu_ii_acc,           name: Amundi EURO STOXX 50 II UCITS ETF Acc,        isin: FR0007054358, currency: EUR, ter_pct: 0.20, sfdr: Article 6, category: Eurozone,     yahoo: MSE.PA }
@@ -256,13 +260,15 @@ universe:
     est_spread_bps: 25                    # EM exposure, somewhat thinner spread
     replication: synthetic
     inception: 2018-12-19
-    index_proxy: AAXJ                     # iShares MSCI All Country Asia ex Japan ETF, NASDAQ, since 2008-08-15
-    index_proxy_kind: usd_tr
-    # AAXJ (Asia ex-Japan, includes Hong Kong + Singapore — ~10% developed-
-    # Asia overlap on top of the China/Korea/Taiwan/India anchor that's also
-    # ~80% of EEMA) replaces EEMA (2012-02). 0.95 daily-return correlation
-    # with EEMA over the 14y overlap, 14y cumulative return within 9pp of
-    # EEMA's. Captures Lehman (Sep 2008) and the GFC trough (Mar 2009).
+    # Multi-stage chain, cleanest first. EEMA is the methodologically-pure
+    # MSCI EM Asia tracker (matches the live PAASI.PA exactly); AAXJ is
+    # the broader Asia ex-Japan (~10% developed-Asia drift via Hong Kong +
+    # Singapore on top of the China/Korea/Taiwan/India anchor that's also
+    # ~80% of EEMA). Post-2012 history uses the pure proxy; pre-2012
+    # falls back to AAXJ to capture Lehman + the 2009 trough.
+    index_proxy_chain:
+      - { ticker: EEMA, kind: usd_tr }    # iShares MSCI EM Asia ETF, NASDAQ, since 2012-02-09
+      - { ticker: AAXJ, kind: usd_tr }    # iShares MSCI AC Asia ex Japan ETF, NASDAQ, since 2008-08-15
   - { id: em_emea,              name: Amundi PEA Emergent EMEA ESG Transition Acc,  isin: FR0011440478, currency: EUR, ter_pct: 0.55, sfdr: Article 8, category: Emerging-EMEA, yahoo: null }
   - { id: em_latam,             name: Amundi PEA MSCI Emerging Latin America Acc,   isin: FR0013412004, currency: EUR, ter_pct: 0.30, sfdr: Article 8, category: Emerging-LatAm, yahoo: PALAT.PA, amundi_url: 'https://www.amundietf.fr/fr/particuliers/produits/equity/amundi-pea-msci-emerging-latin-america-selection-ucits-etf-acc/fr0013412004' }
 
@@ -277,8 +283,15 @@ universe:
     category: Sector-Banks
     est_spread_bps: 20                    # sector ETF, decent volume
     replication: synthetic
-    inception: 2006-08-25                 # native ex-Lyxor, covers full 2012-02 backtest window
-    # No index_proxy: BNK.PA's own history reaches before our 2012-02 backtest start.
+    # The fund's true launch was 2006-08-25 (native ex-Lyxor) and BNK.PA
+    # historically returned the full pre-2024 series from yfinance — but
+    # yfinance's data plumbing for BNK.PA regressed and now only returns
+    # rows from 2024-04-17 onwards. We splice from that practical
+    # availability date instead, with EXX1.DE as proxy: same underlying
+    # STOXX Europe 600 Banks index, EUR-native, full GFC coverage.
+    inception: 2024-04-17                 # yfinance practical first-data date for BNK.PA (real fund inception 2006-08-25)
+    index_proxy: EXX1.DE                  # iShares STOXX Europe 600 Banks UCITS DE EUR Acc, since 2008-01-02
+    index_proxy_kind: eur_tr
   - { id: sec_eu_banks_dist,    name: Amundi STOXX Europe 600 Banks Dist,           isin: LU2082996112, currency: EUR, ter_pct: 0.30, sfdr: Article 6, category: Sector-Banks, yahoo: null }
   - { id: sec_emu_banks,        name: Amundi Euro Stoxx Banks UCITS ETF Acc,        isin: LU1829219390, currency: EUR, ter_pct: 0.30, sfdr: Article 6, category: Sector-Banks, yahoo: null }
 
