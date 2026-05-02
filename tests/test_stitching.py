@@ -244,6 +244,41 @@ class TestScrubLongFormat:
         out = scrub_long_format(df)
         assert out.filter(pl.col("close").is_null()).height == 0
 
+    def test_two_day_spike_nulled(self) -> None:
+        # 2-day spike pattern observed in the world proxy: jump up on
+        # day t, stays high on day t+1, snaps back on day t+2. Both
+        # bogus days should be nulled, the recovery day preserved.
+        df = _long(date(2024, 1, 1), "x", [100.0, 100.5, 130.0, 130.0, 100.5, 101.0])
+        out = scrub_long_format(df).sort("date")
+        closes = out.get_column("close").to_list()
+        assert closes[1] == 100.5  # baseline preserved
+        assert closes[2] is None  # spike day 1 nulled
+        assert closes[3] is None  # spike day 2 nulled
+        assert closes[4] == 100.5  # recovery preserved (real)
+
+    def test_three_day_spike_nulled(self) -> None:
+        # 3-day spike: still inside max_spike_days=3 default.
+        df = _long(date(2024, 1, 1), "x", [100.0, 100.5, 130.0, 130.0, 130.0, 100.5])
+        out = scrub_long_format(df).sort("date")
+        closes = out.get_column("close").to_list()
+        assert closes[2] is None
+        assert closes[3] is None
+        assert closes[4] is None
+        assert closes[5] == 100.5  # recovery preserved
+
+    def test_no_v_shape_recovery_not_nulled(self) -> None:
+        # Real high-vol pattern (e.g. COVID 2020-03-12): big down-day,
+        # but next days continue down or only partially recover. NOT a
+        # round-trip; scrub must leave it alone.
+        df = _long(
+            date(2024, 1, 1),
+            "x",
+            [100.0, 100.0, 91.0, 92.5, 88.5, 90.0],  # -9% then partial moves, no V-shape
+        )
+        out = scrub_long_format(df)
+        # No recovery to within threshold/2 (3%) of anchor 100.0 → don't scrub.
+        assert out.filter(pl.col("close").is_null()).height == 0
+
     def test_per_asset_scrub(self) -> None:
         # Two assets with different patterns — scrub treats them independently.
         x = _long(date(2024, 1, 1), "x", [100.0, 100.0, 100.0, 100.0, 100.0])  # flat
