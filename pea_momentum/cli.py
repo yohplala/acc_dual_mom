@@ -68,9 +68,9 @@ def cmd_fetch(ctx: click.Context, start: str | None) -> None:
     show_default=True,
     help="ISO date for backtest start. Default 2008-08-15 — AAXJ's first "
     "trading day (the iShares MSCI All-Country Asia ex-Japan ETF that "
-    "proxies em_asia). Per-strategy backtests start later when their "
-    "asset slice includes a sleeve with shorter history (notably "
-    "topix_hedged via IJPE.L at 2010-09-30).",
+    "extends em_asia history pre-2012-02). em_asia is the binding "
+    "constraint among the active universe's stitched proxies; every "
+    "active strategy spans 2008-08+ at this default.",
 )
 @click.option("--end", default=None, help="ISO date for backtest end")
 @click.pass_context

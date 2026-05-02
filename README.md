@@ -93,12 +93,6 @@ Mirrors the [halvix](https://github.com/yohplala/halvix) pattern — orphan bran
 | CLI (`pea-mom`: fetch / backtest / signal / render / discover / render-correlations / run) | ✅ Complete |
 | Weekly cron + GitHub Pages deploy | ✅ Complete |
 
-### Backlog
-| Item | Status |
-|--------|--------|
-| Per-strategy detail pages | ⏳ Planned |
-| Continue filling `pea_universe.yaml` Yahoo tickers (currently 42 / 107) | ⏳ In progress |
-
 ## License
 
 [MIT](LICENSE)
