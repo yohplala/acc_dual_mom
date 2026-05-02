@@ -20,26 +20,14 @@ class Asset:
     # history backward before the ETF launched. None disables stitching for
     # this asset (history is limited to the ETF's own data).
     index_proxy: str | None = None
-    # Currency / return type of the proxy:
-    #   "eur_pr"  EUR-denominated price-return index (no FX conversion)
-    #   "usd_pr"  USD-denominated; converted via EURUSD=X
-    #   "jpy_pr"  JPY-denominated; converted via EURJPY=X
-    # NB: the kind tracks ONLY the FX-conversion path. Whether the underlying
-    # series is PR or TR depends on the chosen ticker (e.g. ^GSPC is PR, ^SPXTR
-    # is TR — both are USD-denominated and use the same FX path).
+    # FX-conversion path for the proxy series:
+    #   "eur_tr"  EUR-quoted total-return index (no FX needed)
+    #   "usd_tr"  USD-quoted total-return index, converted via EURUSD=X
+    # The kind tracks ONLY the FX-conversion path. Whether the underlying
+    # series is PR or TR depends on the chosen ticker.
     index_proxy_kind: str | None = None
     # ETF inception date — splice point between proxy and live ETF history.
     inception: date | None = None
-    # Where to fetch the proxy from: "yahoo" (yfinance, default) or "stooq"
-    # (CSV via Stooq's Data Portal). Stooq has TR variants for European
-    # indices that Yahoo lacks; Yahoo is preferred where TR is available
-    # (e.g. ^SPXTR / ^NDXTR / ^RUTTR for US, ^GDAXI for Germany).
-    index_proxy_source: str = "yahoo"
-    # Optional Yahoo fallback ticker if the primary `index_proxy` fetch fails
-    # (typical use: Stooq TR primary → Yahoo PR fallback to gracefully degrade
-    # from TR to PR rather than crash). When None, primary fetch failures
-    # propagate as FetchError so problems surface loudly.
-    index_proxy_fallback: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -154,8 +142,6 @@ def _parse(raw: dict[str, Any]) -> Config:
             index_proxy=a.get("index_proxy"),
             index_proxy_kind=a.get("index_proxy_kind"),
             inception=_parse_date(a.get("inception")),
-            index_proxy_source=a.get("index_proxy_source", "yahoo"),
-            index_proxy_fallback=a.get("index_proxy_fallback"),
         )
         for a in universe_raw["assets"]
     )

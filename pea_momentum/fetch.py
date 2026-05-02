@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import io
 import logging
-import os
 from datetime import date
 
 import httpx
@@ -35,16 +34,11 @@ ESTR_BASE_PRICE = 100.0
 ESTR_START = date(2019, 10, 2)
 """First €STR fixing date. Pre-this we splice EONIA."""
 
-YAHOO_FX = {
-    # `_pr` and `_tr` are purely semantic labels — the fetcher does no
-    # return-type math, only FX conversion. Whether the underlying series
-    # is price-return or total-return is determined by the chosen ticker.
-    "usd_pr": "EURUSD=X",
-    "usd_tr": "EURUSD=X",
-    "jpy_pr": "EURJPY=X",
-    "eur_pr": None,  # no FX needed
-    "eur_tr": None,  # no FX needed
-}
+# Supported `index_proxy_kind` values. The label encodes only the FX-conversion
+# path; whether the underlying series is PR or TR depends on the chosen ticker.
+PROXY_KIND_EUR_TR = "eur_tr"
+PROXY_KIND_USD_TR = "usd_tr"
+SUPPORTED_PROXY_KINDS: frozenset[str] = frozenset({PROXY_KIND_EUR_TR, PROXY_KIND_USD_TR})
 
 
 def fetch_all(config: Config, start: date | None = None) -> pl.DataFrame:
@@ -59,10 +53,9 @@ def fetch_all(config: Config, start: date | None = None) -> pl.DataFrame:
 def fetch_yahoo_with_optional_proxy(asset: Asset, start: date) -> pl.DataFrame:
     """Fetch the live ETF, then splice pre-inception index proxy if configured.
 
-    Proxy failures propagate as `FetchError` (loud failure) — the only silent
-    degradation is configured `index_proxy_fallback` inside `_fetch_proxy_in_eur`.
-    A configured proxy that can't be fetched should be fixed in YAML, not
-    masked by ETF-only history.
+    Proxy failures propagate as `FetchError` (loud failure) — a configured proxy
+    that can't be fetched should be fixed in YAML, not masked by ETF-only
+    history.
     """
     etf = fetch_yahoo(asset, start=start)
     if asset.index_proxy is None or asset.inception is None:
@@ -72,57 +65,25 @@ def fetch_yahoo_with_optional_proxy(asset: Asset, start: date) -> pl.DataFrame:
 
 
 def _fetch_proxy_in_eur(asset: Asset, start: date) -> pl.DataFrame:
-    """Fetch the proxy index and convert to EUR if needed. Returns [date, close].
+    """Fetch the proxy index from Yahoo and convert to EUR if needed.
 
-    Tries the primary `index_proxy` (via the configured `index_proxy_source`).
-    If that fails AND `index_proxy_fallback` is configured, retries with the
-    fallback as a Yahoo ticker. If no fallback is configured, the primary
-    failure propagates — surfaces broken tickers / API outages immediately
-    rather than silently degrading to ETF-only history.
+    Returns `[date, close]`. Raises `FetchError` if the proxy ticker is missing
+    or the kind is unsupported.
     """
-    kind = asset.index_proxy_kind or "eur_pr"
-    if kind not in YAHOO_FX:
-        raise FetchError(f"Unknown index_proxy_kind {kind!r} for asset {asset.id}")
     if asset.index_proxy is None:
         raise FetchError(f"Asset {asset.id} has no index_proxy configured")
-
-    try:
-        idx = _fetch_proxy_primary(asset, start)
-    except FetchError as exc:
-        if asset.index_proxy_fallback is None:
-            raise
-        log.warning(
-            "primary proxy %s (%s) failed for %s — falling back to Yahoo %s: %s",
-            asset.index_proxy,
-            asset.index_proxy_source,
-            asset.id,
-            asset.index_proxy_fallback,
-            exc,
+    kind = asset.index_proxy_kind or PROXY_KIND_EUR_TR
+    if kind not in SUPPORTED_PROXY_KINDS:
+        raise FetchError(
+            f"Unsupported index_proxy_kind {kind!r} for asset {asset.id} "
+            f"(supported: {sorted(SUPPORTED_PROXY_KINDS)})"
         )
-        idx = _fetch_yahoo_close_only(asset.index_proxy_fallback, start=start)
 
-    fx_ticker = YAHOO_FX[kind]
-    if fx_ticker is None:
+    idx = _fetch_yahoo_close_only(asset.index_proxy, start=start)
+    if kind == PROXY_KIND_EUR_TR:
         return idx
-
-    fx = _fetch_yahoo_close_only(fx_ticker, start=start)
-    if kind in ("usd_pr", "usd_tr"):
-        return stitching.usd_to_eur(idx, fx)
-    if kind == "jpy_pr":
-        return stitching.jpy_to_eur(idx, fx)
-    raise FetchError(f"FX conversion not implemented for kind {kind!r}")
-
-
-def _fetch_proxy_primary(asset: Asset, start: date) -> pl.DataFrame:
-    """Dispatch the primary proxy fetch by configured source. Raises FetchError
-    on failure — caller decides whether to engage `index_proxy_fallback`."""
-    if asset.index_proxy_source == "stooq":
-        return _fetch_stooq_close_only(asset.index_proxy, start=start)  # type: ignore[arg-type]
-    if asset.index_proxy_source == "yahoo":
-        return _fetch_yahoo_close_only(asset.index_proxy, start=start)  # type: ignore[arg-type]
-    raise FetchError(
-        f"Unknown index_proxy_source {asset.index_proxy_source!r} for asset {asset.id}"
-    )
+    fx = _fetch_yahoo_close_only("EURUSD=X", start=start)
+    return stitching.usd_to_eur(idx, fx)
 
 
 def _fetch_yahoo_close_only(ticker: str, start: date) -> pl.DataFrame:
@@ -147,78 +108,6 @@ def _fetch_yahoo_close_only(ticker: str, start: date) -> pl.DataFrame:
         pl.DataFrame({"date": dates, "close": closes})
         .with_columns(pl.col("date").cast(pl.Date))
         .filter(pl.col("close").is_not_null() & pl.col("close").is_not_nan())
-        .sort("date")
-    )
-
-
-STOOQ_BASE_URL = "https://stooq.com/q/d/l/"
-"""Stooq's daily-CSV endpoint. Pattern:
-    https://stooq.com/q/d/l/?s=<ticker>&d1=<YYYYMMDD>&d2=<YYYYMMDD>&i=d&apikey=<key>
-Returns CSV with header `Date,Open,High,Low,Close,Volume`.
-
-The free `apikey` is obtained at https://stooq.com/q/d/?s=aapl.us&get_apikey
-(captcha required, one-time). Without a key, requests return an HTML
-"Get your apikey" page instead of CSV — the fetcher detects this as a
-soft failure and engages `index_proxy_fallback`.
-"""
-
-STOOQ_API_KEY_ENV = "STOOQ_API_KEY"
-"""Environment variable name for the Stooq API key. In CI it's wired through
-`weekly-update.yml` from a GitHub Actions secret of the same name."""
-
-
-def _fetch_stooq_close_only(ticker: str, start: date) -> pl.DataFrame:
-    """Fetch a Stooq ticker via CSV download and return [date, close].
-
-    Stooq has TR / Reinvested variants for many European indices that Yahoo
-    lacks (^stoxxr, ^sx5gr, etc). The CSV endpoint accepts a ticker and date
-    range — we pull the full range and filter to `start` afterwards.
-
-    Reads the API key from `$STOOQ_API_KEY` and appends it to the request.
-    Without the key Stooq's free CSV endpoint returns an HTML apikey-prompt
-    page instead of CSV (gated since early 2026).
-    """
-    end = date.today()
-    params: dict[str, str] = {
-        "s": ticker,
-        "d1": start.strftime("%Y%m%d"),
-        "d2": end.strftime("%Y%m%d"),
-        "i": "d",
-    }
-    api_key = os.getenv(STOOQ_API_KEY_ENV)
-    if api_key:
-        params["apikey"] = api_key
-    log.info("fetching proxy %s from Stooq since %s", ticker, start)
-    try:
-        with httpx.Client(timeout=30.0, follow_redirects=True) as client:
-            r = client.get(STOOQ_BASE_URL, params=params, headers={"Accept": "text/csv"})
-            r.raise_for_status()
-    except httpx.HTTPError as exc:
-        # ConnectTimeout / ReadTimeout / network error / 4xx-5xx — convert to
-        # FetchError so the caller's `index_proxy_fallback` chain engages
-        # instead of crashing the whole fetch.
-        raise FetchError(f"Stooq fetch for {ticker!r} failed: {exc}") from exc
-
-    body = r.content
-    # Stooq's free CSV endpoint started gating with API-key prompts in early
-    # 2026 — non-CSV responses (HTML "Get your apikey" page) are now common.
-    # Real CSV starts with "Date," — anything else is a soft failure.
-    if not body.lstrip().lower().startswith(b"date,"):
-        raise FetchError(
-            f"Stooq returned non-CSV response for {ticker!r} (first 80 bytes: {body[:80]!r})"
-        )
-
-    raw = pl.read_csv(io.BytesIO(body))
-    if "Date" not in raw.columns or "Close" not in raw.columns:
-        raise FetchError(f"unexpected Stooq CSV columns for {ticker}: {raw.columns}")
-
-    return (
-        raw.select(
-            pl.col("Date").str.strptime(pl.Date, format="%Y-%m-%d").alias("date"),
-            pl.col("Close").cast(pl.Float64).alias("close"),
-        )
-        .filter(pl.col("close").is_not_null() & pl.col("close").is_not_nan())
-        .filter(pl.col("date") >= start)
         .sort("date")
     )
 
