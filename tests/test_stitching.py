@@ -8,7 +8,12 @@ import polars as pl
 import pytest
 
 from pea_momentum.errors import FetchError
-from pea_momentum.stitching import jpy_to_eur, splice_at_inception, usd_to_eur
+from pea_momentum.stitching import (
+    jpy_to_eur,
+    scrub_long_format,
+    splice_at_inception,
+    usd_to_eur,
+)
 
 
 def _series(start: date, levels: list[float]) -> pl.DataFrame:
@@ -180,3 +185,73 @@ class TestRoundTripSpikeScrub:
         assert out.height == 7  # 4 pre + 3 post — no rows lost
         # No nulls inserted
         assert out.filter(pl.col("close").is_null()).height == 0
+
+
+def _long(start: date, asset_id: str, closes: list[float]) -> pl.DataFrame:
+    """Build a long-format `[date, asset_id, close, source]` series."""
+    return pl.DataFrame(
+        {
+            "date": [start + timedelta(days=i) for i in range(len(closes))],
+            "asset_id": [asset_id] * len(closes),
+            "close": closes,
+            "source": ["yfinance"] * len(closes),
+        }
+    ).with_columns(pl.col("date").cast(pl.Date))
+
+
+class TestScrubLongFormat:
+    """Backtest-layer scrub catches both round-trip spikes and sustained
+    flat-run forward-fill artefacts in long-format prices."""
+
+    def test_round_trip_spike_nulled(self) -> None:
+        df = _long(date(2024, 1, 1), "x", [100.0, 100.5, 50.0, 100.5, 101.0])
+        out = scrub_long_format(df).sort("date")
+        # Day 3 (50.0) is the spike. Day 4 (back to 100.5) is the recovery.
+        # Only day 3's close should be nulled.
+        closes = out.get_column("close").to_list()
+        assert closes[2] is None  # the spike
+        assert closes[1] == 100.5  # before spike — preserved
+        assert closes[3] == 100.5  # after spike — preserved (real recovery day)
+
+    def test_flat_run_nulled(self) -> None:
+        # 5-day run of identical prices — clearly a forward-fill artefact.
+        df = _long(date(2024, 1, 1), "x", [100.0, 100.0, 100.0, 100.0, 100.0, 102.0])
+        out = scrub_long_format(df).sort("date")
+        closes = out.get_column("close").to_list()
+        # First 5 days are the flat run — all nulled.
+        assert all(c is None for c in closes[:5])
+        # Day 6 (different value) is preserved as real.
+        assert closes[5] == 102.0
+
+    def test_short_flat_run_not_nulled(self) -> None:
+        # 2-day "flat run" (just one repeat) — could be coincidence, not nulled.
+        df = _long(date(2024, 1, 1), "x", [100.0, 100.0, 101.0, 102.0])
+        out = scrub_long_format(df).sort("date")
+        # Default min_flat_run=3, so this 2-row run is preserved.
+        assert out.filter(pl.col("close").is_null()).height == 0
+
+    def test_safe_asset_exempt_from_flat_run_check(self) -> None:
+        # The synthetic safe-asset series is exempt — €STR/EONIA can in
+        # principle have very small or zero days that produce identical
+        # decimals. We don't want to scrub the safe asset's history.
+        df = _long(date(2024, 1, 1), "safe", [100.0, 100.0, 100.0, 100.0, 100.0])
+        out = scrub_long_format(df)
+        assert out.filter(pl.col("close").is_null()).height == 0
+
+    def test_normal_series_passes_unchanged(self) -> None:
+        # Normal varying prices — nothing should be scrubbed.
+        df = _long(date(2024, 1, 1), "x", [100.0, 101.0, 99.5, 102.0, 100.5, 103.0])
+        out = scrub_long_format(df)
+        assert out.filter(pl.col("close").is_null()).height == 0
+
+    def test_per_asset_scrub(self) -> None:
+        # Two assets with different patterns — scrub treats them independently.
+        x = _long(date(2024, 1, 1), "x", [100.0, 100.0, 100.0, 100.0, 100.0])  # flat
+        y = _long(date(2024, 1, 1), "y", [50.0, 51.0, 52.0, 53.0, 54.0])  # normal
+        out = scrub_long_format(pl.concat([x, y]))
+        x_out = out.filter(pl.col("asset_id") == "x")
+        y_out = out.filter(pl.col("asset_id") == "y")
+        # x: all 5 days nulled (flat run)
+        assert x_out.filter(pl.col("close").is_null()).height == 5
+        # y: nothing nulled (normal series)
+        assert y_out.filter(pl.col("close").is_null()).height == 0

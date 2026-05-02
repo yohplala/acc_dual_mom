@@ -20,6 +20,7 @@ from datetime import date
 
 import polars as pl
 
+from . import stitching
 from .allocate import SAFE_ASSET_KEY, allocate
 from .schedule import fill_date, rebalance_dates, signal_date
 from .score import score_at
@@ -80,6 +81,25 @@ def run(
     asset_ids = list(strategy.asset_ids)
     safe_id = config.safe_asset.id
     all_ids = [*asset_ids, safe_id]
+
+    # Defensive scrub: even if upstream prices.parquet has bad data
+    # (round-trip spikes from yfinance bad days, or sustained-flat
+    # forward-fill artefacts from older fetch versions), null those
+    # closes here. Skipping this used to produce phantom equity-curve
+    # spikes whose return-cancellation only worked at single-asset
+    # weight=1; multi-asset portfolios accumulated permanent gains
+    # from the spike+recovery pair.
+    #
+    # After scrubbing, forward-fill per-asset so the long-format series
+    # has no nulls — `score_at` and other downstream consumers operate
+    # on the long format and would otherwise trip on null closes. The
+    # wide-format `forward_fill` below is redundant after this but
+    # left in place for cross-asset calendar alignment (asset A
+    # doesn't trade on a date asset B does).
+    prices_long = stitching.scrub_long_format(prices_long)
+    prices_long = prices_long.sort(["asset_id", "date"]).with_columns(
+        close=pl.col("close").forward_fill().over("asset_id"),
+    )
 
     wide = (
         prices_wide(prices_long, all_ids)

@@ -46,6 +46,115 @@ log = logging.getLogger(__name__)
 # (EURUSD=X) and `^XXX` index tickers (^GSPC, ^STOXX50E).
 MAX_PLAUSIBLE_DAILY_RETURN = 0.30
 
+# Minimum length of an exact-equal close-value run to be considered a
+# forward-fill artefact. Real EUR-denominated equity / index closes
+# always change between trading days (even if by 0.01); a stretch of
+# >= 3 consecutive identical decimals is statistically implausible.
+# Some legacy data on the prices-data branch has 162-day flat runs
+# from a previous version of the FX-conversion path; this catches them.
+MIN_SUSPICIOUS_FLAT_RUN = 3
+
+
+def scrub_long_format(
+    prices_long: pl.DataFrame,
+    threshold: float = MAX_PLAUSIBLE_DAILY_RETURN,
+    min_flat_run: int = MIN_SUSPICIOUS_FLAT_RUN,
+) -> pl.DataFrame:
+    """Backtest-layer defensive scrub for ``[date, asset_id, close, source]``
+    long-format prices. Per-asset, sets the ``close`` column to null for any
+    day whose value is implausible:
+
+    1. **Round-trip spikes** — close[t] differs by more than ``threshold``
+       (e.g. -50%) from close[t-1] AND close[t+1] differs by a similarly
+       large opposite-sign move from close[t]. The corrupt day is
+       bracketed by real data on both sides; nulling close[t] preserves
+       the real total return.
+
+    2. **Sustained flat runs** — ``min_flat_run`` or more consecutive
+       trading days with the *exact* same close (to full float
+       precision). This is the signature of forward-fill artefacts in
+       the historical fetch pipeline — real equity prices never sit at
+       identical decimal values across multi-day stretches.
+
+    Backtest's existing ``forward_fill`` on the wide-format pivot
+    absorbs the nulls (carrying the previous valid close), so the
+    asset's daily return becomes 0% on the bad days and resumes
+    normally on the next valid day. Total return preserved, vol /
+    Sharpe / Max DD corrected.
+
+    The safe asset is exempt from the flat-run check (synthetic series
+    can theoretically have very small or zero rate days, though in
+    practice €STR/EONIA always vary).
+    """
+    if prices_long.is_empty():
+        return prices_long
+
+    cleaned = (
+        prices_long.sort(["asset_id", "date"])
+        .with_columns(
+            _ret_in=(pl.col("close") / pl.col("close").shift(1).over("asset_id") - 1.0),
+            _ret_out=(pl.col("close").shift(-1).over("asset_id") / pl.col("close") - 1.0),
+            _same_as_prev=(pl.col("close") == pl.col("close").shift(1).over("asset_id")).fill_null(
+                False
+            ),
+        )
+        .with_columns(
+            # run_id changes each time the close value changes within an asset
+            _run_id=(~pl.col("_same_as_prev")).cum_sum().over("asset_id"),
+        )
+        .with_columns(
+            _run_size=pl.len().over(["asset_id", "_run_id"]),
+        )
+        .with_columns(
+            _is_round_trip=(
+                (pl.col("_ret_in").abs() > threshold)
+                & (pl.col("_ret_out").abs() > threshold)
+                & (pl.col("_ret_in") * pl.col("_ret_out") < 0)
+            ).fill_null(False),
+            # Apply flat-run check to all assets except the safe asset
+            _is_flat_run=((pl.col("_run_size") >= min_flat_run) & (pl.col("asset_id") != "safe")),
+        )
+        .with_columns(
+            _is_bad=(pl.col("_is_round_trip") | pl.col("_is_flat_run")),
+        )
+    )
+
+    n_round_trip = cleaned.filter(pl.col("_is_round_trip")).height
+    n_flat_run = cleaned.filter(pl.col("_is_flat_run")).height
+    if n_round_trip + n_flat_run > 0:
+        per_asset = (
+            cleaned.filter(pl.col("_is_bad"))
+            .group_by("asset_id")
+            .agg(
+                pl.col("_is_round_trip").sum().alias("rt"),
+                pl.col("_is_flat_run").sum().alias("ff"),
+            )
+            .sort("asset_id")
+        )
+        details = "; ".join(
+            f"{r['asset_id']} (round-trip={r['rt']}, flat={r['ff']})"
+            for r in per_asset.iter_rows(named=True)
+        )
+        log.warning(
+            "scrub_long_format: nulled %d round-trip spike(s) + %d flat-run day(s). %s",
+            n_round_trip,
+            n_flat_run,
+            details,
+        )
+
+    return cleaned.with_columns(
+        close=pl.when(pl.col("_is_bad")).then(None).otherwise(pl.col("close")),
+    ).drop(
+        "_ret_in",
+        "_ret_out",
+        "_same_as_prev",
+        "_run_id",
+        "_run_size",
+        "_is_round_trip",
+        "_is_flat_run",
+        "_is_bad",
+    )
+
 
 def _scrub_round_trip_spikes(
     series: pl.DataFrame,
