@@ -115,6 +115,7 @@ _CADENCE_LABELS: dict[str, str] = {
     "weekly_sunday": "weekly",
     "biweekly_sunday": "biweekly",
     "monthly_first_sunday": "monthly",
+    "semiannual_first_sunday": "semiannual",
 }
 
 # Order of the 5 dashboard region columns rendered in the signal table.

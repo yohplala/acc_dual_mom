@@ -273,3 +273,20 @@ strategies:
     assets: [sp500, eurostoxx50, em_asia, topix_hedged, cash_estr]
     rebalance: monthly_first_sunday
     top_n: 3
+
+  # ── SEMIANNUAL TREND-CAPTURE: 4 non-overlapping regions, top-1 ──────────
+  # 4 geographically disjoint sleeves (US / Eurozone / EM Asia / Japan),
+  # single 6-month lookback, top-1 100%-weight, rebalanced only twice a year
+  # (first Sunday of January and first Sunday of July). Rationale: pick the
+  # leader per semester and let the country trend run, with minimal turnover.
+  # Japan-hedged is preferred over unhedged so JPY/EUR FX noise doesn't
+  # drown the score signal (the canonical lineup uses topix_hedged for the
+  # same reason). All-negative-momentum case falls through to the 0%-return
+  # CASH placeholder — to opt-in to €STR yield during crashes, add cash_estr
+  # to `assets:`.
+  - name: world4_dm6_s_t1
+    description: 4-region rotation (US/EU/EM-Asia/JP-hedged), DM 6m, semiannual top-1
+    assets: [sp500, eurostoxx50, em_asia, topix_hedged]
+    rebalance: semiannual_first_sunday
+    top_n: 1
+    lookbacks_days: [126]

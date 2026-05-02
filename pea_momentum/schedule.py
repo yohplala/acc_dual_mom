@@ -14,6 +14,7 @@ from .universe import Strategy
 WEEKLY_SUNDAY = "weekly_sunday"
 BIWEEKLY_SUNDAY = "biweekly_sunday"
 MONTHLY_FIRST_SUNDAY = "monthly_first_sunday"
+SEMIANNUAL_FIRST_SUNDAY = "semiannual_first_sunday"
 
 _SUNDAY = 6  # python weekday()
 
@@ -39,6 +40,13 @@ def is_rebalance_day(strategy: Strategy, day: date) -> bool:
 
     if strategy.rebalance == MONTHLY_FIRST_SUNDAY:
         return day.day <= 7
+
+    if strategy.rebalance == SEMIANNUAL_FIRST_SUNDAY:
+        # First Sunday of January (start of H1) and first Sunday of July
+        # (start of H2). Anchored to calendar semesters; if a backtest starts
+        # mid-semester the first rebalance is naturally the next semester
+        # boundary that falls within the data range.
+        return day.month in (1, 7) and day.day <= 7
 
     raise ValueError(f"Unknown rebalance cadence: {strategy.rebalance!r}")
 

@@ -93,6 +93,36 @@ class TestMonthlyFirstSunday:
         assert not is_rebalance_day(s, day)
 
 
+class TestSemiannualFirstSunday:
+    @pytest.mark.parametrize(
+        "day",
+        [
+            date(2026, 1, 4),  # first Sunday of January
+            date(2026, 7, 5),  # first Sunday of July
+            date(2024, 1, 7),
+            date(2024, 7, 7),
+        ],
+    )
+    def test_first_sundays_of_h1_h2_match(self, day: date) -> None:
+        s = _strategy("semiannual_first_sunday")
+        assert is_rebalance_day(s, day)
+
+    @pytest.mark.parametrize(
+        "day",
+        [
+            date(2026, 2, 1),  # first Sunday of Feb — wrong month
+            date(2026, 6, 7),  # first Sunday of June
+            date(2026, 8, 2),  # first Sunday of August
+            date(2026, 1, 11),  # second Sunday of January
+            date(2026, 7, 12),  # second Sunday of July
+            date(2026, 12, 6),  # first Sunday of December
+        ],
+    )
+    def test_other_sundays_reject(self, day: date) -> None:
+        s = _strategy("semiannual_first_sunday")
+        assert not is_rebalance_day(s, day)
+
+
 class TestRebalanceDates:
     def test_weekly_yields_all_sundays(self) -> None:
         s = _strategy("weekly_sunday")
@@ -114,6 +144,23 @@ class TestRebalanceDates:
     def test_empty_when_start_after_end(self) -> None:
         s = _strategy("weekly_sunday")
         assert rebalance_dates(s, date(2026, 5, 1), date(2026, 4, 1)) == []
+
+    def test_semiannual_yields_two_sundays_per_year(self) -> None:
+        s = _strategy("semiannual_first_sunday")
+        dates = rebalance_dates(s, date(2024, 1, 1), date(2025, 12, 31))
+        assert dates == [
+            date(2024, 1, 7),
+            date(2024, 7, 7),
+            date(2025, 1, 5),
+            date(2025, 7, 6),
+        ]
+
+    def test_semiannual_starting_mid_h1_skips_to_h2(self) -> None:
+        # Backtest starting in February: the Jan rebalance has passed, first
+        # rebalance is the next H2 boundary.
+        s = _strategy("semiannual_first_sunday")
+        dates = rebalance_dates(s, date(2024, 2, 1), date(2024, 12, 31))
+        assert dates == [date(2024, 7, 7)]
 
 
 class TestSignalAndFillDates:
