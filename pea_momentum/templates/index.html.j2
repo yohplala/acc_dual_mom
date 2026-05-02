@@ -69,6 +69,7 @@
       background: rgba(255, 255, 255, 0.04);
     }
     .chip-zero { color: var(--text); opacity: 0.45; }
+    .chip-neutral { color: var(--muted); border-color: rgba(127, 137, 152, 0.35); background: rgba(127, 137, 152, 0.08); }
     .chip-low  { color: #f0b06b; border-color: rgba(240, 176, 107, 0.35); background: rgba(240, 176, 107, 0.10); }
     .chip-mid  { color: var(--positive); border-color: rgba(63, 185, 80, 0.40); background: rgba(63, 185, 80, 0.10); }
     .chip-high { color: #c98aff; border-color: rgba(201, 138, 255, 0.45); background: rgba(201, 138, 255, 0.12); }
@@ -76,8 +77,10 @@
     .chip-row + .chip-row { margin-top: 2px; }
     td.chips { vertical-align: top; text-align: center; }
     th.chips { text-align: center; }
-    /* Performance metrics table — center every cell + header */
+    .dash { color: var(--muted); opacity: 0.5; }
+    /* Performance metrics + signal tables — center every cell + header */
     table.metrics th, table.metrics td { text-align: center; }
+    table.signal th, table.signal td { text-align: center; }
     footer { margin-top: 48px; color: var(--muted); font-size: 12px; text-align: center; }
     nav { margin-bottom: 16px; }
     nav a { color: var(--accent); text-decoration: none; font-size: 13px; }
@@ -96,43 +99,65 @@
 
     <h2>This week's signal</h2>
     <div class="panel">
-      <table>
+      <table class="signal">
         <thead>
           <tr>
-            <th>Strategy</th>
-            <th>Cadence</th>
-            <th>Last rebalance</th>
-            <th class="chips">Previous allocation</th>
-            <th class="chips">New allocation</th>
+            <th class="sortable" data-sort="text">Strategy</th>
+            <th class="sortable" data-sort="text">Cadence</th>
+            <th class="sortable" data-sort="text" title="Score recipe: ADM = mean of multiple lookbacks (accelerated dual-momentum); DM = single-lookback dual-momentum; Buy & Hold = no scoring.">Scoring</th>
+            <th class="sortable" data-sort="text" title="Allocation recipe: top-N (number of sleeves held) + weighting rule (equal = 1/N, score-prop = score-proportional). B&H = buy-and-hold static weights.">Allocation</th>
+            <th class="sortable" data-sort="text">Last rebalance</th>
+            <th class="chips" title="Strategy's world-region sleeves (universe layout, weights shown in Prev/Curr columns)">World</th>
+            <th class="chips" title="US sleeves in the strategy's universe">US</th>
+            <th class="chips" title="Europe / Eurozone sleeves in the strategy's universe">Europe</th>
+            <th class="chips" title="Japan / Emerging Asia sleeves in the strategy's universe">Asia</th>
+            <th class="chips" title="Safe asset / cash sleeve, when listed">Cash</th>
+            <th class="chips" title="Previous rebalance allocation, non-zero only, sorted by weight desc">Prev alloc</th>
+            <th class="chips" title="Current rebalance allocation, non-zero only, sorted by weight desc">Curr alloc</th>
           </tr>
         </thead>
         <tbody>
           {% for s in signals %}
           <tr>
-            <td><span class="pill">{{ s.name }}</span></td>
-            <td>{{ s.cadence }}</td>
-            <td>{{ s.last_rebalance }}</td>
+            <td data-value="{{ s.name }}"><span class="pill">{{ s.name }}</span></td>
+            <td data-value="{{ s.cadence }}">{{ s.cadence }}</td>
+            <td data-value="{{ s.scoring }}">{{ s.scoring }}</td>
+            <td data-value="{{ s.allocation }}">{{ s.allocation }}</td>
+            <td data-value="{{ s.last_rebalance }}">{{ s.last_rebalance }}</td>
+            {% for bucket in ["world", "us", "europe", "asia", "cash"] %}
             <td class="chips">
-              {% for row in s.previous_rows %}
+              {% if s.universe_buckets[bucket] %}
               <div class="chip-row">
-                {% for c in row %}
-                <span class="chip chip-{{ c.bracket }}">
-                  {{ c.id }}{% if c.pct > 0 %} {{ c.pct }}%{% endif %}
-                </span>
+                {% for c in s.universe_buckets[bucket] %}
+                <span class="chip chip-neutral" title="{{ c.name }}">{{ c.id }}</span>
                 {% endfor %}
               </div>
-              {% endfor %}
+              {% else %}
+              <span class="dash">—</span>
+              {% endif %}
+            </td>
+            {% endfor %}
+            <td class="chips">
+              {% if s.previous_alloc %}
+              <div class="chip-row">
+                {% for c in s.previous_alloc %}
+                <span class="chip chip-{{ c.bracket }}">{{ c.id }} {{ c.pct }}%</span>
+                {% endfor %}
+              </div>
+              {% else %}
+              <span class="dash">—</span>
+              {% endif %}
             </td>
             <td class="chips">
-              {% for row in s.current_rows %}
+              {% if s.current_alloc %}
               <div class="chip-row">
-                {% for c in row %}
-                <span class="chip chip-{{ c.bracket }}">
-                  {{ c.id }}{% if c.pct > 0 %} {{ c.pct }}%{% endif %}
-                </span>
+                {% for c in s.current_alloc %}
+                <span class="chip chip-{{ c.bracket }}">{{ c.id }} {{ c.pct }}%</span>
                 {% endfor %}
               </div>
-              {% endfor %}
+              {% else %}
+              <span class="dash">—</span>
+              {% endif %}
             </td>
           </tr>
           {% endfor %}
@@ -215,11 +240,16 @@
       { responsive: true, displaylogo: false }
     );
 
-    // Click-to-sort on metrics table headers. Single click toggles asc/desc.
-    document.querySelectorAll("table.metrics").forEach(table => {
+    // Click-to-sort on table headers. Applies to any table with .sortable
+    // headers (signal table + metrics table). Single click toggles asc/desc.
+    document.querySelectorAll("table.metrics, table.signal").forEach(table => {
       const ths = Array.from(table.querySelectorAll("th.sortable"));
       const tbody = table.querySelector("tbody");
       ths.forEach((th, idx) => {
+        // Skip non-sortable columns (chip cells in the signal table) - they
+        // have no .sortable class and won't enter this loop.
+        const headerCells = Array.from(table.querySelectorAll("thead th"));
+        const colIdx = headerCells.indexOf(th);
         th.addEventListener("click", () => {
           const wasDesc = th.classList.contains("sort-desc");
           ths.forEach(x => x.classList.remove("sort-asc", "sort-desc"));
@@ -228,8 +258,8 @@
           const rows = Array.from(tbody.querySelectorAll("tr"));
           const isText = th.dataset.sort === "text";
           rows.sort((a, b) => {
-            const av = a.children[idx].dataset.value;
-            const bv = b.children[idx].dataset.value;
+            const av = a.children[colIdx].dataset.value || "";
+            const bv = b.children[colIdx].dataset.value || "";
             if (isText) {
               return asc ? av.localeCompare(bv) : bv.localeCompare(av);
             }

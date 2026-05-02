@@ -101,12 +101,50 @@ _CADENCE_LABELS: dict[str, str] = {
     "monthly_first_sunday": "monthly",
 }
 
+# Coarse region buckets used by the signal table (4 geographic columns + Cash).
+# Maps each fine-grained `Asset.region` value (from the YAML universe) to one
+# of: "world", "us", "europe", "asia", "cash".
+_REGION_BUCKET: dict[str, str] = {
+    "world": "world",
+    "us": "us",
+    "europe": "europe",
+    "eurozone": "europe",
+    "france": "europe",
+    "germany": "europe",
+    "japan": "asia",
+    "em_asia": "asia",
+    "em": "asia",
+    "safe": "cash",
+}
+_REGION_BUCKETS_ORDER: tuple[str, ...] = ("world", "us", "europe", "asia", "cash")
+
+
+def _scoring_label(strategy: Strategy, shared_lookbacks: tuple[int, ...]) -> str:
+    """Human-readable description of the strategy's scoring spec."""
+    if strategy.mode == "buy_and_hold":
+        return "Buy & Hold"
+    lookbacks = strategy.lookbacks_days or shared_lookbacks
+    if len(lookbacks) == 1:
+        return f"DM {lookbacks[0] // 21}m"
+    months_str = "/".join(f"{lb // 21}m" for lb in lookbacks)
+    return f"ADM {months_str} mean"
+
+
+def _allocation_label(strategy: Strategy, shared_rule: str) -> str:
+    """Human-readable description of the strategy's allocation spec."""
+    if strategy.mode == "buy_and_hold":
+        if strategy.static_weights is not None:
+            return "B&H static"
+        return "B&H equal"
+    rule = strategy.allocation_rule or shared_rule
+    rule_short = "equal" if rule == "equal_weight" else "score-prop"
+    return f"top-{strategy.top_n} {rule_short}"
+
 
 def _signal_row(
     result: BacktestResult, config: Config, strategy_by_name: dict[str, Strategy]
 ) -> dict[str, object]:
     strategy = strategy_by_name[result.strategy_name]
-    asset_rows = _asset_rows(strategy, config)
 
     last = result.rebalances[-1] if result.rebalances else None
     if strategy.mode == "buy_and_hold":
@@ -121,14 +159,45 @@ def _signal_row(
     return {
         "name": result.strategy_name,
         "cadence": _CADENCE_LABELS.get(strategy.rebalance, strategy.rebalance),
+        "scoring": _scoring_label(strategy, config.shared.scoring.lookbacks_days),
+        "allocation": _allocation_label(strategy, config.shared.allocation.rule),
         "last_rebalance": last.rebalance_date.isoformat() if last else "—",
-        "previous_rows": _chip_rows(asset_rows, prev.weights if prev else {}),
-        "current_rows": _chip_rows(asset_rows, last.weights if last else {}),
+        "universe_buckets": _universe_buckets(strategy, config),
+        "previous_alloc": _alloc_chips(prev.weights if prev else {}),
+        "current_alloc": _alloc_chips(last.weights if last else {}),
     }
 
 
-# Region groupings, ordered top-to-bottom in the holdings cell. Assets that
-# don't fit a known region get appended below the recognized rows.
+def _universe_buckets(strategy: Strategy, config: Config) -> dict[str, list[dict[str, str]]]:
+    """Group the strategy's universe assets into the 4 geographic buckets +
+    Cash. Each bucket value is a list of `{id, name}` dicts; empty buckets
+    render as `—` in the template."""
+    buckets: dict[str, list[dict[str, str]]] = {b: [] for b in _REGION_BUCKETS_ORDER}
+    for asset_id in strategy.asset_ids:
+        if asset_id == config.safe_asset.id:
+            buckets["cash"].append({"id": asset_id, "name": config.safe_asset.name or asset_id})
+            continue
+        a = config.asset_by_id(asset_id)
+        bucket = _REGION_BUCKET.get(a.region, "world")
+        buckets[bucket].append({"id": asset_id, "name": a.name or asset_id})
+    return buckets
+
+
+def _alloc_chips(weights: dict[str, float]) -> list[dict[str, object]]:
+    """Render only non-zero allocations as chip descriptors, sorted descending
+    by weight. Zero-weight entries are dropped (per the cleaner-signal-table
+    requirement)."""
+    out: list[dict[str, object]] = []
+    for asset_id, w in sorted(weights.items(), key=lambda kv: -kv[1]):
+        pct = round(w * 100)
+        if pct == 0:
+            continue
+        out.append({"id": asset_id, "pct": pct, "bracket": _weight_bracket(pct)})
+    return out
+
+
+# Region groupings used by the legacy fallback layout in `_asset_rows`. Kept
+# for the case where `display_layout` isn't set in YAML.
 REGION_ORDER = (
     "us",
     "world",
