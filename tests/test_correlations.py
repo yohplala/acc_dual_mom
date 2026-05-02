@@ -23,7 +23,6 @@ from pea_momentum.universe import (
     Config,
     Costs,
     Filter,
-    SafeAsset,
     Scoring,
     Shared,
     Strategy,
@@ -157,12 +156,14 @@ class TestDiagnoseStrategies:
     def _make_setup(self) -> tuple[Config, list[DiscoveryEntry], list[GroupRepresentative]]:
         """A 3-strategy / 3-group setup for testing both diagnostic types."""
 
-        # 4 assets in strategies.yaml, with ISIN matching pea_universe.yaml
+        # 4 active assets + safe sleeve, ISINs that overlap with the
+        # discovery_entries fixture below.
         assets = (
             Asset(id="us", isin="ISIN_US", yahoo="x", region="us"),
             Asset(id="us_alt", isin="ISIN_US_ALT", yahoo="x", region="us"),
             Asset(id="eu", isin="ISIN_EU", yahoo="x", region="eu"),
             Asset(id="jp", isin="ISIN_JP", yahoo="x", region="jp"),
+            Asset(id="safe", isin="ISIN_SAFE", yahoo="", region="cash", synth_proxy="estr"),
         )
         cfg = Config(
             shared=Shared(
@@ -176,7 +177,6 @@ class TestDiagnoseStrategies:
                 costs=Costs(per_trade_pct=0.10),
             ),
             assets=assets,
-            safe_asset=SafeAsset(id="safe", proxy="estr"),
             strategies=(
                 # Strategy A: uses both us AND us_alt (redundant pair)
                 Strategy(
@@ -325,9 +325,7 @@ class TestDiagnoseStrategies:
         cfg_with_safe = Config(
             shared=cfg.shared,
             assets=cfg.assets,
-            safe_asset=cfg.safe_asset,
             strategies=(*cfg.strategies, strat_with_safe),
-            display_layout=cfg.display_layout,
         )
         # Must not raise.
         diagnostics = diagnose_strategies(cfg_with_safe, entries, groups)

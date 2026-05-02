@@ -1,10 +1,16 @@
-# PEA Accelerated Dual Momentum — strategy configurations.
+# PEA momentum framework — strategy configurations.
 #
-# Shared scoring / allocation / cost / execution settings live under `shared`.
-# Per-strategy entries pick a slice of the universe and a rebalance cadence.
+# Asset metadata lives in `pea_universe.yaml` (the single asset catalog).
+# This file holds:
+# - `shared:` config (scoring / allocation / cost / execution defaults)
+# - `display_layout:` for the signal table's region grouping
+# - `strategies:` — each entry's `assets:` list references catalog ids
+#   from `pea_universe.yaml`
 #
-# Yahoo tickers marked "UNVERIFIED" need to be confirmed against actual
-# yfinance data on first fetch. The fetcher fails loudly on invalid symbols.
+# Active assets (those referenced by some strategy below) carry the
+# strategy-relevant fields (region, est_spread_bps, index_proxy,
+# inception, replication, synth_proxy) inline on their pea_universe.yaml
+# entry. The 100+ unused catalog entries are unaffected.
 
 shared:
   scoring:
@@ -26,14 +32,15 @@ shared:
   filter:
     # Pre-selection floor before top-N ranking. `positive_momentum`: drop
     # any asset whose score <= 0. The historical `absolute_momentum` filter
-    # (compare against safe-asset score) is gone - safe is now just another
-    # listable asset that competes via rank-only selection. Include `safe`
-    # in a strategy's `assets:` to give it a chance to win during crashes.
+    # (compare against safe-asset score) is gone — safe is just another
+    # listable asset that competes via rank-only selection. Include safe
+    # (`cash_euro_court_terme`) in a strategy's `assets:` to give it a
+    # chance to win during crashes.
     type: positive_momentum
 
   costs:
     # One-way broker commission. Per-asset bid-ask spread is added separately
-    # via `est_spread_bps` on each asset (half-spread per traded notional).
+    # via `est_spread_bps` on each catalog entry (half-spread per traded notional).
     per_trade_pct: 0.05
 
   execution:
@@ -42,231 +49,39 @@ shared:
     signal_close: friday
     fill_close: monday
 
-universe:
-  assets:
-    - id: us_large
-      name: Amundi PEA S&P 500
-      isin: FR0011871128
-      yahoo: PSP5.PA
-      ter_pct: 0.12
-      est_spread_bps: 5            # high-AUM flagship, tight spread
-      replication: synthetic
-      region: us
-      inception: 2014-04-29
-      index_proxy: CSPX.AS                  # iShares Core S&P 500 UCITS ETF
-      index_proxy_kind: eur_tr              # USD-base (IE00B5BMR087) but EUR-
-                                            # quoted on Amsterdam (no FX needed),
-                                            # accumulating, since 2010-05-19.
-                                            # Loses pre-2010 history vs ^GSPC
-                                            # but TR matches live ETF (no
-                                            # ~2pp/yr PR understatement).
-
-    - id: us_small
-      name: Amundi Russell 2000
-      isin: LU1681038672
-      yahoo: RS2K.PA
-      ter_pct: 0.35
-      est_spread_bps: 30           # satellite, thinner book
-      replication: synthetic
-      region: us
-      inception: 2017-09-21
-      index_proxy: IWM                      # iShares Russell 2000 ETF — US-
-      index_proxy_kind: usd_tr              # listed (USD), distributing but
-                                            # auto_adjust=True in fetcher gives
-                                            # TR-equivalent close. Since 2000.
-
-    - id: world
-      name: Amundi PEA Monde (MSCI World)
-      isin: FR001400U5Q4
-      yahoo: DCAM.PA              # launched 2025-03-04 — short native history
-      ter_pct: 0.20
-      est_spread_bps: 10           # mid-tier, recent launch but core sleeve
-      replication: synthetic
-      region: world
-      inception: 2025-03-04
-      index_proxy: IWDA.AS                  # iShares Core MSCI World UCITS ETF
-      index_proxy_kind: eur_tr              # EUR-quoted accumulating (TR via
-                                            # NAV reinvestment), since
-                                            # 2009-09-25. Loses 2008 GFC vs the
-                                            # old ^990100-USD-STRD proxy but TR
-                                            # matches the live ETF (no ~2pp/yr
-                                            # understatement).
-
-    - id: eu_broad
-      name: Amundi PEA MSCI Europe
-      isin: FR0013412038
-      yahoo: PCEU.PA
-      ter_pct: 0.15
-      est_spread_bps: 10           # broad European core, decent liquidity
-      replication: synthetic
-      region: europe
-      inception: 2018-12-12
-      index_proxy: IMEU.AS                  # iShares Core MSCI Europe UCITS ETF
-      index_proxy_kind: eur_tr              # EUR Dist on Amsterdam, since
-                                            # 2007-07-06. Distributing, but
-                                            # auto_adjust=True gives TR-
-                                            # equivalent close. Loses pre-2007
-                                            # history but exactly tracks the
-                                            # MSCI Europe net total return.
-
-    - id: eu_small
-      name: Amundi MSCI EMU Small Cap ESG Broad Transition
-      isin: LU1598689153
-      yahoo: MMS.PA
-      ter_pct: 0.40
-      est_spread_bps: 30           # satellite, small-cap, thinner book
-      replication: physical
-      region: eurozone
-      inception: 2024-02-08
-      index_proxy: SXRJ.DE                  # iShares MSCI EMU Small Cap UCITS
-      index_proxy_kind: eur_tr              # ETF EUR Acc on Xetra, since
-                                            # 2009-07-01. Proxies the parent
-                                            # vanilla MSCI EMU Small Cap
-                                            # (the Amundi product is the ESG
-                                            # Broad Transition variant — small
-                                            # tracking gap pre-2024 but no free
-                                            # ESG-screened sub-index history
-                                            # exists pre-2017).
-
-    - id: em_asia
-      name: Amundi PEA Asie Emergente (MSCI Emerging Asia)
-      isin: FR0013412012
-      yahoo: PAASI.PA
-      ter_pct: 0.30
-      est_spread_bps: 25           # EM exposure, somewhat thinner spread
-      replication: synthetic
-      region: em_asia
-      inception: 2018-12-19
-      index_proxy: EEMA                     # iShares MSCI EM Asia ETF — US-
-      index_proxy_kind: usd_tr              # listed (USD), distributing but
-                                            # auto_adjust=True gives TR-
-                                            # equivalent close. Since
-                                            # 2012-02-09 — earliest free source
-                                            # for clean MSCI EM Asia exposure;
-                                            # no 2008-2011 history without
-                                            # paid data.
-
-    - id: japan_hedged
-      name: Amundi PEA Japon (TOPIX) EUR Hedged
-      isin: FR0013411998
-      yahoo: PTPXH.PA               # verified via Boursorama
-      ter_pct: 0.48
-      est_spread_bps: 30           # satellite, hedged share class, low AUM
-      replication: synthetic
-      region: japan
-      inception: 2019-04-25
-      index_proxy: IJPE.L                   # iShares MSCI Japan EUR Hedged
-      index_proxy_kind: eur_tr              # UCITS ETF Acc on LSE, EUR-quoted
-                                            # (EUR 130.51 spot), since
-                                            # 2010-09-30. Index-swap proxy:
-                                            # MSCI Japan (~230 large/mid) vs
-                                            # TOPIX (~1700 names) — historical
-                                            # R² ~0.95; EUR-hedge mechanism
-                                            # identical (the part the strategy
-                                            # is testing).
-
-    - id: japan_unhedged
-      name: Amundi PEA Japon (TOPIX) EUR Acc
-      isin: FR0013411980
-      yahoo: PTPXE.PA               # unhedged sister of PTPXH.PA
-      ter_pct: 0.20
-      est_spread_bps: 30            # satellite, low AUM
-      replication: synthetic
-      region: japan
-      inception: 2019-04-25
-      # No index_proxy_fallback to a hedged proxy — the unhedged variant
-      # measures TOPIX exposure WITH JPY/EUR FX risk baked in. EWJ (US-
-      # listed iShares MSCI Japan, USD) would be the natural pre-2019
-      # proxy if we wanted longer history; for now we accept ETF-only
-      # history (post-2019) and use this purely as a head-to-head with
-      # japan_hedged in the same backtest window.
-
-    - id: eu_banks
-      name: Amundi STOXX Europe 600 Banks
-      isin: LU1834983477
-      yahoo: BNK.PA                 # ex-Lyxor, on Yahoo since 2006-08-25
-      ter_pct: 0.30
-      est_spread_bps: 20           # sector ETF, decent volume
-      replication: synthetic
-      region: europe
-      inception: 2006-08-25         # native data covers full 2012-02 window
-      # No `index_proxy` configured: BNK.PA's own history goes back to
-      # before our 2012-02 backtest start. Optional belt-and-braces would
-      # be `index_proxy: EXV1.DE` (iShares STOXX 600 Banks Dist on Xetra,
-      # since 2001-04-25, kind eur_tr via auto_adjust).
-
-    - id: eu_50
-      name: Amundi Core EURO STOXX 50
-      isin: LU1681047236
-      yahoo: C50.PA                 # verified via Boursorama
-      ter_pct: 0.09
-      est_spread_bps: 5            # eurozone large-cap flagship
-      replication: synthetic
-      region: eurozone
-      inception: 2017-09-29
-      index_proxy: CSX5.AS                  # iShares Core EURO STOXX 50 ETF
-      index_proxy_kind: eur_tr              # EUR Acc on Amsterdam, since
-                                            # 2010-01-26. Loses pre-2010 vs
-                                            # ^STOXX50E but TR matches live
-                                            # ETF (no PR understatement). NB:
-                                            # `EUE.AS` doesn't exist on Yahoo
-                                            # — Amsterdam Acc variant of the
-                                            # iShares Core EURO STOXX 50 is
-                                            # CSX5.AS (the Dist sister is
-                                            # EUEA.AS).
-
-  safe_asset:
-    id: safe
-    name: Amundi PEA Euro Court Terme
-    isin: FR0013346681
-    proxy: estr                   # synthetic price compounded from ECB €STR
-    ter_pct: 0.25
-
-  # How rows of assets are laid out in the signal table (Previous / New
-  # allocation cells). Each strategy filters this layout to its actual
-  # universe — assets not used by a strategy simply don't appear.
-  display_layout:
-    - [world]
-    - [us_large, us_small]
-    - [eu_broad, eu_50]                         # broad-cap Europe alternatives
-    - [eu_small, eu_banks]                      # eurozone sub-exposures
-    - [em_asia]
-    - [japan_hedged, japan_unhedged]            # FX-hedged & unhedged TOPIX
-    - [safe]
-
-# Strategies. Conventions under the new rank-only methodology:
-# - `safe` is just another listable asset. Include it in `assets:` to give
-#   it a chance to win the top-N during crashes (small positive €STR score
-#   beats deeply-negative equity scores). Strategies without `safe` listed
-#   fall through to a 0%-return CASH placeholder when no candidate passes
-#   the >0 floor.
-# - `eu_50` (EURO STOXX 50, eurozone, TER 0.09%) is preferred over `eu_broad`
-#   (MSCI Europe, broader, TER 0.15%) for the core: lower TER, deeper
-#   liquidity, and the correlation-page rep within the European
-#   large-cap-equivalent group.
-# - `world` and `eu_small` retired from the core slots — `world` was
-#   contributing leaky US exposure on top of `us_large`, and `eu_small`
-#   was carrying spread cost without uncorrelated alpha vs `eu_50`.
+# Strategies. Conventions under the rank-only methodology:
+# - Include `cash_euro_court_terme` in `assets:` to give safe a chance to
+#   win the top-N during crashes (small positive €STR score beats deeply-
+#   negative equity scores). Strategies without it fall through to a
+#   0%-return CASH placeholder when no candidate passes the >0 floor.
+# - `emu_core_es50_acc` (EURO STOXX 50, eurozone, TER 0.09%) is preferred
+#   over `eu_pea_msci_europe` (MSCI Europe, broader, TER 0.15%) for the
+#   core: lower TER, deeper liquidity, and the correlation-page rep
+#   within the European large-cap-equivalent group.
+# - `world_pea_monde` and `emu_small_cap` retired from the core slots —
+#   `world_pea_monde` was contributing leaky US exposure on top of
+#   `us_pea_sp500`, and `emu_small_cap` carried spread cost without
+#   uncorrelated alpha vs `emu_core_es50_acc`.
 strategies:
   # ── HEADLINE: core 6-asset rotation in 4 lookback variants ─────────────
   # Universe: 5 risky equity sleeves + safe. Same universe across all four
   # core variants so the only difference is the scoring lookback and top_n.
   - name: core_monthly
     description: 6-asset core, monthly, accelerated 1m/3m/6m mean, equal-weight top-3
-    assets: [us_large, us_small, eu_50, em_asia, japan_hedged, safe]
+    assets: [us_pea_sp500, us_russell2000_eur, emu_core_es50_acc, em_pea_asia, jp_pea_topix_hedged, cash_euro_court_terme]
     rebalance: monthly_first_sunday
     top_n: 3
 
   - name: core_monthly_top1
     description: 6-asset core, monthly, accelerated 1m/3m/6m mean, top-1 (single-leader concentration)
-    assets: [us_large, us_small, eu_50, em_asia, japan_hedged, safe]
+    assets: [us_pea_sp500, us_russell2000_eur, emu_core_es50_acc, em_pea_asia, jp_pea_topix_hedged, cash_euro_court_terme]
     rebalance: monthly_first_sunday
     top_n: 1
 
   # Single 6-month lookback (Antonacci's "moderate" dual-momentum variant).
   - name: core_monthly_top1_dm_6m
     description: 6-asset core, monthly, single 6-month lookback, top-1
-    assets: [us_large, us_small, eu_50, em_asia, japan_hedged, safe]
+    assets: [us_pea_sp500, us_russell2000_eur, emu_core_es50_acc, em_pea_asia, jp_pea_topix_hedged, cash_euro_court_terme]
     rebalance: monthly_first_sunday
     top_n: 1
     lookbacks_days: [126]
@@ -274,7 +89,7 @@ strategies:
   # Single 12-month lookback (Antonacci's classic dual-momentum variant).
   - name: core_monthly_top1_dm_12m
     description: 6-asset core, monthly, single 12-month lookback, top-1
-    assets: [us_large, us_small, eu_50, em_asia, japan_hedged, safe]
+    assets: [us_pea_sp500, us_russell2000_eur, emu_core_es50_acc, em_pea_asia, jp_pea_topix_hedged, cash_euro_court_terme]
     rebalance: monthly_first_sunday
     top_n: 1
     lookbacks_days: [252]
@@ -283,7 +98,7 @@ strategies:
   # Score-proportional weighting (vs the equal_weight default).
   - name: core_monthly_score_prop
     description: 6-asset core, monthly, accelerated, score-proportional weighting (sensitivity)
-    assets: [us_large, us_small, eu_50, em_asia, japan_hedged, safe]
+    assets: [us_pea_sp500, us_russell2000_eur, emu_core_es50_acc, em_pea_asia, jp_pea_topix_hedged, cash_euro_court_terme]
     rebalance: monthly_first_sunday
     top_n: 3
     allocation_rule: score_proportional
@@ -291,7 +106,7 @@ strategies:
   # Weekly cadence on the same universe (cost-drag exhibit).
   - name: core_weekly
     description: 6-asset core, weekly, accelerated, top-3 (cost-drag exhibit)
-    assets: [us_large, us_small, eu_50, em_asia, japan_hedged, safe]
+    assets: [us_pea_sp500, us_russell2000_eur, emu_core_es50_acc, em_pea_asia, jp_pea_topix_hedged, cash_euro_court_terme]
     rebalance: weekly_sunday
     top_n: 3
 
@@ -300,26 +115,27 @@ strategies:
   # effect).
   - name: core_monthly_dm_6m
     description: 6-asset core, monthly, single 6-month lookback, top-3
-    assets: [us_large, us_small, eu_50, em_asia, japan_hedged, safe]
+    assets: [us_pea_sp500, us_russell2000_eur, emu_core_es50_acc, em_pea_asia, jp_pea_topix_hedged, cash_euro_court_terme]
     rebalance: monthly_first_sunday
     top_n: 3
     lookbacks_days: [126]
 
   - name: core_monthly_dm_12m
     description: 6-asset core, monthly, single 12-month lookback, top-3
-    assets: [us_large, us_small, eu_50, em_asia, japan_hedged, safe]
+    assets: [us_pea_sp500, us_russell2000_eur, emu_core_es50_acc, em_pea_asia, jp_pea_topix_hedged, cash_euro_court_terme]
     rebalance: monthly_first_sunday
     top_n: 3
     lookbacks_days: [252]
 
   # ── SECTOR TILT EXPERIMENT ─────────────────────────────────────────────
-  # Adds eu_banks. NB: eu_banks is ~17% of EURO STOXX 50, so eu_50 + eu_banks
-  # are not orthogonal exposures — top-N picks the stronger of the two when
-  # both clear the >0 floor. Per Quantpedia, sector-momentum alpha has
-  # decayed post-2010; keep this as an experiment, not a core allocation.
+  # Adds sec_eu_banks_acc. NB: banks is ~17% of EURO STOXX 50, so
+  # emu_core_es50_acc + sec_eu_banks_acc are not orthogonal exposures —
+  # top-N picks the stronger of the two when both clear the >0 floor.
+  # Per Quantpedia, sector-momentum alpha has decayed post-2010; keep this
+  # as an experiment, not a core allocation.
   - name: sector_satellite_monthly
     description: 6-asset core + EU banks sector tilt, monthly, accelerated
-    assets: [us_large, us_small, eu_50, em_asia, japan_hedged, eu_banks, safe]
+    assets: [us_pea_sp500, us_russell2000_eur, emu_core_es50_acc, em_pea_asia, jp_pea_topix_hedged, sec_eu_banks_acc, cash_euro_court_terme]
     rebalance: monthly_first_sunday
     top_n: 3
 
@@ -330,17 +146,17 @@ strategies:
   # so the strategy can defend during JP-equity drawdowns.
   - name: japan_hedge_vs_unhedge_adm_monthly
     description: Hedged vs unhedged Japan ADM rotation, monthly top-1
-    assets: [japan_hedged, japan_unhedged, safe]
+    assets: [jp_pea_topix_hedged, jp_pea_topix, cash_euro_court_terme]
     rebalance: monthly_first_sunday
     top_n: 1
 
-  # ── METHODOLOGICAL BASELINES (pre-existing, kept) ─────────────────────
+  # ── METHODOLOGICAL BASELINES ──────────────────────────────────────────
   # Antonacci-style "Absolute Momentum": single risky asset gated by the
   # safe-asset rank. With safe in the universe and top_n=1, this is exactly
   # the rank-only equivalent of Antonacci's classic absolute-momentum spec.
   - name: us_only_abs_mom_monthly
-    description: US-only single-asset rotation (us_large vs safe), monthly top-1
-    assets: [us_large, safe]
+    description: US-only single-asset rotation (S&P 500 vs safe), monthly top-1
+    assets: [us_pea_sp500, cash_euro_court_terme]
     rebalance: monthly_first_sunday
     top_n: 1
 
@@ -349,8 +165,8 @@ strategies:
   # so this is leakier than the original but the closest clean PEA analog
   # with continuous history.
   - name: gem_us_world_monthly
-    description: GEM-style proxy, monthly top-1 between us_large / world / safe
-    assets: [us_large, world, safe]
+    description: GEM-style proxy, monthly top-1 between S&P 500 / MSCI World / safe
+    assets: [us_pea_sp500, world_pea_monde, cash_euro_court_terme]
     rebalance: monthly_first_sunday
     top_n: 1
 
@@ -358,39 +174,39 @@ strategies:
   - name: msci_world_buy_hold
     description: 100% MSCI World buy-and-hold (zero-cost benchmark)
     mode: buy_and_hold
-    assets: [world]
+    assets: [world_pea_monde]
     rebalance: monthly_first_sunday
     top_n: 1
 
   - name: world3_buy_hold
     description: 1/3 each S&P 500 + Euro Stoxx 50 + Emerging Asia, buy-and-hold
     mode: buy_and_hold
-    assets: [us_large, eu_50, em_asia]
+    assets: [us_pea_sp500, emu_core_es50_acc, em_pea_asia]
     rebalance: monthly_first_sunday
     top_n: 3
 
   # Static 60/40: 60% world + 40% safe, never rebalanced. The canonical
-  # static benchmark - every rotation strategy here should beat it after
+  # static benchmark — every rotation strategy here should beat it after
   # costs to justify its complexity.
   - name: static_60_40
     description: Static 60% world + 40% safe, never rebalanced (canonical benchmark)
     mode: buy_and_hold
-    assets: [world]
+    assets: [world_pea_monde]
     rebalance: monthly_first_sunday
     top_n: 1
     static_weights:
-      world: 0.6
-      safe: 0.4
+      world_pea_monde: 0.6
+      cash_euro_court_terme: 0.4
 
   # ── WORLD-CENTRIC ROTATIONS (kept for continuity with previous lineup) ──
   - name: world_jp_hedge_adm_monthly
     description: ADM rotation between MSCI World, Japan-hedged, and safe; monthly top-1
-    assets: [world, japan_hedged, safe]
+    assets: [world_pea_monde, jp_pea_topix_hedged, cash_euro_court_terme]
     rebalance: monthly_first_sunday
     top_n: 1
 
   - name: world3_jp_hedge_adm_monthly
     description: ADM rotation across S&P 500 + Euro Stoxx 50 + EM Asia + Japan-hedged + safe; monthly top-3
-    assets: [us_large, eu_50, em_asia, japan_hedged, safe]
+    assets: [us_pea_sp500, emu_core_es50_acc, em_pea_asia, jp_pea_topix_hedged, cash_euro_court_terme]
     rebalance: monthly_first_sunday
     top_n: 3

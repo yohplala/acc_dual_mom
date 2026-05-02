@@ -1,4 +1,21 @@
-"""Loaders for the strategies.yaml configuration file."""
+"""Loaders for the strategies + universe config.
+
+Two YAML files combine into a single `Config` at load time:
+- `pea_universe.yaml` — the asset catalog. Every Amundi PEA-eligible UCITS
+  ETF has one entry (currently ~107). For assets actually used by some
+  strategy, optional active-only fields (`region`, `est_spread_bps`,
+  `index_proxy`, `inception`, `replication`, `synth_proxy`) are populated.
+- `strategies.yaml` — `shared:` config + `strategies:` list. Each strategy
+  references catalog ids in its `assets:`.
+
+The "safe asset" stops being a separate config block — it's a regular
+`Asset` whose `synth_proxy: estr` field signals the fetcher to compound
+ECB €STR fixings instead of pulling yfinance.
+
+`Config.assets` carries the active subset (i.e. only catalog entries
+referenced by at least one strategy). The full catalog is available via
+`load_full_universe(path)` for discovery / correlation flows.
+"""
 
 from __future__ import annotations
 
@@ -15,48 +32,47 @@ class Asset:
     id: str
     isin: str
     yahoo: str
-    region: str
-    # Display name (Amundi product name, used in dashboards).
     name: str = ""
-    # Annual TER as a percentage (e.g. 0.12 for 12 bps). Used for cost
-    # modelling diagnostics; not subtracted from backtest returns since
-    # auto_adjust=True closes are already net of fund fees.
+    currency: str = "EUR"
+    # Annual TER as a percentage (e.g. 0.12 for 12 bps). Cost diagnostics
+    # only — backtest closes use yfinance auto_adjust=True, already net of
+    # fund fees.
     ter_pct: float = 0.0
-    # "synthetic" (swap-based) or "physical" (sampling/full replication).
-    # Informational only; not used in scoring.
-    replication: str | None = None
-    # Estimated round-trip bid-ask spread in bps. Half is added to
-    # `shared.costs.per_trade_pct` per asset traded at rebalance time.
-    # Default 0 keeps cost ≡ shared per_trade_pct for assets without
-    # explicit spread data.
+    # SFDR classification (`Article 6` / `Article 8` / `Article 9`).
+    sfdr: str = ""
+    # Free-form geographic / asset-class tag from the discovery YAML
+    # (e.g. `USA`, `Eurozone-Small`, `Cash-Eurozone`). Used by
+    # `discover._coarse_region` for correlation-page region grouping.
+    category: str = ""
+    leveraged: bool = False
+    amundi_url: str | None = None
+    # ── Active-asset fields (only set on assets used by some strategy) ──
+    # Coarse region bucket for the signal-table display columns:
+    #   `world` | `us` | `europe` | `eurozone` | ... | `japan` | `em_asia` | `cash`
+    # Empty / missing => asset is catalog-only and can't be used by a
+    # strategy without first setting this.
+    region: str = ""
+    # Estimated round-trip bid-ask spread in bps. Half is added per traded
+    # notional in the backtest cost model.
     est_spread_bps: float = 0.0
+    # "synthetic" (swap-based) or "physical" (sampling/full replication).
+    # Informational.
+    replication: str | None = None
+    # ETF inception date — splice point between proxy and live ETF history.
+    inception: date | None = None
     # Optional Yahoo ticker for the underlying index, used to extend price
-    # history backward before the ETF launched. None disables stitching for
-    # this asset (history is limited to the ETF's own data).
+    # history backward before the ETF launched. None disables stitching.
     index_proxy: str | None = None
     # FX-conversion path for the proxy series:
     #   "eur_tr"  EUR-quoted total-return index (no FX needed)
     #   "usd_tr"  USD-quoted total-return index, converted via EURUSD=X
-    # The kind tracks ONLY the FX-conversion path. Whether the underlying
-    # series is PR or TR depends on the chosen ticker.
     index_proxy_kind: str | None = None
-    # ETF inception date — splice point between proxy and live ETF history.
-    inception: date | None = None
-    # Amundi product page URL. Resolved from `pea_universe.yaml` by ISIN at
-    # config-load time (see `load_config(discovery_path=...)`); None when
-    # the asset's ISIN isn't in the discovery YAML or discovery loading is
-    # disabled.
-    amundi_url: str | None = None
-
-
-@dataclass(frozen=True, slots=True)
-class SafeAsset:
-    id: str
-    proxy: str
-    name: str = ""
-    ter_pct: float = 0.0
-    isin: str = ""
-    amundi_url: str | None = None  # resolved by ISIN from pea_universe.yaml
+    # Synthetic-price flag: when set, fetch.py compounds the named source
+    # instead of pulling yfinance for `yahoo`. Currently `estr` is the only
+    # supported value (compounds ECB €STR fixings, with EONIA splice for
+    # pre-2019 history). The asset becomes the "safe sleeve" — competes in
+    # rank-only top-N selection like any other asset.
+    synth_proxy: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -116,27 +132,18 @@ class Strategy:
     top_n: int
     description: str = ""
     reference_date: date | None = None
-    # `rotation` runs the score → filter → top-N → score-prop allocation.
-    # `buy_and_hold` allocates equal weights to `asset_ids` on day one and
-    # never rebalances — useful as a zero-cost reference benchmark (e.g.
-    # 100% MSCI World).
+    # `rotation` runs the score → filter → top-N → weight allocation.
+    # `buy_and_hold` allocates equal weights (or `static_weights` if set)
+    # to `asset_ids` on day one and never rebalances.
     mode: str = "rotation"
-    # Optional per-strategy scoring lookback override. If None, strategies
-    # use `Config.shared.scoring.lookbacks_days` (the default ADM 21/63/126
-    # mean). Setting `[126]` gives classic Antonacci dual momentum (single
-    # 6-month lookback). Same `aggregation` rule applies (mean for >1
-    # lookback; for a single value, mean returns the value as-is).
+    # Optional per-strategy scoring lookback override.
     lookbacks_days: tuple[int, ...] | None = None
-    # Per-strategy override of `shared.allocation.rule`. None = use shared.
+    # Per-strategy override of `shared.allocation.rule`.
     allocation_rule: str | None = None
-    # Optional explicit weights (asset_id → weight) for buy_and_hold mode —
-    # enables non-equal-weight static benchmarks like 60/40. Unused for
-    # rotation strategies. Must sum to ~1.0; may reference the safe asset id.
+    # Optional explicit weights (asset_id → weight) for buy_and_hold mode.
     static_weights: tuple[tuple[str, float], ...] | None = None
 
     def effective_scoring(self, shared_scoring: Scoring) -> Scoring:
-        """Return the scoring config this strategy actually uses, applying
-        the per-strategy lookback override if set."""
         if self.lookbacks_days is None:
             return shared_scoring
         return Scoring(
@@ -151,14 +158,11 @@ class Strategy:
 @dataclass(frozen=True, slots=True)
 class Config:
     shared: Shared
+    # Active assets only: those referenced by `strategies[*].asset_ids`.
+    # The full catalog is in `pea_universe.yaml`; load it via
+    # `load_full_universe()` when you need every entry (discovery flows).
     assets: tuple[Asset, ...]
-    safe_asset: SafeAsset
     strategies: tuple[Strategy, ...]
-    # Optional rendering layout for the signal table — list of rows, each a
-    # list of asset ids. Read by render.py. If None, render falls back to
-    # grouping by region. Each strategy uses only its slice of this layout
-    # (assets not in the strategy are skipped, empty rows collapse).
-    display_layout: tuple[tuple[str, ...], ...] | None = None
 
     def asset_by_id(self, asset_id: str) -> Asset:
         for asset in self.assets:
@@ -166,41 +170,88 @@ class Config:
                 return asset
         raise KeyError(f"Unknown asset id: {asset_id}")
 
+    @property
+    def safe_asset(self) -> Asset | None:
+        """The asset with `synth_proxy: estr` set (or `None` if none).
+        Convenience for callers that previously used `Config.safe_asset`."""
+        for a in self.assets:
+            if a.synth_proxy == "estr":
+                return a
+        return None
+
+    @property
+    def safe_asset_id(self) -> str | None:
+        sa = self.safe_asset
+        return sa.id if sa else None
+
+
+VALID_MODES: frozenset[str] = frozenset({"rotation", "buy_and_hold"})
+
 
 def load_config(
     path: str | Path = "strategies.yaml",
-    discovery_path: str | Path | None = "pea_universe.yaml",
+    universe_path: str | Path = "pea_universe.yaml",
 ) -> Config:
-    """Load the strategies YAML and resolve `amundi_url` per asset by
-    cross-referencing ISINs against `pea_universe.yaml`. Pass
-    `discovery_path=None` to skip the cross-reference (assets get
-    `amundi_url=None`)."""
+    """Load `strategies.yaml` and join it with `pea_universe.yaml` by id.
+
+    The active-asset subset is the union of every `assets:` list across
+    all strategies (plus any id used in `static_weights`). Each id must
+    resolve to an entry in `pea_universe.yaml`; unknown ids raise a
+    clear error at config-load time.
+    """
+    catalog = load_full_universe(universe_path)
+    catalog_by_id = {a.id: a for a in catalog}
+
     raw = yaml.safe_load(Path(path).read_text())
-    isin_to_url = _load_isin_to_amundi_url(discovery_path)
-    return _parse(raw, isin_to_url=isin_to_url)
+    return _parse(raw, catalog_by_id)
 
 
-def _load_isin_to_amundi_url(discovery_path: str | Path | None) -> dict[str, str]:
-    """Best-effort lookup of `pea_universe.yaml` to map ISIN → Amundi URL.
-    Returns an empty dict if the file doesn't exist or discovery loading
-    is disabled — callers fall back to `amundi_url=None` per asset."""
-    if discovery_path is None:
-        return {}
-    p = Path(discovery_path)
-    if not p.exists():
-        return {}
+def load_full_universe(path: str | Path = "pea_universe.yaml") -> tuple[Asset, ...]:
+    """Load every entry in the discovery YAML as an `Asset`. Active-only
+    fields are populated where the YAML has them; otherwise default. Each
+    entry's `amundi_url` is resolved via the slug heuristic if not
+    explicitly set in the YAML."""
     # Lazy import to avoid universe → discover → fetch → universe cycle.
-    from .discover import amundi_product_url, load_discovery_universe
+    from .discover import amundi_product_url
 
-    entries = load_discovery_universe(p)
-    return {e.isin: amundi_product_url(e) for e in entries}
+    raw = yaml.safe_load(Path(path).read_text())
+    bare = [_asset_from_yaml(e) for e in raw["universe"]]
+    # Fill amundi_url where not explicit — the slug derivation needs the
+    # parsed Asset, so do it as a second pass.
+    return tuple(a if a.amundi_url else _replace_amundi_url(a, amundi_product_url(a)) for a in bare)
 
 
-def _parse(raw: dict[str, Any], *, isin_to_url: dict[str, str] | None = None) -> Config:
+def _asset_from_yaml(e: dict[str, Any]) -> Asset:
+    return Asset(
+        id=e["id"],
+        isin=e["isin"],
+        yahoo=e.get("yahoo") or "",
+        name=e.get("name", ""),
+        currency=e.get("currency", "EUR"),
+        ter_pct=float(e.get("ter_pct", 0.0)),
+        sfdr=e.get("sfdr", ""),
+        category=e.get("category", ""),
+        leveraged=bool(e.get("leveraged", False)),
+        amundi_url=e.get("amundi_url"),
+        region=e.get("region", ""),
+        est_spread_bps=float(e.get("est_spread_bps", 0.0)),
+        replication=e.get("replication"),
+        inception=_parse_date(e.get("inception")),
+        index_proxy=e.get("index_proxy"),
+        index_proxy_kind=e.get("index_proxy_kind"),
+        synth_proxy=e.get("synth_proxy"),
+    )
+
+
+def _replace_amundi_url(a: Asset, url: str) -> Asset:
+    """Frozen-dataclass-friendly clone with `amundi_url` set."""
+    from dataclasses import replace as _dc_replace
+
+    return _dc_replace(a, amundi_url=url)
+
+
+def _parse(raw: dict[str, Any], catalog_by_id: dict[str, Asset]) -> Config:
     shared_raw = raw["shared"]
-    universe_raw = raw["universe"]
-    isin_to_url = isin_to_url or {}
-
     execution = _parse_execution(shared_raw.get("execution"))
 
     shared = Shared(
@@ -218,55 +269,30 @@ def _parse(raw: dict[str, Any], *, isin_to_url: dict[str, str] | None = None) ->
         execution=execution,
     )
 
-    assets = tuple(
-        Asset(
-            id=a["id"],
-            isin=a["isin"],
-            yahoo=a["yahoo"],
-            region=a["region"],
-            name=a.get("name", ""),
-            ter_pct=float(a.get("ter_pct", 0.0)),
-            replication=a.get("replication"),
-            est_spread_bps=float(a.get("est_spread_bps", 0.0)),
-            index_proxy=a.get("index_proxy"),
-            index_proxy_kind=a.get("index_proxy_kind"),
-            inception=_parse_date(a.get("inception")),
-            amundi_url=isin_to_url.get(a["isin"]),
+    strategies = tuple(_parse_strategy(s, catalog_by_id) for s in raw["strategies"])
+
+    # Active asset set: union of strategy assets + static_weights keys.
+    active_ids: set[str] = set()
+    for s in strategies:
+        active_ids.update(s.asset_ids)
+        if s.static_weights is not None:
+            active_ids.update(k for k, _ in s.static_weights)
+    missing = active_ids - catalog_by_id.keys()
+    if missing:
+        raise ValueError(
+            f"Strategies reference unknown asset ids (not in pea_universe.yaml): "
+            f"{sorted(missing)}"
         )
-        for a in universe_raw["assets"]
-    )
-
-    sa = universe_raw["safe_asset"]
-    sa_isin = sa.get("isin", "")
-    safe_asset = SafeAsset(
-        id=sa["id"],
-        proxy=sa["proxy"],
-        name=sa.get("name", ""),
-        ter_pct=float(sa.get("ter_pct", 0.0)),
-        isin=sa_isin,
-        amundi_url=isin_to_url.get(sa_isin) if sa_isin else None,
-    )
-
-    strategies = tuple(_parse_strategy(s) for s in raw["strategies"])
-
-    raw_layout = universe_raw.get("display_layout")
-    display_layout: tuple[tuple[str, ...], ...] | None = (
-        tuple(tuple(row) for row in raw_layout) if raw_layout else None
-    )
+    assets = tuple(catalog_by_id[i] for i in sorted(active_ids))
 
     return Config(
         shared=shared,
         assets=assets,
-        safe_asset=safe_asset,
         strategies=strategies,
-        display_layout=display_layout,
     )
 
 
-VALID_MODES: frozenset[str] = frozenset({"rotation", "buy_and_hold"})
-
-
-def _parse_strategy(s: dict[str, Any]) -> Strategy:
+def _parse_strategy(s: dict[str, Any], catalog_by_id: dict[str, Asset]) -> Strategy:
     mode = s.get("mode", "rotation")
     if mode not in VALID_MODES:
         raise ValueError(
@@ -302,9 +328,6 @@ def _parse_strategy(s: dict[str, Any]) -> Strategy:
 
 
 def _parse_execution(raw: dict[str, Any] | None) -> Execution:
-    """Validate the execution block. Today only the canonical Friday→Monday
-    cadence is supported; raise loud if a deviation is requested so the YAML
-    doesn't silently lie about behaviour."""
     if raw is None:
         return Execution()
     signal = str(raw.get("signal_close", "friday")).lower()
