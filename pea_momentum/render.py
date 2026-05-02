@@ -57,8 +57,8 @@ def render(
     signals = [_signal_row(r, config) for r in results]
     metrics_rows = [_metrics_row(r, config, prices_long) for r in results]
 
-    equity_traces, equity_layout = _equity_figure(results)
-    drawdown_traces, drawdown_layout = _drawdown_figure(results)
+    equity_traces, equity_layout = _equity_figure(results, config)
+    drawdown_traces, drawdown_layout = _drawdown_figure(results, config)
 
     rendered = template.render(
         summary=summary,
@@ -236,13 +236,35 @@ def _metrics_row(
     }
 
 
+def _strategy_line_style(strategy_name: str, config: Config) -> dict[str, Any]:
+    """Return Plotly `line` properties keyed by strategy family.
+
+    Three visual families to make equity-curve overlays self-explanatory:
+        buy-and-hold              1px  solid    (zero-cost reference)
+        classic dual momentum     2px  dash     (single lookback override)
+        accelerated dual momentum 3px  dot      (mean of 1m/3m/6m, default)
+    """
+    strategy = next((s for s in config.strategies if s.name == strategy_name), None)
+    if strategy is None:
+        return {"width": 2, "dash": "solid"}
+    if strategy.mode == "buy_and_hold":
+        return {"width": 1, "dash": "solid"}
+    if strategy.lookbacks_days is not None:
+        # Single-lookback override → classic Antonacci dual momentum
+        return {"width": 2, "dash": "dash"}
+    # Default rotation = mean 1m/3m/6m → accelerated dual momentum
+    return {"width": 3, "dash": "dot"}
+
+
 def _equity_figure(
     results: list[BacktestResult],
+    config: Config,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     traces: list[dict[str, Any]] = []
     for i, r in enumerate(results):
         if r.equity.is_empty():
             continue
+        style = _strategy_line_style(r.strategy_name, config)
         traces.append(
             {
                 "type": "scatter",
@@ -250,7 +272,7 @@ def _equity_figure(
                 "name": r.strategy_name,
                 "x": [d.isoformat() for d in r.equity.get_column("date").to_list()],
                 "y": r.equity.get_column("equity").to_list(),
-                "line": {"width": 2, "color": PALETTE[i % len(PALETTE)]},
+                "line": {**style, "color": PALETTE[i % len(PALETTE)]},
             }
         )
     layout: dict[str, Any] = dict(PLOT_LAYOUT_BASE)
@@ -261,12 +283,17 @@ def _equity_figure(
 
 def _drawdown_figure(
     results: list[BacktestResult],
+    config: Config,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     traces: list[dict[str, Any]] = []
     for i, r in enumerate(results):
         if r.equity.is_empty():
             continue
         dd = drawdown_series(r.equity)
+        style = _strategy_line_style(r.strategy_name, config)
+        # Drawdown lines stay slimmer than equity-curve lines so the chart
+        # doesn't get visually cluttered, but the dash pattern is preserved.
+        dd_style = {"width": max(1.0, style["width"] * 0.75), "dash": style["dash"]}
         traces.append(
             {
                 "type": "scatter",
@@ -274,7 +301,7 @@ def _drawdown_figure(
                 "name": r.strategy_name,
                 "x": [d.isoformat() for d in dd.get_column("date").to_list()],
                 "y": [v * 100 for v in dd.get_column("drawdown").to_list()],
-                "line": {"width": 1.5, "color": PALETTE[i % len(PALETTE)]},
+                "line": {**dd_style, "color": PALETTE[i % len(PALETTE)]},
                 "fill": "tozeroy" if i == 0 else "none",
                 "fillcolor": "rgba(248, 81, 73, 0.1)" if i == 0 else None,
             }
