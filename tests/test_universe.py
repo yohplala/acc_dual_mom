@@ -19,7 +19,7 @@ def test_load_full_universe_returns_every_catalog_entry() -> None:
 
 def test_load_config_joins_strategies_with_universe() -> None:
     """Active assets (those referenced by some strategy) are populated from
-    pea_universe.yaml — name, isin, ter_pct, amundi_url, region, etc. all
+    pea_universe.yaml — name, isin, ter_pct, amundi_url, category, etc. all
     come from there."""
     cfg = load_config(REPO_ROOT / "strategies.yaml", REPO_ROOT / "pea_universe.yaml")
     assert len(cfg.assets) > 0
@@ -27,7 +27,7 @@ def test_load_config_joins_strategies_with_universe() -> None:
         assert asset.name, f"{asset.id} has no name from catalog"
         assert asset.isin, f"{asset.id} has no isin"
         assert asset.amundi_url is not None, f"{asset.id} has no amundi_url"
-        assert asset.region, f"{asset.id} has no region (active-asset field)"
+        assert asset.category, f"{asset.id} has no category (drives dashboard bucket)"
 
 
 def test_safe_asset_property_finds_synth_proxy_asset() -> None:
@@ -38,7 +38,6 @@ def test_safe_asset_property_finds_synth_proxy_asset() -> None:
     safe = cfg.safe_asset
     assert safe is not None
     assert safe.synth_proxy == "estr"
-    assert safe.region == "cash"
     assert cfg.safe_asset_id == safe.id
 
 

@@ -59,6 +59,28 @@ def coarse_region(category: str) -> str:
     return "EUROPE"
 
 
+def dashboard_bucket(category: str) -> str:
+    """Coarser bucket used by the signal-table region columns.
+    Returns one of `world` / `us` / `europe` / `asia` / `cash`.
+
+    Single source of truth for the dashboard column an asset lands in:
+    derived from `category` so every catalog entry resolves consistently
+    (no separate per-asset `region` field to keep in sync). The 4-region
+    + Cash columns in `Strategies & latest signal` look up each strategy
+    asset's `category` here and place its chip accordingly."""
+    cat = category.upper()
+    if cat.startswith("WORLD"):
+        return "world"
+    if cat.startswith("USA"):
+        return "us"
+    if cat.startswith("CASH") or cat.startswith("BOND"):
+        return "cash"
+    if cat.startswith(("JAPAN", "EMERGING-ASIA", "ASIA-PACIFIC", "CHINA", "INDIA", "EMERGING")):
+        return "asia"
+    # Default for Eurozone, Europe, individual EU countries, EU sectors.
+    return "europe"
+
+
 def load_discovery_universe(path: str | Path = "pea_universe.yaml") -> list[Asset]:
     """Read every entry in `pea_universe.yaml` as an `Asset`. Active-only
     fields (region, est_spread_bps, …) are populated where present."""

@@ -23,7 +23,7 @@ from pea_momentum.universe import Asset
 
 
 def _asset() -> Asset:
-    return Asset(id="t", isin="x", yahoo="X.PA", region="x")
+    return Asset(id="t", isin="x", yahoo="X.PA")
 
 
 def test_fetch_yahoo_handles_pandas_extension_float64(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -122,7 +122,6 @@ def test_proxy_in_eur_rejects_unsupported_kind(monkeypatch: pytest.MonkeyPatch) 
         id="x",
         isin="x",
         yahoo="X.PA",
-        region="europe",
         inception=date(2018, 1, 1),
         index_proxy="^stoxxr",
         index_proxy_kind="eur_pr",  # not in SUPPORTED_PROXY_KINDS
@@ -136,7 +135,6 @@ def test_proxy_in_eur_skips_fx_for_eur_tr(monkeypatch: pytest.MonkeyPatch) -> No
         id="x",
         isin="x",
         yahoo="X.PA",
-        region="europe",
         inception=date(2018, 1, 1),
         index_proxy="IWDA.AS",
         index_proxy_kind="eur_tr",
