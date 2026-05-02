@@ -14,7 +14,12 @@ shared:
     aggregation: mean
 
   allocation:
-    rule: equal_weight            # 1/N across selected — canonical Antonacci ADM
+    # Default weighting rule across selected top-N. Canonical Antonacci ADM
+    # is `equal_weight` (1/N). The alternative `score_proportional` weights
+    # by score (s_i / sum(s_j)) — kept as an opt-in sensitivity exhibit:
+    # set `allocation_rule: score_proportional` on a per-strategy entry to
+    # override (see `core_monthly_score_prop` below).
+    rule: equal_weight
     granularity_pct: 10           # round weights to 10% steps
     rounding: largest_remainder   # Hare quota for fair rounding
 

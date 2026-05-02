@@ -78,3 +78,45 @@ def test_score_series_min_pessimistic() -> None:
     s_mean = _score_series(closes, lookbacks=(21, 63, 126), aggregation="mean")
     assert s_min is not None and s_mean is not None
     assert s_min <= s_mean
+
+
+def test_score_at_excludes_assets_with_insufficient_history() -> None:
+    """Asset `b` only has 50 days of data — it can't satisfy the 126-day
+    lookback so it must be dropped from the score dict, not silently scored
+    on a partial mean."""
+    base = date(2024, 1, 1)
+    rows = []
+    for i in range(130):
+        d = base + timedelta(days=i)
+        rows.append({"date": d, "asset_id": "a", "close": 100.0 + i})
+    for i in range(50):
+        d = base + timedelta(days=80 + i)
+        rows.append({"date": d, "asset_id": "b", "close": 100.0 + i})
+    df = pl.DataFrame(rows).cast({"date": pl.Date, "asset_id": pl.Utf8, "close": pl.Float64})
+    scores = score_at(
+        df,
+        asset_ids=["a", "b"],
+        as_of=base + timedelta(days=129),
+        cfg=Scoring(lookbacks_days=(21, 63, 126), aggregation="mean"),
+    )
+    assert "a" in scores
+    assert "b" not in scores  # not silently averaged on the 21- + 63-day pair
+
+
+def test_score_at_median_aggregation_path() -> None:
+    """End-to-end check that the median list.median() path returns the same
+    result as _score_series.median for a controlled input."""
+    base = date(2024, 1, 1)
+    rows = []
+    closes = [100.0] * 130
+    closes[-22] = 100.0 / 0.90  # injects a 21-day -10% lookback
+    for i, c in enumerate(closes):
+        rows.append({"date": base + timedelta(days=i), "asset_id": "a", "close": c})
+    df = pl.DataFrame(rows).cast({"date": pl.Date, "asset_id": pl.Utf8, "close": pl.Float64})
+    scores = score_at(
+        df,
+        asset_ids=["a"],
+        as_of=base + timedelta(days=129),
+        cfg=Scoring(lookbacks_days=(21, 63, 126), aggregation="median"),
+    )
+    assert scores["a"] == pytest.approx(0.0, abs=1e-9)
