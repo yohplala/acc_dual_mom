@@ -58,3 +58,102 @@ def test_unknown_asset_id_in_strategy_raises() -> None:
         sparse_universe.unlink(missing_ok=True)
         if sparse_universe.parent.exists() and not any(sparse_universe.parent.iterdir()):
             sparse_universe.parent.rmdir()
+
+
+# ── static_weights / assets: consistency validation ──────────────────────
+
+
+_MINIMAL_UNIVERSE_YAML = """\
+universe:
+  - { id: a, name: A, isin: A1, currency: EUR, ter_pct: 0.1, sfdr: Article 6, category: USA, yahoo: A.PA }
+  - { id: b, name: B, isin: B1, currency: EUR, ter_pct: 0.1, sfdr: Article 6, category: World, yahoo: B.PA }
+  - { id: c, name: C, isin: C1, currency: EUR, ter_pct: 0.1, sfdr: Article 6, category: Cash-Eurozone, yahoo: C.PA, synth_proxy: estr }
+"""
+
+
+def _write_yaml(path: Path, content: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(content)
+
+
+def test_static_weights_keys_must_match_assets_exactly(tmp_path: Path) -> None:
+    """static_weights keys must match the strategy's `assets:` list — no
+    extra weights, no extra assets — so the visible universe and the
+    weighted positions stay aligned."""
+    universe = tmp_path / "universe.yaml"
+    _write_yaml(universe, _MINIMAL_UNIVERSE_YAML)
+    # Case 1: static_weights references an asset NOT in `assets:`
+    strategies = tmp_path / "strategies.yaml"
+    _write_yaml(
+        strategies,
+        """\
+shared:
+  scoring: { lookbacks_days: [21], aggregation: mean }
+  allocation: { rule: equal_weight, granularity_pct: 10, rounding: largest_remainder }
+  filter: { type: positive_momentum }
+  costs: { per_trade_pct: 0.0 }
+strategies:
+  - name: bad
+    assets: [a]
+    rebalance: monthly_first_sunday
+    top_n: 1
+    mode: buy_and_hold
+    static_weights: { a: 0.6, b: 0.4 }
+""",
+    )
+    with pytest.raises(ValueError, match="static_weights keys not in assets"):
+        load_config(strategies, universe)
+
+
+def test_static_weights_assets_subset_also_raises(tmp_path: Path) -> None:
+    """The reverse direction: an asset listed in `assets:` but NOT given a
+    weight in `static_weights:` is also rejected — no implicit zero."""
+    universe = tmp_path / "universe.yaml"
+    _write_yaml(universe, _MINIMAL_UNIVERSE_YAML)
+    strategies = tmp_path / "strategies.yaml"
+    _write_yaml(
+        strategies,
+        """\
+shared:
+  scoring: { lookbacks_days: [21], aggregation: mean }
+  allocation: { rule: equal_weight, granularity_pct: 10, rounding: largest_remainder }
+  filter: { type: positive_momentum }
+  costs: { per_trade_pct: 0.0 }
+strategies:
+  - name: bad
+    assets: [a, b]
+    rebalance: monthly_first_sunday
+    top_n: 1
+    mode: buy_and_hold
+    static_weights: { a: 1.0 }
+""",
+    )
+    with pytest.raises(ValueError, match="assets entries not in static_weights"):
+        load_config(strategies, universe)
+
+
+def test_static_weights_matching_assets_is_valid(tmp_path: Path) -> None:
+    """The good case: keys exactly match `assets:` (set equality). Loads
+    without raising."""
+    universe = tmp_path / "universe.yaml"
+    _write_yaml(universe, _MINIMAL_UNIVERSE_YAML)
+    strategies = tmp_path / "strategies.yaml"
+    _write_yaml(
+        strategies,
+        """\
+shared:
+  scoring: { lookbacks_days: [21], aggregation: mean }
+  allocation: { rule: equal_weight, granularity_pct: 10, rounding: largest_remainder }
+  filter: { type: positive_momentum }
+  costs: { per_trade_pct: 0.0 }
+strategies:
+  - name: ok
+    assets: [a, b]
+    rebalance: monthly_first_sunday
+    top_n: 1
+    mode: buy_and_hold
+    static_weights: { a: 0.6, b: 0.4 }
+""",
+    )
+    cfg = load_config(strategies, universe)
+    assert cfg.strategies[0].static_weights == (("a", 0.6), ("b", 0.4))

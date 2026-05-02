@@ -309,6 +309,25 @@ def _parse_strategy(s: dict[str, Any], catalog_by_id: dict[str, Asset]) -> Strat
             raise ValueError(
                 f"strategy {s['name']!r}: static_weights must sum to 1.0 (got {total:.6f})"
             )
+        # `static_weights` keys must match the strategy's `assets:` exactly.
+        # Two places of truth otherwise (and the dashboard had to merge them
+        # to render — see the recent world_60_40_bh fix). The strategy's
+        # `assets:` IS the universe; for buy-and-hold with explicit weights,
+        # every weighted asset must appear in `assets:`.
+        weight_ids = {k for k, _ in items}
+        asset_ids = set(s["assets"])
+        if weight_ids != asset_ids:
+            missing_in_assets = weight_ids - asset_ids
+            extra_in_assets = asset_ids - weight_ids
+            details: list[str] = []
+            if missing_in_assets:
+                details.append(f"static_weights keys not in assets: {sorted(missing_in_assets)}")
+            if extra_in_assets:
+                details.append(f"assets entries not in static_weights: {sorted(extra_in_assets)}")
+            raise ValueError(
+                f"strategy {s['name']!r}: static_weights keys must match assets: list "
+                f"exactly. " + "; ".join(details)
+            )
         static_weights = items
     return Strategy(
         name=s["name"],
