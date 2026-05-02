@@ -92,85 +92,69 @@ def load_discovery_universe(path: str | Path = "pea_universe.yaml") -> list[Disc
     ]
 
 
+_AMUNDI_URL_BASE = "https://www.amundietf.fr/fr/particuliers/produits"
+
+# Share-class suffixes Amundi appends after `-ucits-etf` on the product URL.
+# Ordered longest-first so the longest match wins (e.g. `-eur-hedged-acc` beats
+# `-acc`). Names that don't end in any of these get a plain `-ucits-etf` append.
+_SHARE_CLASS_SUFFIXES: tuple[str, ...] = (
+    "-eur-hedged-acc",
+    "-eur-hedged-dist",
+    "-usd-hedged-acc",
+    "-usd-hedged-dist",
+    "-eur-acc",
+    "-eur-dist",
+    "-usd-acc",
+    "-usd-dist",
+    "-acc",
+    "-dist",
+    "-dr",
+)
+
+_FIXED_INCOME_KEYWORDS = ("money-market", "short-term")
+_FIXED_INCOME_PREFIXES = ("cash", "bond")
+
+
 def amundi_product_url(entry: DiscoveryEntry) -> str:
     """Resolve the Amundi product page URL for `entry`.
 
-    Uses `entry.amundi_url` if explicitly set in the YAML; otherwise
-    constructs from name + ISIN using Amundi's observed slug pattern:
+    Returns `entry.amundi_url` verbatim when set in the YAML; otherwise
+    constructs the URL from name + ISIN using Amundi's observed slug pattern:
 
-        https://www.amundietf.fr/fr/particuliers/produits/{asset_class}/{slug}/{isin-lower}
+        {base}/{asset_class}/{slug}/{isin-lower}
 
-    The ``particuliers`` (B2C) audience is the user-facing tree most
-    individual investors land on. Most products mirror the same slug on
-    both ``particuliers`` and ``professionnels`` audiences, but some
-    have audience-specific slugs (e.g. English-localised names on
-    ``particuliers``). Cases where our heuristic doesn't match the
-    ``particuliers`` slug are handled by per-entry ``amundi_url:``
-    overrides in ``pea_universe.yaml``.
+    The slug is the lowercase name with non-alphanumerics dropped and spaces
+    replaced by dashes. Amundi inserts `ucits-etf` between the product name
+    and the share-class suffix even when the source name omits it, so we
+    mirror that.
 
-    Asset class: ``equity`` for stock ETFs, ``fixed-income`` for
-    money-market / short-term cash funds (detected from the YAML
-    ``category`` field).
-
-    The slug itself: lowercase name, drop non-alphanumeric, dashes for
-    spaces. Amundi inserts ``ucits-etf`` between the product name and
-    the share-class indicator even when the source name omits it
-    (e.g. "Amundi Core EURO STOXX 50 EUR Acc" →
-    ``amundi-core-euro-stoxx-50-ucits-etf-eur-acc``); we mirror that.
-
-    Best-effort — set ``amundi_url:`` in ``pea_universe.yaml`` to override
-    when the heuristic doesn't match Amundi's actual URL (e.g. products
-    whose slug uses an expanded English-language index name like
-    ``msci-ac-asia-pacific-ex-japan`` instead of the abbreviated form).
+    Best-effort — set `amundi_url:` in `pea_universe.yaml` to override when
+    the heuristic mismatches (e.g. products with expanded English index
+    names like `msci-ac-asia-pacific-ex-japan`).
     """
     if entry.amundi_url:
         return entry.amundi_url
-    asset_class = _amundi_asset_class(entry.category)
-    slug = re.sub(r"[^a-z0-9\s-]", "", entry.name.lower())
+    return f"{_AMUNDI_URL_BASE}/{_amundi_asset_class(entry.category)}/{_slug(entry.name)}/{entry.isin.lower()}"
+
+
+def _slug(name: str) -> str:
+    slug = re.sub(r"[^a-z0-9\s-]", "", name.lower())
     slug = re.sub(r"\s+", "-", slug.strip())
     slug = re.sub(r"-+", "-", slug)
-    if "ucits-etf" not in slug:
-        # Insert "ucits-etf" before the share-class suffix (longest match
-        # wins so "-eur-hedged-acc" beats "-acc"). Falls through to a
-        # plain append if no suffix matches.
-        suffixes = (
-            "-eur-hedged-acc",
-            "-eur-hedged-dist",
-            "-usd-hedged-acc",
-            "-usd-hedged-dist",
-            "-eur-acc",
-            "-eur-dist",
-            "-usd-acc",
-            "-usd-dist",
-            "-acc",
-            "-dist",
-            "-dr",
-        )
-        for suffix in suffixes:
-            if slug.endswith(suffix):
-                slug = slug[: -len(suffix)] + "-ucits-etf" + suffix
-                break
-        else:
-            slug += "-ucits-etf"
-    return (
-        f"https://www.amundietf.fr/fr/particuliers/produits/"
-        f"{asset_class}/{slug}/{entry.isin.lower()}"
-    )
+    if "ucits-etf" in slug:
+        return slug
+    for suffix in _SHARE_CLASS_SUFFIXES:
+        if slug.endswith(suffix):
+            return slug[: -len(suffix)] + "-ucits-etf" + suffix
+    return slug + "-ucits-etf"
 
 
 def _amundi_asset_class(category: str) -> str:
-    """Map a YAML ``category`` to the Amundi URL's asset-class path
-    segment. Money-market / cash funds sit under ``/fixed-income/``; all
-    equity products sit under ``/equity/``. Future bond ETFs (none yet in
-    our universe) would also use ``/fixed-income/``.
-    """
+    """Map a YAML `category` to the Amundi URL's asset-class path segment.
+    Money-market / cash funds sit under `/fixed-income/`; everything else
+    under `/equity/`. Future bond ETFs would also use `/fixed-income/`."""
     cat = category.lower()
-    if (
-        cat.startswith("cash")
-        or "money-market" in cat
-        or "short-term" in cat
-        or cat.startswith("bond")
-    ):
+    if cat.startswith(_FIXED_INCOME_PREFIXES) or any(k in cat for k in _FIXED_INCOME_KEYWORDS):
         return "fixed-income"
     return "equity"
 
