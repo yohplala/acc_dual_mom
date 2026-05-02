@@ -98,22 +98,19 @@ def amundi_product_url(entry: DiscoveryEntry) -> str:
     Uses `entry.amundi_url` if explicitly set in the YAML; otherwise
     constructs from name + ISIN using Amundi's observed slug pattern:
 
-        https://www.amundietf.fr/fr/professionnels/produits/{asset_class}/{slug}/{isin-lower}
+        https://www.amundietf.fr/fr/particuliers/produits/{asset_class}/{slug}/{isin-lower}
 
-    Two key calibrations from observation:
+    The ``particuliers`` (B2C) audience is the user-facing tree most
+    individual investors land on. Most products mirror the same slug on
+    both ``particuliers`` and ``professionnels`` audiences, but some
+    have audience-specific slugs (e.g. English-localised names on
+    ``particuliers``). Cases where our heuristic doesn't match the
+    ``particuliers`` slug are handled by per-entry ``amundi_url:``
+    overrides in ``pea_universe.yaml``.
 
-    * **Audience = ``professionnels``** (B2B). Amundi's site has parallel
-      ``/particuliers/`` (B2C) and ``/professionnels/`` (B2B) trees. The
-      B2B slugs follow a consistent French-language pattern that matches
-      our heuristic; the B2C slugs are inconsistent — sometimes
-      English-localised (``Japan`` instead of ``Japon``), sometimes
-      retaining a legacy ``lyxor-`` prefix on rebranded products. Linking
-      to ``professionnels`` URLs is the more reliable default.
-
-    * **Asset class** = ``equity`` for stock ETFs, ``fixed-income`` for
-      money-market / short-term cash funds (e.g. PEA Euro Court Terme,
-      which lives at ``/fixed-income/`` not ``/equity/``). Detected from
-      the YAML ``category`` field.
+    Asset class: ``equity`` for stock ETFs, ``fixed-income`` for
+    money-market / short-term cash funds (detected from the YAML
+    ``category`` field).
 
     The slug itself: lowercase name, drop non-alphanumeric, dashes for
     spaces. Amundi inserts ``ucits-etf`` between the product name and
@@ -156,7 +153,7 @@ def amundi_product_url(entry: DiscoveryEntry) -> str:
         else:
             slug += "-ucits-etf"
     return (
-        f"https://www.amundietf.fr/fr/professionnels/produits/"
+        f"https://www.amundietf.fr/fr/particuliers/produits/"
         f"{asset_class}/{slug}/{entry.isin.lower()}"
     )
 
