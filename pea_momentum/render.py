@@ -145,23 +145,16 @@ REGION_ORDER = (
 def _asset_rows(strategy: Any, config: Config) -> list[list[Any]]:
     """Layout the strategy's universe as rows of assets.
 
-    The chip layout shows whatever the user listed under `strategy.assets`
-    in YAML — plus, for rotation strategies, the safe asset as a final row
-    (because rotation can hold safe when no candidate beats the absolute
-    filter). Buy-and-hold strategies never rotate, so the safe row is
-    omitted there.
+    Shows exactly what the user listed under `strategy.assets` in YAML —
+    no auto-injection of the safe asset. If a strategy wants safe to
+    appear, it must be listed explicitly in `assets:`.
 
     If `universe.display_layout` is set, that list-of-lists drives the row
-    structure (each row filtered to the strategy's `asset_ids` plus safe
-    for rotation; empty rows collapse). Otherwise we group by `region` in
-    REGION_ORDER.
+    structure (each row filtered to the strategy's `asset_ids`; empty
+    rows collapse). Otherwise we group by `region` in REGION_ORDER.
     """
-    include_safe = strategy.mode == "rotation"
-
     if config.display_layout is not None:
         strategy_ids = set(strategy.asset_ids)
-        if include_safe:
-            strategy_ids.add(config.safe_asset.id)
         rows: list[list[Any]] = []
         for row_ids in config.display_layout:
             row_assets: list[Any] = []
@@ -177,16 +170,18 @@ def _asset_rows(strategy: Any, config: Config) -> list[list[Any]]:
 
     by_region: dict[str, list[Any]] = {}
     for asset_id in strategy.asset_ids:
-        a = config.asset_by_id(asset_id)
-        by_region.setdefault(a.region, []).append(a)
+        a = (
+            config.safe_asset
+            if asset_id == config.safe_asset.id
+            else config.asset_by_id(asset_id)
+        )
+        by_region.setdefault(a.region if hasattr(a, "region") else "safe", []).append(a)
     rows = []
     for region in REGION_ORDER:
         if region in by_region:
             rows.append(by_region.pop(region))
-    for assets in by_region.values():  # any unknown regions
+    for assets in by_region.values():  # any unknown regions or safe
         rows.append(assets)
-    if include_safe:
-        rows.append([config.safe_asset])
     return rows
 
 

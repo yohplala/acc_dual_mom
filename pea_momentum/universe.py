@@ -67,8 +67,13 @@ class Allocation:
 
 @dataclass(frozen=True, slots=True)
 class Filter:
+    """Pre-selection filter applied before top-N ranking. Currently only
+    `positive_momentum` is supported: assets with score <= 0 are dropped.
+    The historical `absolute_momentum` (compare against safe-asset score)
+    is gone — safe is just another listable asset and competes via
+    rank-only selection."""
+
     type: str
-    benchmark: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -176,10 +181,7 @@ def _parse(raw: dict[str, Any]) -> Config:
             granularity_pct=int(shared_raw["allocation"]["granularity_pct"]),
             rounding=shared_raw["allocation"]["rounding"],
         ),
-        filter=Filter(
-            type=shared_raw["filter"]["type"],
-            benchmark=shared_raw["filter"]["benchmark"],
-        ),
+        filter=Filter(type=shared_raw["filter"]["type"]),
         costs=Costs(per_trade_pct=float(shared_raw["costs"]["per_trade_pct"])),
         execution=execution,
     )

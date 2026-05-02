@@ -24,7 +24,7 @@ from datetime import date
 import polars as pl
 
 from . import stitching
-from .allocate import SAFE_ASSET_KEY, allocate
+from .allocate import CASH_KEY, allocate
 from .schedule import fill_date, rebalance_dates, signal_date
 from .score import score_at
 from .store import prices_wide
@@ -83,7 +83,11 @@ def run(
 ) -> BacktestResult:
     asset_ids = list(strategy.asset_ids)
     safe_id = config.safe_asset.id
-    all_ids = [*asset_ids, safe_id]
+    # Residual-holder rule: rounding shortfalls and the "no candidate passed
+    # the >0 filter" fallback go to the safe asset *if it is listed* in the
+    # strategy's universe (so the residual earns €STR yield), otherwise to
+    # CASH_KEY (a 0%-return placeholder).
+    residual_holder = safe_id if safe_id in asset_ids else CASH_KEY
 
     # Defensive scrub: even if upstream prices.parquet has bad data
     # (round-trip spikes from yfinance bad days, or sustained-flat
@@ -99,15 +103,18 @@ def run(
 
     available_ids = set(prices_long.get_column("asset_id").unique().to_list())
     wide = (
-        prices_wide(prices_long, all_ids)
+        prices_wide(prices_long, asset_ids)
         .sort("date")
-        .with_columns([pl.col(c).forward_fill() for c in all_ids if c in available_ids])
+        .with_columns([pl.col(c).forward_fill() for c in asset_ids if c in available_ids])
     )
     if start is not None:
         wide = wide.filter(pl.col("date") >= start)
     if end is not None:
         wide = wide.filter(pl.col("date") <= end)
-    wide = wide.drop_nulls(subset=[safe_id])  # need at least the safe asset
+    relevant_cols = [c for c in asset_ids if c in available_ids]
+    if relevant_cols:
+        # Drop rows where every listed asset is null (no data anywhere yet).
+        wide = wide.filter(pl.any_horizontal([pl.col(c).is_not_null() for c in relevant_cols]))
 
     if strategy.mode == "buy_and_hold":
         return _run_buy_and_hold(wide, strategy, asset_ids, safe_id)
@@ -118,18 +125,19 @@ def run(
 
     dates = wide.get_column("date").to_list()
     cost_pct = config.shared.costs.per_trade_pct / 100.0
-    # Per-asset half-spread (bps → fraction). Safe asset has none — €STR
-    # synthetic, no actual trade.
+    # Per-asset half-spread (bps → fraction). The safe asset's spread is 0
+    # (€STR synthetic, no actual trade); CASH residuals trade at zero cost too.
     half_spread_by_id: dict[str, float] = {
         a.id: (a.est_spread_bps / 2.0) / 10_000.0 for a in config.assets
     }
     half_spread_by_id[safe_id] = 0.0
+    half_spread_by_id[CASH_KEY] = 0.0
     scoring = strategy.effective_scoring(config.shared.scoring)
     date_set = set(dates)
 
     rebalances: list[Rebalance] = []
     fills: list[tuple[date, dict[str, float], float]] = []
-    prev_weights: dict[str, float] = {SAFE_ASSET_KEY: 1.0}
+    prev_weights: dict[str, float] = {residual_holder: 1.0}
     n_fill_skips = 0
     n_signal_skips = 0
 
@@ -140,50 +148,45 @@ def run(
             n_fill_skips += 1
             continue
         scores = score_at(prices_long, asset_ids, s_day, scoring)
-        # Safe asset must be scored on the SAME lookbacks as risky assets — the
-        # absolute filter compares like-for-like.
-        safe_scores = score_at(prices_long, [safe_id], s_day, scoring)
         if not scores:
             n_signal_skips += 1
             continue
-        # The safe asset is the absolute-momentum threshold. If it has no
-        # score (typically because the backtest starts before the safe asset
-        # has enough lookback history), there's no defensible default —
-        # 0.0 would silently let any positive risky score pass the filter,
-        # which is the wrong direction in negative-rate regimes. Fail loud.
-        if safe_id not in safe_scores:
-            raise RuntimeError(
-                f"safe asset {safe_id!r} has no score at signal date {s_day} — "
-                f"backtest start is before safe asset has enough lookback history "
-                f"(need {max(scoring.lookbacks_days)} trading days). "
-                f"Push the --start date forward or use a longer-history safe asset."
-            )
         new_w = allocate(
             scores=scores,
-            safe_score=safe_scores[safe_id],
             top_n=strategy.top_n,
             alloc=config.shared.allocation,
             flt=config.shared.filter,
             rule_override=strategy.allocation_rule,
+            residual_holder=residual_holder,
         )
-        new_w_mapped = {(safe_id if a == SAFE_ASSET_KEY else a): w for a, w in new_w.items()}
-        turnover = _turnover(prev_weights, new_w_mapped)
-        cost = _transition_cost(prev_weights, new_w_mapped, cost_pct, half_spread_by_id)
+        turnover = _turnover(prev_weights, new_w)
+        cost = _transition_cost(prev_weights, new_w, cost_pct, half_spread_by_id)
         rebalances.append(
             Rebalance(
                 rebalance_date=r_day,
                 signal_date=s_day,
                 fill_date=f_day,
                 scores=scores,
-                weights=new_w_mapped,
+                weights=new_w,
                 turnover=turnover,
                 cost=cost,
             )
         )
-        fills.append((f_day, new_w_mapped, cost))
-        prev_weights = new_w_mapped
+        fills.append((f_day, new_w, cost))
+        prev_weights = new_w
 
-    equity_df = _compound(wide, all_ids, init_weights={safe_id: 1.0}, fills=fills)
+    # Compounding kernel needs every asset id that may appear in weights —
+    # listed assets + the residual holder (CASH if safe wasn't listed). The
+    # CASH placeholder has no price series; inject a synthetic constant
+    # column so its daily return is exactly 0%.
+    compound_ids = list(asset_ids)
+    compound_wide = wide
+    if residual_holder == CASH_KEY:
+        compound_ids.append(CASH_KEY)
+        compound_wide = compound_wide.with_columns(pl.lit(1.0).alias(CASH_KEY))
+    equity_df = _compound(
+        compound_wide, compound_ids, init_weights={residual_holder: 1.0}, fills=fills
+    )
     return BacktestResult(
         strategy_name=strategy.name,
         equity=equity_df,
