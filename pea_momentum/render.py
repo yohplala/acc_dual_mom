@@ -61,9 +61,10 @@ def render(
     template = _ENV.get_template(template_name)
 
     strategy_by_name: dict[str, Strategy] = {s.name: s for s in config.strategies}
+    asset_meta = _build_asset_meta(config)
 
     summary = _summary(results, config)
-    signals = [_signal_row(r, config, strategy_by_name) for r in results]
+    signals = [_signal_row(r, config, strategy_by_name, asset_meta) for r in results]
     metrics_rows = [_metrics_row(r, strategy_by_name, prices_long) for r in results]
 
     equity_traces, equity_layout = _equity_figure(results, strategy_by_name)
@@ -142,7 +143,10 @@ def _allocation_label(strategy: Strategy, shared_rule: str) -> str:
 
 
 def _signal_row(
-    result: BacktestResult, config: Config, strategy_by_name: dict[str, Strategy]
+    result: BacktestResult,
+    config: Config,
+    strategy_by_name: dict[str, Strategy],
+    asset_meta: dict[str, dict[str, str | None]],
 ) -> dict[str, object]:
     strategy = strategy_by_name[result.strategy_name]
 
@@ -162,37 +166,64 @@ def _signal_row(
         "scoring": _scoring_label(strategy, config.shared.scoring.lookbacks_days),
         "allocation": _allocation_label(strategy, config.shared.allocation.rule),
         "last_rebalance": last.rebalance_date.isoformat() if last else "—",
-        "universe_buckets": _universe_buckets(strategy, config),
-        "previous_alloc": _alloc_chips(prev.weights if prev else {}),
-        "current_alloc": _alloc_chips(last.weights if last else {}),
+        "universe_buckets": _universe_buckets(strategy, config, asset_meta),
+        "previous_alloc": _alloc_chips(prev.weights if prev else {}, asset_meta),
+        "current_alloc": _alloc_chips(last.weights if last else {}, asset_meta),
     }
 
 
-def _universe_buckets(strategy: Strategy, config: Config) -> dict[str, list[dict[str, str]]]:
+def _build_asset_meta(config: Config) -> dict[str, dict[str, str | None]]:
+    """Pre-compute id -> {name, amundi_url} for every asset including safe.
+    Used to attach display name + Amundi product URL to chip descriptors so
+    the signal table can render asset chips as clickable links."""
+    meta: dict[str, dict[str, str | None]] = {}
+    for a in config.assets:
+        meta[a.id] = {"name": a.name or a.id, "url": a.amundi_url}
+    sa = config.safe_asset
+    meta[sa.id] = {"name": sa.name or sa.id, "url": sa.amundi_url}
+    return meta
+
+
+def _universe_buckets(
+    strategy: Strategy, config: Config, meta: dict[str, dict[str, str | None]]
+) -> dict[str, list[dict[str, str | None]]]:
     """Group the strategy's universe assets into the 4 geographic buckets +
-    Cash. Each bucket value is a list of `{id, name}` dicts; empty buckets
-    render as `—` in the template."""
-    buckets: dict[str, list[dict[str, str]]] = {b: [] for b in _REGION_BUCKETS_ORDER}
+    Cash. Each bucket value is a list of `{id, name, url}` dicts; empty
+    buckets render as `—` in the template."""
+    buckets: dict[str, list[dict[str, str | None]]] = {b: [] for b in _REGION_BUCKETS_ORDER}
     for asset_id in strategy.asset_ids:
+        info = meta.get(asset_id, {"name": asset_id, "url": None})
         if asset_id == config.safe_asset.id:
-            buckets["cash"].append({"id": asset_id, "name": config.safe_asset.name or asset_id})
-            continue
-        a = config.asset_by_id(asset_id)
-        bucket = _REGION_BUCKET.get(a.region, "world")
-        buckets[bucket].append({"id": asset_id, "name": a.name or asset_id})
+            bucket = "cash"
+        else:
+            a = config.asset_by_id(asset_id)
+            bucket = _REGION_BUCKET.get(a.region, "world")
+        buckets[bucket].append({"id": asset_id, "name": info["name"], "url": info["url"]})
     return buckets
 
 
-def _alloc_chips(weights: dict[str, float]) -> list[dict[str, object]]:
+def _alloc_chips(
+    weights: dict[str, float], meta: dict[str, dict[str, str | None]]
+) -> list[dict[str, object]]:
     """Render only non-zero allocations as chip descriptors, sorted descending
     by weight. Zero-weight entries are dropped (per the cleaner-signal-table
-    requirement)."""
+    requirement). Each chip carries the optional Amundi URL so the template
+    can render it as a link."""
     out: list[dict[str, object]] = []
     for asset_id, w in sorted(weights.items(), key=lambda kv: -kv[1]):
         pct = round(w * 100)
         if pct == 0:
             continue
-        out.append({"id": asset_id, "pct": pct, "bracket": _weight_bracket(pct)})
+        info = meta.get(asset_id, {"name": asset_id, "url": None})
+        out.append(
+            {
+                "id": asset_id,
+                "pct": pct,
+                "bracket": _weight_bracket(pct),
+                "name": info["name"],
+                "url": info["url"],
+            }
+        )
     return out
 
 
