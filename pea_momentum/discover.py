@@ -98,21 +98,37 @@ def amundi_product_url(entry: DiscoveryEntry) -> str:
     Uses `entry.amundi_url` if explicitly set in the YAML; otherwise
     constructs from name + ISIN using Amundi's observed slug pattern:
 
-        https://www.amundietf.fr/fr/particuliers/produits/equity/{slug}/{isin-lower}
+        https://www.amundietf.fr/fr/professionnels/produits/{asset_class}/{slug}/{isin-lower}
 
-    The slug lowercases the product name, drops non-alphanumeric characters,
-    and joins words with single dashes. Amundi's URL convention always
-    includes ``ucits-etf`` between the product name and the share-class
-    indicator, even when the source name omits it (e.g. "Amundi Core EURO
-    STOXX 50 EUR Acc" → ``amundi-core-euro-stoxx-50-ucits-etf-eur-acc``).
-    We insert it before the recognised share-class suffix when the slug
-    doesn't already contain it.
+    Two key calibrations from observation:
+
+    * **Audience = ``professionnels``** (B2B). Amundi's site has parallel
+      ``/particuliers/`` (B2C) and ``/professionnels/`` (B2B) trees. The
+      B2B slugs follow a consistent French-language pattern that matches
+      our heuristic; the B2C slugs are inconsistent — sometimes
+      English-localised (``Japan`` instead of ``Japon``), sometimes
+      retaining a legacy ``lyxor-`` prefix on rebranded products. Linking
+      to ``professionnels`` URLs is the more reliable default.
+
+    * **Asset class** = ``equity`` for stock ETFs, ``fixed-income`` for
+      money-market / short-term cash funds (e.g. PEA Euro Court Terme,
+      which lives at ``/fixed-income/`` not ``/equity/``). Detected from
+      the YAML ``category`` field.
+
+    The slug itself: lowercase name, drop non-alphanumeric, dashes for
+    spaces. Amundi inserts ``ucits-etf`` between the product name and
+    the share-class indicator even when the source name omits it
+    (e.g. "Amundi Core EURO STOXX 50 EUR Acc" →
+    ``amundi-core-euro-stoxx-50-ucits-etf-eur-acc``); we mirror that.
 
     Best-effort — set ``amundi_url:`` in ``pea_universe.yaml`` to override
-    when the heuristic doesn't match Amundi's actual URL.
+    when the heuristic doesn't match Amundi's actual URL (e.g. products
+    whose slug uses an expanded English-language index name like
+    ``msci-ac-asia-pacific-ex-japan`` instead of the abbreviated form).
     """
     if entry.amundi_url:
         return entry.amundi_url
+    asset_class = _amundi_asset_class(entry.category)
     slug = re.sub(r"[^a-z0-9\s-]", "", entry.name.lower())
     slug = re.sub(r"\s+", "-", slug.strip())
     slug = re.sub(r"-+", "-", slug)
@@ -139,7 +155,27 @@ def amundi_product_url(entry: DiscoveryEntry) -> str:
                 break
         else:
             slug += "-ucits-etf"
-    return f"https://www.amundietf.fr/fr/particuliers/produits/equity/{slug}/{entry.isin.lower()}"
+    return (
+        f"https://www.amundietf.fr/fr/professionnels/produits/"
+        f"{asset_class}/{slug}/{entry.isin.lower()}"
+    )
+
+
+def _amundi_asset_class(category: str) -> str:
+    """Map a YAML ``category`` to the Amundi URL's asset-class path
+    segment. Money-market / cash funds sit under ``/fixed-income/``; all
+    equity products sit under ``/equity/``. Future bond ETFs (none yet in
+    our universe) would also use ``/fixed-income/``.
+    """
+    cat = category.lower()
+    if (
+        cat.startswith("cash")
+        or "money-market" in cat
+        or "short-term" in cat
+        or cat.startswith("bond")
+    ):
+        return "fixed-income"
+    return "equity"
 
 
 def fetch_discovery_universe(
