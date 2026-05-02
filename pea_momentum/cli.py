@@ -287,7 +287,10 @@ def cmd_render_correlations(
 
     asset_ids = prices.get_column("asset_id").unique().to_list()
     cm = correlations.compute_correlation_matrix(prices, asset_ids, window_days=window_days)
-    region_by_id = {e.id: e.region for e in entries}
+    # Coarse perimeter from each entry's `category` field (strategy `region`
+    # is populated only for active assets and would be empty for ~96 of the
+    # 107 catalog entries — using `coarse_region(category)` covers all).
+    region_by_id = {e.id: discover.coarse_region(e.category) for e in entries}
     grouped = correlations.find_groups(cm, threshold=threshold, region_by_id=region_by_id)
     ter_pct_by_id = {e.id: e.ter_pct for e in entries}
     reps = [correlations.best_in_group(g, ter_pct_by_id) for g in grouped]

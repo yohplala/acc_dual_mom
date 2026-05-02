@@ -13,7 +13,6 @@ from pea_momentum.universe import (
     Config,
     Costs,
     Filter,
-    SafeAsset,
     Scoring,
     Shared,
     Strategy,
@@ -35,8 +34,8 @@ def _config() -> Config:
         assets=(
             Asset(id="up", isin="x", yahoo="x", region="x"),
             Asset(id="dn", isin="x", yahoo="x", region="x"),
+            Asset(id="safe", isin="x", yahoo="", region="cash", synth_proxy="estr"),
         ),
-        safe_asset=SafeAsset(id="safe", proxy="estr"),
         strategies=(),
     )
 
@@ -160,13 +159,14 @@ def test_per_asset_spread_increases_total_cost() -> None:
     one asset wide-spread, the other tight-spread; the wide-spread strategy
     should have a strictly larger total cost over the run."""
     base_cfg = _config()
+    safe_asset = next(a for a in base_cfg.assets if a.synth_proxy == "estr")
     cfg_tight = Config(
         shared=base_cfg.shared,
         assets=(
             Asset(id="up", isin="x", yahoo="x", region="x", est_spread_bps=0.0),
             Asset(id="dn", isin="x", yahoo="x", region="x", est_spread_bps=0.0),
+            safe_asset,
         ),
-        safe_asset=base_cfg.safe_asset,
         strategies=(),
     )
     cfg_wide = Config(
@@ -174,8 +174,8 @@ def test_per_asset_spread_increases_total_cost() -> None:
         assets=(
             Asset(id="up", isin="x", yahoo="x", region="x", est_spread_bps=100.0),
             Asset(id="dn", isin="x", yahoo="x", region="x", est_spread_bps=100.0),
+            safe_asset,
         ),
-        safe_asset=base_cfg.safe_asset,
         strategies=(),
     )
     prices = _synthetic_prices(date(2023, 1, 1), days=400)

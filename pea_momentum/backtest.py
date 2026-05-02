@@ -82,12 +82,12 @@ def run(
     end: date | None = None,
 ) -> BacktestResult:
     asset_ids = list(strategy.asset_ids)
-    safe_id = config.safe_asset.id
+    safe_id = config.safe_asset_id  # None if no asset has synth_proxy=estr
     # Residual-holder rule: rounding shortfalls and the "no candidate passed
     # the >0 filter" fallback go to the safe asset *if it is listed* in the
     # strategy's universe (so the residual earns €STR yield), otherwise to
     # CASH_KEY (a 0%-return placeholder).
-    residual_holder = safe_id if safe_id in asset_ids else CASH_KEY
+    residual_holder = safe_id if safe_id is not None and safe_id in asset_ids else CASH_KEY
 
     # Defensive scrub: even if upstream prices.parquet has bad data
     # (round-trip spikes from yfinance bad days, or sustained-flat
@@ -130,7 +130,8 @@ def run(
     half_spread_by_id: dict[str, float] = {
         a.id: (a.est_spread_bps / 2.0) / 10_000.0 for a in config.assets
     }
-    half_spread_by_id[safe_id] = 0.0
+    if safe_id is not None:
+        half_spread_by_id[safe_id] = 0.0
     half_spread_by_id[CASH_KEY] = 0.0
     scoring = strategy.effective_scoring(config.shared.scoring)
     date_set = set(dates)
@@ -221,7 +222,7 @@ def _run_buy_and_hold(
     wide: pl.DataFrame,
     strategy: Strategy,
     asset_ids: list[str],
-    safe_id: str,
+    safe_id: str | None,
 ) -> BacktestResult:
     """Buy-and-hold benchmark. Default = equal-weight across `asset_ids`;
     when `strategy.static_weights` is set (e.g. 60/40), use those instead.

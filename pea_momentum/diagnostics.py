@@ -18,8 +18,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .correlations import GroupRepresentative
-    from .discover import DiscoveryEntry
-    from .universe import Config
+    from .universe import Asset, Config
 
 
 @dataclass(frozen=True, slots=True)
@@ -32,7 +31,7 @@ class StrategyDiagnostic:
 
 def diagnose_strategies(
     config: Config,
-    discovery_entries: list[DiscoveryEntry],
+    discovery_entries: list[Asset],
     groups: list[GroupRepresentative],
 ) -> list[StrategyDiagnostic]:
     """Cross-reference active strategies against correlation groups.
@@ -55,7 +54,7 @@ def diagnose_strategies(
         for member in g.group:
             disc_id_to_group[member] = g
 
-    safe_id = config.safe_asset.id
+    safe_id = config.safe_asset_id  # None if no synth_proxy asset listed
 
     out: list[StrategyDiagnostic] = []
     for strategy in config.strategies:

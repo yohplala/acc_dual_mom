@@ -15,7 +15,7 @@ import yfinance as yf
 
 from . import stitching
 from .errors import FetchError
-from .universe import Asset, Config, SafeAsset
+from .universe import Asset, Config
 
 log = logging.getLogger(__name__)
 
@@ -42,11 +42,17 @@ SUPPORTED_PROXY_KINDS: frozenset[str] = frozenset({PROXY_KIND_EUR_TR, PROXY_KIND
 
 
 def fetch_all(config: Config, start: date | None = None) -> pl.DataFrame:
+    """Fetch every active asset's price series. Assets with `synth_proxy` set
+    are synthesised (currently only `synth_proxy=estr` is supported, compounded
+    from ECB €STR fixings); other assets pull yfinance with optional pre-
+    inception index-proxy stitching."""
     start = start or _earliest_useful_start()
-    frames: list[pl.DataFrame] = [
-        fetch_yahoo_with_optional_proxy(asset, start=start) for asset in config.assets
-    ]
-    frames.append(fetch_safe_asset(config.safe_asset, start=start))
+    frames: list[pl.DataFrame] = []
+    for asset in config.assets:
+        if asset.synth_proxy is not None:
+            frames.append(fetch_synth_asset(asset, start=start))
+        else:
+            frames.append(fetch_yahoo_with_optional_proxy(asset, start=start))
     return pl.concat([f for f in frames if not f.is_empty()])
 
 
@@ -124,33 +130,33 @@ def fetch_yahoo(asset: Asset, start: date) -> pl.DataFrame:
     )
 
 
-def fetch_safe_asset(safe: SafeAsset, start: date) -> pl.DataFrame:
-    """Fetch the safe-asset synthetic price series.
+def fetch_synth_asset(asset: Asset, start: date) -> pl.DataFrame:
+    """Fetch a synthetic price series for an asset whose `synth_proxy` field
+    is set. Currently only `synth_proxy=estr` is supported: compounds ECB
+    €STR fixings (with EONIA splice for pre-2019 history) into a price.
 
     €STR is only available from 2019-10-02 onwards. For backtests starting
     before that date we splice EONIA (1999-2022) onto the front of €STR so
-    the safe asset has continuous history back to 1999.
+    the synthetic series has continuous history back to 1999.
     """
-    if safe.proxy != "estr":
-        raise FetchError(f"Unsupported safe-asset proxy: {safe.proxy}")
+    if asset.synth_proxy != "estr":
+        raise FetchError(f"Unsupported synth_proxy={asset.synth_proxy!r} for asset {asset.id}")
 
     estr = fetch_estr(start=max(start, ESTR_START))
     if estr.is_empty():
         raise FetchError("€STR fetch returned no data")
 
     if start >= ESTR_START:
-        return _rates_to_synthetic_close(estr, asset_id=safe.id)
+        return _rates_to_synthetic_close(estr, asset_id=asset.id)
 
     # Need pre-2019 history → fetch EONIA, splice on the day before €STR starts.
-    # Failures here propagate (loud failure): silent fallback to "€STR-only"
-    # would silently truncate the safe asset to 2019+ which then DROPS all
-    # pre-2019 days from the backtest (since `wide.drop_nulls(subset=[safe_id])`
-    # in backtest.py needs every day to have safe-asset data). Better to crash
-    # so the user learns the EONIA endpoint is broken and can fix it.
+    # Failures propagate (loud failure): silent fallback to €STR-only would
+    # silently truncate the synthetic series to 2019+. Better to crash so
+    # the user learns the EONIA endpoint is broken and can fix it.
     eonia = fetch_eonia(start=start)
     if eonia.is_empty():
         raise FetchError(
-            "EONIA fetch returned empty data — cannot extend safe asset pre-"
+            f"EONIA fetch returned empty data — cannot extend {asset.id} pre-"
             f"{ESTR_START}. Check ECB Data Portal series `EON.D.EONIA_TO.RATE`."
         )
 
@@ -158,7 +164,7 @@ def fetch_safe_asset(safe: SafeAsset, start: date) -> pl.DataFrame:
     # daily rates in % ann ACT/360. Compound the combined series into a price.
     eonia_pre = eonia.filter(pl.col("date") < ESTR_START)
     combined = pl.concat([eonia_pre, estr]).sort("date").unique(subset=["date"], keep="last")
-    return _rates_to_synthetic_close(combined, asset_id=safe.id)
+    return _rates_to_synthetic_close(combined, asset_id=asset.id)
 
 
 def _fetch_ecb_csv(url: str, start: date, *, name: str) -> pl.DataFrame:

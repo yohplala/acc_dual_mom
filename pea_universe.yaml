@@ -33,13 +33,39 @@ universe:
   - { id: world_msci_swap_acc,  name: Amundi MSCI World Swap UCITS ETF EUR Acc,    isin: LU1681043599, currency: EUR, ter_pct: 0.38, sfdr: Article 6, category: World,        yahoo: CW8.PA }
   - { id: world_msci_swap_dist, name: Amundi MSCI World Swap UCITS ETF EUR Dist,   isin: LU2655993207, currency: EUR, ter_pct: 0.38, sfdr: Article 6, category: World,        yahoo: null }
   - { id: world_msci_swap_usd,  name: Amundi MSCI World Swap UCITS ETF USD Acc,    isin: LU1681043672, currency: USD, ter_pct: 0.38, sfdr: Article 6, category: World,        yahoo: null }
-  - { id: world_pea_monde,      name: Amundi PEA Monde (MSCI World) UCITS ETF,      isin: FR001400U5Q4, currency: EUR, ter_pct: 0.20, sfdr: Article 6, category: World,        yahoo: DCAM.PA }
+  - id: world_pea_monde
+    name: Amundi PEA Monde (MSCI World) UCITS ETF
+    isin: FR001400U5Q4
+    yahoo: DCAM.PA
+    currency: EUR
+    ter_pct: 0.20
+    sfdr: Article 6
+    category: World
+    region: world
+    est_spread_bps: 10
+    replication: synthetic
+    inception: 2025-03-04
+    index_proxy: IWDA.AS                  # iShares Core MSCI World UCITS ETF, EUR Acc Amsterdam, since 2009-09-25
+    index_proxy_kind: eur_tr
   - { id: world_dj_industrial,  name: Amundi PEA Dow Jones Industrial Average,      isin: LU2572256662, currency: USD, ter_pct: 0.45, sfdr: Article 6, category: USA,          yahoo: null }
   - { id: world_lev_2x,         name: Amundi MSCI World (2x) Leveraged UCITS ETF,   isin: FR0014010HV4, currency: USD, ter_pct: 0.60, sfdr: Article 6, category: Leveraged-World, yahoo: null, leveraged: true }
   - { id: world_pea_luxe,       name: Amundi PEA Luxe Monde UCITS ETF Acc,          isin: FR001400S9V0, currency: EUR, ter_pct: 0.30, sfdr: Article 6, category: World-Luxury,  yahoo: null }
 
   # ─── United States ─────────────────────────────────────────────────
-  - { id: us_pea_sp500,         name: Amundi PEA S&P 500 UCITS ETF Acc,             isin: FR0011871128, currency: EUR, ter_pct: 0.12, sfdr: Article 6, category: USA,          yahoo: PSP5.PA }
+  - id: us_pea_sp500
+    name: Amundi PEA S&P 500 UCITS ETF Acc
+    isin: FR0011871128
+    yahoo: PSP5.PA
+    currency: EUR
+    ter_pct: 0.12
+    sfdr: Article 6
+    category: USA
+    region: us
+    est_spread_bps: 5
+    replication: synthetic
+    inception: 2014-04-29
+    index_proxy: CSPX.AS                  # iShares Core S&P 500 UCITS ETF, EUR-quoted Acc Amsterdam, since 2010-05-19
+    index_proxy_kind: eur_tr
   - { id: us_pea_sp500_hedged,  name: Amundi PEA S&P 500 EUR Hedged Acc,            isin: FR0011871136, currency: EUR, ter_pct: 0.12, sfdr: Article 6, category: USA-Hedged,   yahoo: PSPH.PA }
   - { id: us_pea_sp500_screened,name: Amundi PEA S&P 500 Screened UCITS ETF Acc,    isin: FR0013412285, currency: EUR, ter_pct: 0.25, sfdr: Article 8, category: USA-ESG,      yahoo: PE500.PA }
   - { id: us_pea_sp500_scr_hed, name: Amundi PEA S&P 500 Screened EUR Hedged Acc,   isin: FR0013412293, currency: EUR, ter_pct: 0.28, sfdr: Article 8, category: USA-Hedged-ESG, yahoo: P500H.PA }
@@ -47,7 +73,21 @@ universe:
   - { id: us_msci_esg_usd,      name: Amundi PEA MSCI USA ESG Selection USD,        isin: LU1681042948, currency: USD, ter_pct: 0.35, sfdr: Article 8, category: USA-ESG,      yahoo: null }
   - { id: us_pea_nasdaq,        name: Amundi PEA Nasdaq-100 UCITS ETF Acc,          isin: FR0011871110, currency: EUR, ter_pct: 0.30, sfdr: Article 6, category: USA-Tech,     yahoo: PUST.PA, amundi_url: 'https://www.amundietf.fr/fr/particuliers/produits/equity/amundi-pea-nasdaq100-ucits-etf-acc/fr0011871110' }
   - { id: us_pea_us_tech,       name: Amundi PEA US Tech Screened UCITS ETF Acc,    isin: FR0013412269, currency: EUR, ter_pct: 0.30, sfdr: Article 8, category: USA-Tech-ESG, yahoo: PANX.PA }
-  - { id: us_russell2000_eur,   name: Amundi Russell 2000 UCITS ETF EUR Acc,        isin: LU1681038672, currency: EUR, ter_pct: 0.35, sfdr: Article 6, category: USA-Small,    yahoo: RS2K.PA, amundi_url: 'https://www.amundietf.fr/fr/particuliers/produits/equity/amundi-russell-2000-ucits-etf-eur-c/lu1681038672' }
+  - id: us_russell2000_eur
+    name: Amundi Russell 2000 UCITS ETF EUR Acc
+    isin: LU1681038672
+    yahoo: RS2K.PA
+    currency: EUR
+    ter_pct: 0.35
+    sfdr: Article 6
+    category: USA-Small
+    amundi_url: 'https://www.amundietf.fr/fr/particuliers/produits/equity/amundi-russell-2000-ucits-etf-eur-c/lu1681038672'
+    region: us
+    est_spread_bps: 30                    # satellite, thinner book
+    replication: synthetic
+    inception: 2017-09-21
+    index_proxy: IWM                      # iShares Russell 2000 ETF, USD-listed since 2000
+    index_proxy_kind: usd_tr
   - { id: us_russell2000_usd,   name: Amundi Russell 2000 UCITS ETF USD Acc,        isin: LU1681038839, currency: USD, ter_pct: 0.35, sfdr: Article 6, category: USA-Small,    yahoo: null }
   - { id: us_value,             name: Amundi PEA MSCI USA Value Advanced Acc,       isin: FR001400KH45, currency: EUR, ter_pct: 0.50, sfdr: Article 8, category: USA-Value,    yahoo: USVE.PA }
   - { id: us_industrials,       name: Amundi PEA S&P US Industrials Screened Acc,   isin: FR0011869270, currency: EUR, ter_pct: 0.50, sfdr: Article 8, category: USA-Sector,   yahoo: PDJE.PA }
@@ -57,12 +97,38 @@ universe:
   - { id: us_inv_msci_1x,       name: Amundi MSCI USA Daily (-1x) Inverse Acc,      isin: LU1327051279, currency: USD, ter_pct: 0.60, sfdr: Article 6, category: Inverse-USA,   yahoo: null, leveraged: true }
 
   # ─── Europe broad ──────────────────────────────────────────────────
-  - { id: eu_pea_msci_europe,   name: Amundi PEA MSCI Europe UCITS ETF Acc,         isin: FR0013412038, currency: EUR, ter_pct: 0.15, sfdr: Article 6, category: Europe,       yahoo: PCEU.PA }
+  - id: eu_pea_msci_europe
+    name: Amundi PEA MSCI Europe UCITS ETF Acc
+    isin: FR0013412038
+    yahoo: PCEU.PA
+    currency: EUR
+    ter_pct: 0.15
+    sfdr: Article 6
+    category: Europe
+    region: europe
+    est_spread_bps: 10
+    replication: synthetic
+    inception: 2018-12-12
+    index_proxy: IMEU.AS                  # iShares Core MSCI Europe UCITS ETF EUR Dist Amsterdam, since 2007-07-06
+    index_proxy_kind: eur_tr
   - { id: eu_select_dividend,   name: Amundi Stoxx Europe Select Dividend 30 Dist,  isin: LU1812092168, currency: EUR, ter_pct: 0.30, sfdr: Article 6, category: Europe-Div,   yahoo: null }
   - { id: eu_strategic_auto,    name: Amundi European Strategic Autonomy ETF Acc,   isin: LU3180074463, currency: EUR, ter_pct: 0.40, sfdr: Article 6, category: Europe,       yahoo: null }
 
   # ─── Eurozone broad ────────────────────────────────────────────────
-  - { id: emu_core_es50_acc,    name: Amundi Core EURO STOXX 50 EUR Acc,            isin: LU1681047236, currency: EUR, ter_pct: 0.09, sfdr: Article 6, category: Eurozone,     yahoo: C50.PA }
+  - id: emu_core_es50_acc
+    name: Amundi Core EURO STOXX 50 EUR Acc
+    isin: LU1681047236
+    yahoo: C50.PA
+    currency: EUR
+    ter_pct: 0.09
+    sfdr: Article 6
+    category: Eurozone
+    region: eurozone
+    est_spread_bps: 5                     # eurozone large-cap flagship, deep liquidity
+    replication: synthetic
+    inception: 2017-09-29
+    index_proxy: CSX5.AS                  # iShares Core EURO STOXX 50 UCITS ETF EUR Acc Amsterdam, since 2010-01-26
+    index_proxy_kind: eur_tr
   - { id: emu_core_eur_dist,    name: Amundi Core EURO STOXX 50 EUR Dist,           isin: LU1681047319, currency: EUR, ter_pct: 0.09, sfdr: Article 6, category: Eurozone,     yahoo: null }
   - { id: emu_core_usd,         name: Amundi Core EURO STOXX 50 USD Acc,            isin: LU1681047400, currency: USD, ter_pct: 0.09, sfdr: Article 6, category: Eurozone,     yahoo: null }
   - { id: emu_ii_acc,           name: Amundi EURO STOXX 50 II UCITS ETF Acc,        isin: FR0007054358, currency: EUR, ter_pct: 0.20, sfdr: Article 6, category: Eurozone,     yahoo: MSE.PA }
@@ -83,7 +149,21 @@ universe:
   - { id: emu_msci_sri_climate, name: Amundi MSCI EMU SRI Climate Paris Aligned DR, isin: LU2109787635, currency: EUR, ter_pct: 0.18, sfdr: Article 8, category: Eurozone-Climate, yahoo: null }
   - { id: emu_high_div,         name: Amundi MSCI EMU High Dividend Acc,            isin: FR0010717090, currency: EUR, ter_pct: 0.30, sfdr: Article 6, category: Eurozone-Div, yahoo: CD8.PA }
   - { id: emu_value,            name: Amundi MSCI EMU Value Factor Dist,            isin: LU1598690169, currency: EUR, ter_pct: 0.40, sfdr: Article 6, category: Eurozone-Value, yahoo: null }
-  - { id: emu_small_cap,        name: Amundi MSCI EMU Small Cap ESG BT Dist,        isin: LU1598689153, currency: EUR, ter_pct: 0.40, sfdr: Article 8, category: Eurozone-Small, yahoo: MMS.PA, amundi_url: 'https://www.amundietf.fr/fr/particuliers/produits/equity/amundi-msci-emu-small-cap-esg-broad-transition-ucits-etf-dist/lu1598689153' }
+  - id: emu_small_cap
+    name: Amundi MSCI EMU Small Cap ESG BT Dist
+    isin: LU1598689153
+    yahoo: MMS.PA
+    currency: EUR
+    ter_pct: 0.40
+    sfdr: Article 8
+    category: Eurozone-Small
+    amundi_url: 'https://www.amundietf.fr/fr/particuliers/produits/equity/amundi-msci-emu-small-cap-esg-broad-transition-ucits-etf-dist/lu1598689153'
+    region: eurozone
+    est_spread_bps: 30                    # satellite, small-cap, thinner book
+    replication: physical
+    inception: 2024-02-08
+    index_proxy: SXRJ.DE                  # iShares MSCI EMU Small Cap UCITS ETF EUR Acc Xetra, since 2009-07-01
+    index_proxy_kind: eur_tr
   - { id: emu_lev_2x,           name: Amundi EURO STOXX 50 Daily (2x) Leveraged Acc, isin: FR0010468983, currency: EUR, ter_pct: 0.40, sfdr: Article 6, category: Leveraged-Eurozone, yahoo: null, leveraged: true }
   - { id: emu_inv_1x,           name: Amundi EURO STOXX 50 Daily (-1x) Inverse Acc, isin: FR0010424135, currency: EUR, ter_pct: 0.40, sfdr: Article 6, category: Inverse-Eurozone, yahoo: null, leveraged: true }
 
@@ -116,18 +196,72 @@ universe:
   - { id: gr_msci_greece,       name: Amundi MSCI Greece UCITS ETF Dist,            isin: FR0010405431, currency: EUR, ter_pct: 0.45, sfdr: Article 6, category: Greece,       yahoo: GRE.PA }
 
   # ─── Asia / Emerging ───────────────────────────────────────────────
-  - { id: jp_pea_topix,         name: Amundi PEA Japon (TOPIX) EUR Acc,             isin: FR0013411980, currency: EUR, ter_pct: 0.20, sfdr: Article 6, category: Japan,        yahoo: PTPXE.PA }
-  - { id: jp_pea_topix_hedged,  name: Amundi PEA Japon (TOPIX) EUR Hedged Acc,      isin: FR0013411998, currency: EUR, ter_pct: 0.48, sfdr: Article 6, category: Japan-Hedged, yahoo: PTPXH.PA, amundi_url: 'https://www.amundietf.fr/fr/particuliers/produits/equity/amundi-etf-pea-japan-topix-ucits-etf-daily-hedged-eur/fr0013411998' }
+  - id: jp_pea_topix
+    name: Amundi PEA Japon (TOPIX) EUR Acc
+    isin: FR0013411980
+    yahoo: PTPXE.PA
+    currency: EUR
+    ter_pct: 0.20
+    sfdr: Article 6
+    category: Japan
+    region: japan
+    est_spread_bps: 30                    # satellite, low AUM
+    replication: synthetic
+    inception: 2019-04-25
+    # No index_proxy: ETF-only history (post-2019). For pre-2019 we'd need
+    # a USD-listed unhedged Japan proxy (e.g. EWJ); kept simple for now and
+    # used purely as a head-to-head with jp_pea_topix_hedged.
+  - id: jp_pea_topix_hedged
+    name: Amundi PEA Japon (TOPIX) EUR Hedged Acc
+    isin: FR0013411998
+    yahoo: PTPXH.PA
+    currency: EUR
+    ter_pct: 0.48
+    sfdr: Article 6
+    category: Japan-Hedged
+    amundi_url: 'https://www.amundietf.fr/fr/particuliers/produits/equity/amundi-etf-pea-japan-topix-ucits-etf-daily-hedged-eur/fr0013411998'
+    region: japan
+    est_spread_bps: 30                    # satellite, hedged share class, low AUM
+    replication: synthetic
+    inception: 2019-04-25
+    index_proxy: IJPE.L                   # iShares MSCI Japan EUR Hedged UCITS ETF Acc LSE, since 2010-09-30
+    index_proxy_kind: eur_tr
   - { id: cn_pea_china,         name: Amundi PEA Chine (MSCI China) Screened Acc,   isin: FR0011871078, currency: EUR, ter_pct: 0.65, sfdr: Article 8, category: China,        yahoo: PASI.PA }
   - { id: in_pea_india,         name: Amundi PEA Inde (MSCI India) Acc,             isin: FR0011869320, currency: EUR, ter_pct: 0.85, sfdr: Article 6, category: India,        yahoo: PINR.PA }
   - { id: ap_asia_pacific,      name: Amundi PEA Asie Pacifique (MSCI ACAPxJP) Acc, isin: FR0011869312, currency: EUR, ter_pct: 0.60, sfdr: Article 6, category: Asia-Pacific, yahoo: PAEJ.PA, amundi_url: 'https://www.amundietf.fr/fr/particuliers/produits/equity/lyxor-pea-asie-pacifique-msci-ac-asia-pacific-ex-japan-ucits-etf-capi/fr0011869312' }
   - { id: em_pea_emerging,      name: Amundi PEA Emergent (MSCI Emerging) ESG Acc,  isin: FR0013412020, currency: EUR, ter_pct: 0.30, sfdr: Article 8, category: Emerging,     yahoo: PAEEM.PA, amundi_url: 'https://www.amundietf.fr/fr/particuliers/produits/equity/amundi-pea-emergent-msci-emerging-esg-transition-ucits-etf-acc/fr0013412020' }
-  - { id: em_pea_asia,          name: Amundi PEA Asie Emergente Screened Acc,       isin: FR0013412012, currency: EUR, ter_pct: 0.30, sfdr: Article 8, category: Emerging-Asia, yahoo: PAASI.PA, amundi_url: 'https://www.amundietf.fr/fr/particuliers/produits/equity/amundi-pea-asie-emergente-msci-emerging-asia-screened-ucits-etf-acc/fr0013412012' }
+  - id: em_pea_asia
+    name: Amundi PEA Asie Emergente Screened Acc
+    isin: FR0013412012
+    yahoo: PAASI.PA
+    currency: EUR
+    ter_pct: 0.30
+    sfdr: Article 8
+    category: Emerging-Asia
+    amundi_url: 'https://www.amundietf.fr/fr/particuliers/produits/equity/amundi-pea-asie-emergente-msci-emerging-asia-screened-ucits-etf-acc/fr0013412012'
+    region: em_asia
+    est_spread_bps: 25                    # EM exposure, somewhat thinner spread
+    replication: synthetic
+    inception: 2018-12-19
+    index_proxy: EEMA                     # iShares MSCI EM Asia ETF, USD-listed, since 2012-02-09 (binding constraint)
+    index_proxy_kind: usd_tr
   - { id: em_emea,              name: Amundi PEA Emergent EMEA ESG Transition Acc,  isin: FR0011440478, currency: EUR, ter_pct: 0.55, sfdr: Article 8, category: Emerging-EMEA, yahoo: null }
   - { id: em_latam,             name: Amundi PEA MSCI Emerging Latin America Acc,   isin: FR0013412004, currency: EUR, ter_pct: 0.30, sfdr: Article 8, category: Emerging-LatAm, yahoo: PALAT.PA, amundi_url: 'https://www.amundietf.fr/fr/particuliers/produits/equity/amundi-pea-msci-emerging-latin-america-selection-ucits-etf-acc/fr0013412004' }
 
   # ─── Sector: Banks ─────────────────────────────────────────────────
-  - { id: sec_eu_banks_acc,     name: Amundi STOXX Europe 600 Banks Acc,            isin: LU1834983477, currency: EUR, ter_pct: 0.30, sfdr: Article 6, category: Sector-Banks, yahoo: BNK.PA }
+  - id: sec_eu_banks_acc
+    name: Amundi STOXX Europe 600 Banks Acc
+    isin: LU1834983477
+    yahoo: BNK.PA
+    currency: EUR
+    ter_pct: 0.30
+    sfdr: Article 6
+    category: Sector-Banks
+    region: europe
+    est_spread_bps: 20                    # sector ETF, decent volume
+    replication: synthetic
+    inception: 2006-08-25                 # native ex-Lyxor, covers full 2012-02 backtest window
+    # No index_proxy: BNK.PA's own history reaches before our 2012-02 backtest start.
   - { id: sec_eu_banks_dist,    name: Amundi STOXX Europe 600 Banks Dist,           isin: LU2082996112, currency: EUR, ter_pct: 0.30, sfdr: Article 6, category: Sector-Banks, yahoo: null }
   - { id: sec_emu_banks,        name: Amundi Euro Stoxx Banks UCITS ETF Acc,        isin: LU1829219390, currency: EUR, ter_pct: 0.30, sfdr: Article 6, category: Sector-Banks, yahoo: null }
 
@@ -158,4 +292,18 @@ universe:
   - { id: thm_real_estate,      name: Amundi PEA Immobilier Europe (FTSE EPRA) Acc, isin: FR0011869304, currency: EUR, ter_pct: 0.40, sfdr: Article 6, category: Real-Estate-Europe, yahoo: null }
 
   # ─── Bond / cash ───────────────────────────────────────────────────
-  - { id: cash_euro_court_terme, name: Amundi PEA Euro Court Terme UCITS ETF Acc,    isin: FR0013346681, currency: EUR, ter_pct: 0.25, sfdr: Article 6, category: Cash-Eurozone, yahoo: OBLI.PA, amundi_url: 'https://www.amundietf.fr/fr/particuliers/produits/fixed-income/amundi-pea-obligations-detat-euro-ucits-etf-acc/fr0013346681' }
+  - id: cash_euro_court_terme
+    name: Amundi PEA Euro Court Terme UCITS ETF Acc
+    isin: FR0013346681
+    yahoo: OBLI.PA
+    currency: EUR
+    ter_pct: 0.25
+    sfdr: Article 6
+    category: Cash-Eurozone
+    amundi_url: 'https://www.amundietf.fr/fr/particuliers/produits/fixed-income/amundi-pea-obligations-detat-euro-ucits-etf-acc/fr0013346681'
+    region: cash
+    # synth_proxy=estr signals to fetch.py to synthesise the price series by
+    # compounding ECB €STR fixings (with EONIA splice for pre-2019 history)
+    # rather than pulling yfinance for the OBLI.PA ticker. The ticker stays
+    # for catalog reference only.
+    synth_proxy: estr

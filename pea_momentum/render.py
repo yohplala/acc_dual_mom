@@ -191,12 +191,7 @@ def _build_asset_meta(config: Config) -> dict[str, dict[str, str | None]]:
     """Pre-compute id -> {name, amundi_url} for every asset including safe.
     Used to attach display name + Amundi product URL to chip descriptors so
     the signal table can render asset chips as clickable links."""
-    meta: dict[str, dict[str, str | None]] = {}
-    for a in config.assets:
-        meta[a.id] = {"name": a.name or a.id, "url": a.amundi_url}
-    sa = config.safe_asset
-    meta[sa.id] = {"name": sa.name or sa.id, "url": sa.amundi_url}
-    return meta
+    return {a.id: {"name": a.name or a.id, "url": a.amundi_url} for a in config.assets}
 
 
 def _universe_buckets(
@@ -208,11 +203,11 @@ def _universe_buckets(
     buckets: dict[str, list[dict[str, str | None]]] = {b: [] for b in _REGION_BUCKETS_ORDER}
     for asset_id in strategy.asset_ids:
         info = meta.get(asset_id, {"name": asset_id, "url": None})
-        if asset_id == config.safe_asset.id:
-            bucket = "cash"
-        else:
-            a = config.asset_by_id(asset_id)
-            bucket = _REGION_BUCKET.get(a.region, "world")
+        a = config.asset_by_id(asset_id)
+        # synth_proxy assets (the €STR cash sleeve) drop into the Cash bucket
+        # regardless of their `region` field — chip layout follows yield
+        # behaviour, not literal geography.
+        bucket = "cash" if a.synth_proxy is not None else _REGION_BUCKET.get(a.region, "world")
         buckets[bucket].append({"id": asset_id, "name": info["name"], "url": info["url"]})
     return buckets
 
