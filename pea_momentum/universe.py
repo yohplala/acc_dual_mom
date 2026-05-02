@@ -65,6 +65,15 @@ class Asset:
     #   "eur_tr"  EUR-quoted total-return index (no FX needed)
     #   "usd_tr"  USD-quoted total-return index, converted via EURUSD=X
     index_proxy_kind: str | None = None
+    # Multi-stage proxy chain: an ordered tuple of (ticker, kind) pairs,
+    # CLEANEST first (latest start, best methodological match), DIRTIEST
+    # last (earliest start, more composition / FX drift). Each successor
+    # in the chain extends history pre-handoff by being level-rescaled
+    # to match its predecessor at the predecessor's first available
+    # date. When set, supersedes `index_proxy` / `index_proxy_kind` and
+    # the splice-at-inception algorithm is fed the assembled chain as
+    # a single EUR-denominated series.
+    index_proxy_chain: tuple[tuple[str, str], ...] | None = None
     # Synthetic-price flag: when set, fetch.py compounds the named source
     # instead of pulling yfinance for `yahoo`. Currently `estr` is the only
     # supported value (compounds ECB €STR fixings, with EONIA splice for
@@ -220,6 +229,10 @@ def load_full_universe(path: str | Path = "pea_universe.yaml") -> tuple[Asset, .
 
 
 def _asset_from_yaml(e: dict[str, Any]) -> Asset:
+    raw_chain = e.get("index_proxy_chain")
+    chain: tuple[tuple[str, str], ...] | None = None
+    if raw_chain is not None:
+        chain = tuple((str(x["ticker"]), str(x["kind"])) for x in raw_chain)
     return Asset(
         id=e["id"],
         isin=e["isin"],
@@ -236,6 +249,7 @@ def _asset_from_yaml(e: dict[str, Any]) -> Asset:
         inception=_parse_date(e.get("inception")),
         index_proxy=e.get("index_proxy"),
         index_proxy_kind=e.get("index_proxy_kind"),
+        index_proxy_chain=chain,
         synth_proxy=e.get("synth_proxy"),
     )
 

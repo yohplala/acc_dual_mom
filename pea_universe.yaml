@@ -44,8 +44,20 @@ universe:
     est_spread_bps: 10
     replication: synthetic
     inception: 2025-03-04
-    index_proxy: IWDA.AS                  # iShares Core MSCI World UCITS ETF, EUR Acc Amsterdam, since 2009-09-25
-    index_proxy_kind: eur_tr
+    # Multi-stage proxy chain, cleanest first. Each successor extends the
+    # previous segment's pre-handoff history by being level-rescaled to
+    # match at the predecessor's first available date — keeps the
+    # cleanest proxy active for as long as possible, only falls back to
+    # the dirtier proxies for the earlier history they uniquely provide.
+    index_proxy_chain:
+      # Cleanest: same fund family as the live ETF, EUR-quoted, accumulating.
+      - { ticker: IWDA.AS, kind: eur_tr }   # iShares Core MSCI World UCITS Acc EUR, since 2009-09-25
+      # +9 months: same fund, distributing share class, USD-quoted (FX-converted).
+      - { ticker: IWRD.L,  kind: usd_tr }   # iShares MSCI World UCITS Dist USD LSE, since 2009-01-02
+      # +1.5 years: MSCI All-Country World (~12% EM contamination vs MSCI World), captures
+      # the 2008 Lehman peak. Composition drift is real but acceptable for a pre-2009
+      # crisis-era proxy where every developed equity moved with EM in lockstep.
+      - { ticker: ACWI,    kind: usd_tr }   # iShares MSCI ACWI ETF, NASDAQ, since 2008-03-28
   - { id: world_dj_industrial,  name: Amundi PEA Dow Jones Industrial Average,      isin: LU2572256662, currency: USD, ter_pct: 0.45, sfdr: Article 6, category: USA,          yahoo: null }
   - { id: world_lev_2x,         name: Amundi MSCI World (2x) Leveraged UCITS ETF,   isin: FR0014010HV4, currency: USD, ter_pct: 0.60, sfdr: Article 6, category: Leveraged-World, yahoo: null, leveraged: true }
   - { id: world_pea_luxe,       name: Amundi PEA Luxe Monde UCITS ETF Acc,          isin: FR001400S9V0, currency: EUR, ter_pct: 0.30, sfdr: Article 6, category: World-Luxury,  yahoo: null }

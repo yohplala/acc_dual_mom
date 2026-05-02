@@ -149,3 +149,125 @@ def test_proxy_in_eur_skips_fx_for_eur_tr(monkeypatch: pytest.MonkeyPatch) -> No
     out = fetch._fetch_proxy_in_eur(asset, start=date(2024, 1, 1))
     assert out.height == 1
     assert fetched == ["IWDA.AS"]  # no FX fetch
+
+
+# ── Multi-stage proxy chain ──
+
+
+def test_proxy_chain_extends_pre_handoff_with_rescaled_predecessor(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Two-stage chain: cleanest covers 2020+, dirtier covers 2018+. After
+    chaining, the dirtier proxy's 2018-2019 segment is rescaled so its
+    close on the cleanest's first date matches. Continuity at handoff."""
+    asset = Asset(
+        id="world",
+        isin="x",
+        yahoo="X.PA",
+        inception=date(2025, 1, 1),
+        index_proxy_chain=(
+            ("CLEANEST", "eur_tr"),  # cleanest, EUR-native, since 2020-01-02
+            ("DIRTIER", "eur_tr"),  # extends back to 2018-01-02
+        ),
+    )
+
+    series = {
+        "CLEANEST": pl.DataFrame(
+            {
+                "date": [date(2020, 1, 2), date(2020, 1, 3), date(2020, 1, 6)],
+                "close": [200.0, 202.0, 204.0],
+            }
+        ),
+        "DIRTIER": pl.DataFrame(
+            {
+                "date": [
+                    date(2018, 1, 2),
+                    date(2019, 1, 2),
+                    date(2020, 1, 2),
+                    date(2020, 1, 3),
+                ],
+                "close": [80.0, 90.0, 100.0, 101.0],
+            }
+        ),
+    }
+    monkeypatch.setattr(fetch, "_fetch_yahoo_close_only", lambda t, start: series[t])
+
+    out = fetch._fetch_proxy_chain_in_eur(asset, start=date(2018, 1, 1))
+
+    # DIRTIER is rescaled by 200/100 = 2.0 over the pre-handoff segment.
+    # Pre-handoff (2018-01-02 + 2019-01-02) → 80*2 = 160, 90*2 = 180.
+    # 2020-01-02 onwards comes from CLEANEST: 200, 202, 204.
+    assert out.get_column("date").to_list() == [
+        date(2018, 1, 2),
+        date(2019, 1, 2),
+        date(2020, 1, 2),
+        date(2020, 1, 3),
+        date(2020, 1, 6),
+    ]
+    assert out.get_column("close").to_list() == [160.0, 180.0, 200.0, 202.0, 204.0]
+
+
+def test_proxy_chain_skips_segment_with_no_pre_handoff_data(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A chain element whose history doesn't extend before the previous
+    element's first date is silently skipped (it can't extend anything)."""
+    asset = Asset(
+        id="x",
+        isin="x",
+        yahoo="X.PA",
+        inception=date(2025, 1, 1),
+        index_proxy_chain=(
+            ("CLEAN", "eur_tr"),
+            ("USELESS", "eur_tr"),  # starts AFTER CLEAN — should be skipped
+        ),
+    )
+    series = {
+        "CLEAN": pl.DataFrame(
+            {"date": [date(2020, 1, 2), date(2020, 1, 3)], "close": [100.0, 101.0]}
+        ),
+        "USELESS": pl.DataFrame(
+            {"date": [date(2021, 1, 2), date(2021, 1, 3)], "close": [50.0, 51.0]}
+        ),
+    }
+    monkeypatch.setattr(fetch, "_fetch_yahoo_close_only", lambda t, start: series[t])
+
+    out = fetch._fetch_proxy_chain_in_eur(asset, start=date(2019, 1, 1))
+    # Only CLEAN's data is in the output — USELESS contributed nothing.
+    assert out.get_column("date").to_list() == [date(2020, 1, 2), date(2020, 1, 3)]
+    assert out.get_column("close").to_list() == [100.0, 101.0]
+
+
+def test_proxy_chain_handles_handoff_on_non_overlapping_calendar(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """If the dirtier proxy doesn't trade on the exact handoff date (e.g.
+    holiday), use its last close on or before the handoff as the rescaling
+    anchor."""
+    asset = Asset(
+        id="x",
+        isin="x",
+        yahoo="X.PA",
+        inception=date(2025, 1, 1),
+        index_proxy_chain=(
+            ("CLEAN", "eur_tr"),  # starts 2020-01-06 (Monday after Jan 3 Friday)
+            ("DIRTIER", "eur_tr"),  # missing 2020-01-06; has 2020-01-03
+        ),
+    )
+    series = {
+        "CLEAN": pl.DataFrame({"date": [date(2020, 1, 6)], "close": [120.0]}),
+        "DIRTIER": pl.DataFrame(
+            {"date": [date(2019, 1, 2), date(2020, 1, 3)], "close": [50.0, 60.0]}
+        ),
+    }
+    monkeypatch.setattr(fetch, "_fetch_yahoo_close_only", lambda t, start: series[t])
+
+    out = fetch._fetch_proxy_chain_in_eur(asset, start=date(2019, 1, 1))
+    # Anchor = DIRTIER on 2020-01-03 (last <= handoff 2020-01-06) → 60.
+    # Scale = 120 / 60 = 2.0. Pre-handoff: 2019-01-02 → 50*2 = 100, 2020-01-03 → 60*2=120.
+    assert out.get_column("date").to_list() == [
+        date(2019, 1, 2),
+        date(2020, 1, 3),
+        date(2020, 1, 6),
+    ]
+    assert out.get_column("close").to_list() == [100.0, 120.0, 120.0]

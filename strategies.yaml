@@ -178,6 +178,17 @@ strategies:
     rebalance: monthly_first_sunday
     top_n: 1
 
+  # Pure SPX buy-and-hold — zero-cost, no proxy ambiguity (SPY since 1993),
+  # the cleanest 2008-spanning equity reference. Every rotation strategy
+  # whose universe is a superset of {sp500, cash_estr} should be measurable
+  # against this through the GFC.
+  - name: sp500_bh
+    description: 100% S&P 500 buy-and-hold (GFC-spanning equity benchmark)
+    mode: buy_and_hold
+    assets: [sp500]
+    rebalance: monthly_first_sunday
+    top_n: 1
+
   - name: world3_bh
     description: 1/3 each S&P 500 + Euro Stoxx 50 + Emerging Asia, buy-and-hold
     mode: buy_and_hold
@@ -215,6 +226,26 @@ strategies:
       em_asia: 0.3
       sp500: 0.5
       topix_hedged: 0.2
+
+  # GFC-spanning sibling of wld3_noeu_bh: identical mix but uses unhedged
+  # `topix` instead of `topix_hedged`. Pre-2010 EUR-hedged Japan ETFs
+  # don't exist — to validate drawdown protection through the 2008 crisis,
+  # we substitute the unhedged sleeve (which has full pre-2008 history
+  # via the EWJ proxy). Methodologically clean BUT note: JPY rallied as a
+  # safe-haven during the GFC (+15% vs EUR through 2008), so unhedged
+  # Japan OUTPERFORMED hedged Japan during the crisis. Expect this
+  # strategy's 2008 drawdown to look better than the hedged version
+  # would have. Honest accounting requires the asterisk.
+  - name: wld3_noeu_uh_bh
+    description: 30% Emerging Asia + 50% S&P 500 + 20% Japan (unhedged), buy-and-hold (GFC-spanning)
+    mode: buy_and_hold
+    assets: [em_asia, sp500, topix]
+    rebalance: monthly_first_sunday
+    top_n: 3
+    static_weights:
+      em_asia: 0.3
+      sp500: 0.5
+      topix: 0.2
 
   # 4-asset static benchmark adding hedged Japan to the world3 mix:
   # 30% em_asia + 30% sp500 + 20% eurostoxx50 + 20% jp_pea_topix_hedged,

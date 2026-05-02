@@ -59,14 +59,27 @@ def fetch_all(config: Config, start: date | None = None) -> pl.DataFrame:
 def fetch_yahoo_with_optional_proxy(asset: Asset, start: date) -> pl.DataFrame:
     """Fetch the live ETF, then splice pre-inception index proxy if configured.
 
+    Three configurations are supported:
+    - No proxy: just the live ETF.
+    - Single proxy via `index_proxy` + `index_proxy_kind`: classic single-stage
+      splice.
+    - Multi-stage chain via `index_proxy_chain`: each less-clean proxy
+      extends the previous (cleaner) one's pre-handoff history. The
+      assembled chain is then spliced onto the live ETF at inception.
+
     Proxy failures propagate as `FetchError` (loud failure) — a configured proxy
     that can't be fetched should be fixed in YAML, not masked by ETF-only
     history.
     """
     etf = fetch_yahoo(asset, start=start)
-    if asset.index_proxy is None or asset.inception is None:
+    if asset.inception is None:
         return etf
-    proxy = _fetch_proxy_in_eur(asset, start=start)
+    if asset.index_proxy_chain is not None:
+        proxy = _fetch_proxy_chain_in_eur(asset, start=start)
+    elif asset.index_proxy is not None:
+        proxy = _fetch_proxy_in_eur(asset, start=start)
+    else:
+        return etf
     return stitching.splice_at_inception(etf, proxy, asset.inception, asset.id)
 
 
@@ -78,18 +91,89 @@ def _fetch_proxy_in_eur(asset: Asset, start: date) -> pl.DataFrame:
     """
     if asset.index_proxy is None:
         raise FetchError(f"Asset {asset.id} has no index_proxy configured")
-    kind = asset.index_proxy_kind or PROXY_KIND_EUR_TR
-    if kind not in SUPPORTED_PROXY_KINDS:
+    return _fetch_one_proxy_in_eur(asset.index_proxy, asset.index_proxy_kind, asset.id, start)
+
+
+def _fetch_one_proxy_in_eur(
+    ticker: str, kind: str | None, asset_id: str, start: date
+) -> pl.DataFrame:
+    """Fetch a single proxy ticker and return `[date, close]` in EUR."""
+    resolved_kind = kind or PROXY_KIND_EUR_TR
+    if resolved_kind not in SUPPORTED_PROXY_KINDS:
         raise FetchError(
-            f"Unsupported index_proxy_kind {kind!r} for asset {asset.id} "
+            f"Unsupported index_proxy_kind {resolved_kind!r} for asset {asset_id} "
             f"(supported: {sorted(SUPPORTED_PROXY_KINDS)})"
         )
-
-    idx = _fetch_yahoo_close_only(asset.index_proxy, start=start)
-    if kind == PROXY_KIND_EUR_TR:
+    idx = _fetch_yahoo_close_only(ticker, start=start)
+    if resolved_kind == PROXY_KIND_EUR_TR:
         return idx
     fx = _fetch_yahoo_close_only("EURUSD=X", start=start)
     return stitching.usd_to_eur(idx, fx)
+
+
+def _fetch_proxy_chain_in_eur(asset: Asset, start: date) -> pl.DataFrame:
+    """Build a multi-stage proxy chain into a single EUR `[date, close]` series.
+
+    `asset.index_proxy_chain` is ordered CLEANEST first (latest start, best
+    methodological match) and DIRTIEST last (earliest start, more drift).
+    Each less-clean proxy extends the cleaner one's history pre-handoff
+    (handoff = cleaner's first available date) by being level-rescaled
+    so its close on the handoff date equals the cleaner's close. The
+    successively-extended series is returned as one continuous EUR-
+    denominated `[date, close]` DataFrame, ready to be passed through
+    `splice_at_inception` against the live ETF.
+
+    Each chain element is fetched in EUR (via the same `usd_tr` /
+    `eur_tr` paths as a single proxy). Chain elements that have no data
+    on or before the handoff date are skipped with a warning — they
+    extend nothing and removing them simplifies the cumulative splice.
+    """
+    chain = asset.index_proxy_chain
+    if chain is None or len(chain) == 0:
+        raise FetchError(f"Asset {asset.id} has empty index_proxy_chain")
+
+    # Fetch each element in EUR. eur_series[0] = cleanest, eur_series[-1] = dirtiest.
+    eur_series: list[pl.DataFrame] = [
+        _fetch_one_proxy_in_eur(ticker, kind, asset.id, start) for ticker, kind in chain
+    ]
+
+    # Iteratively splice: result starts as cleanest, each successor extends it pre-handoff.
+    result = eur_series[0]
+    for i in range(1, len(eur_series)):
+        nxt = eur_series[i]
+        handoff = result.get_column("date").min()
+        prev_at = result.filter(pl.col("date") == handoff).head(1)
+        # The successor proxy may not have data ON the exact handoff (e.g. holiday in
+        # one market, trading day in the other). Take its last close on or before
+        # handoff for the rescaling anchor; if none exists, the successor doesn't
+        # extend history and we skip it.
+        nxt_at = nxt.filter(pl.col("date") <= handoff).sort("date").tail(1)
+        if prev_at.is_empty() or nxt_at.is_empty():
+            log.warning(
+                "proxy chain for %s: skipping segment %d (%s) — no overlap with "
+                "predecessor at handoff %s",
+                asset.id,
+                i,
+                chain[i][0],
+                handoff,
+            )
+            continue
+        prev_close = float(prev_at.get_column("close")[0])
+        nxt_close = float(nxt_at.get_column("close")[0])
+        if nxt_close <= 0:
+            raise FetchError(
+                f"proxy chain {asset.id}: segment {chain[i][0]!r} has non-positive "
+                f"close {nxt_close} on or before handoff {handoff}"
+            )
+        scale = prev_close / nxt_close
+        pre = (
+            nxt.filter(pl.col("date") < handoff)
+            .with_columns(close=pl.col("close") * scale)
+        )
+        if pre.is_empty():
+            continue
+        result = pl.concat([pre, result]).sort("date")
+    return result
 
 
 def _fetch_yahoo_close_only(ticker: str, start: date) -> pl.DataFrame:
