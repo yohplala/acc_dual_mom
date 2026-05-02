@@ -103,44 +103,80 @@ class TestFxConversion:
         assert out.height == 1
         assert out.get_column("date")[0] == date(2024, 1, 2)
 
-    def test_fx_with_implausible_jump_raises(self) -> None:
+    def test_fx_round_trip_spike_scrubbed(self) -> None:
         """yfinance has been observed to return half/double values for
         EURUSD=X on isolated dates — every cross-currency proxy then
-        inherits the same factor as a phantom equity-curve spike. The
-        FX layer must catch this loudly rather than silently corrupt
-        downstream prices."""
+        inherits the same factor as a phantom equity-curve spike. We
+        detect the round-trip pattern (jump + opposite-sign reversal)
+        and null-out the corrupt FX day; the inner-join then drops it
+        from the EUR-converted output, and downstream forward-fill in
+        backtest absorbs the gap. Total return preserved, vol corrected."""
         idx = _series(date(2024, 1, 1), [100.0, 100.0, 100.0])
-        # Day 2 FX doubles (1.10 → 2.20) → would halve the EUR price.
+        # Day 2 FX doubles (1.10 → 2.20 → 1.10) — round-trip spike.
         fx = _series(date(2024, 1, 1), [1.10, 2.20, 1.10])
-        with pytest.raises(FetchError, match=r"FX series has \d+ day"):
+        out = usd_to_eur(idx, fx).sort("date")
+        # Bad FX day is dropped by the inner-join after scrubbing; the
+        # remaining 2 days are correctly converted at 1.10.
+        assert out.height == 2
+        for c in out.get_column("close").to_list():
+            assert abs(c - 90.909) < 0.01
+
+    def test_fx_solo_outlier_still_raises(self) -> None:
+        """A non-round-trip FX outlier (no opposite-sign bounce) is genuine
+        corruption that needs investigation, not a yfinance round-trip
+        artefact. Must still fail loudly."""
+        idx = _series(date(2024, 1, 1), [100.0, 100.0, 100.0])
+        # Day 2 doubles AND stays — would persistently halve EUR prices
+        # going forward. Not a yfinance round-trip; needs investigation.
+        fx = _series(date(2024, 1, 1), [1.10, 2.20, 2.30])
+        with pytest.raises(FetchError, match=r"non-round-trip day"):
             usd_to_eur(idx, fx)
 
 
-class TestPlausibilityCeiling:
-    """`splice_at_inception` rejects proxy / ETF segments with impossible
-    single-day moves. The threshold (30%) is well above the worst real
-    equity-index move on record (Black Monday 1987 at -22.6%)."""
+class TestRoundTripSpikeScrub:
+    """Round-trip spikes (the typical yfinance bad-day pattern) are scrubbed
+    silently with a log warning — total return preserved, daily vol
+    corrected. Solo outliers (>30% with no bounce-back) still raise."""
 
-    def test_proxy_with_50pct_drop_raises(self) -> None:
+    def test_proxy_round_trip_spike_scrubbed(self) -> None:
         # Proxy series with a single bad day — exactly the pattern observed
-        # in production (us_large oscillating between 6.7 and 13.5).
+        # in production (us_large oscillating between 6.7 and 13.5). The
+        # bad day is set to null; backtest forward-fill absorbs it.
         etf = _etf_long(date(2015, 1, 1), [200.0, 201.0])
-        proxy = _series(date(2014, 12, 28), [40.0, 41.0, 19.5, 41.5, 50.0])  # day 3 is half
-        with pytest.raises(FetchError, match=r"proxy series has \d+ day"):
-            splice_at_inception(etf, proxy, date(2015, 1, 1), "x")
+        proxy = _series(date(2014, 12, 28), [40.0, 41.0, 19.5, 41.5, 50.0])
+        out = splice_at_inception(etf, proxy, date(2015, 1, 1), "x").sort("date")
+        # All 7 dates still present (4 pre + 2 post + 1 splice day's pre row,
+        # which is filtered to <inception so 4 + 2 = 6 actually).
+        assert out.height >= 6
+        # Day 3 of the proxy series (the bad one, 2014-12-30) is now null.
+        bad_day_row = out.filter(pl.col("date") == date(2014, 12, 30))
+        assert bad_day_row.height == 1
+        assert bad_day_row.get_column("close")[0] is None
 
-    def test_etf_with_doubled_day_raises(self) -> None:
-        # Live-ETF segment spike — rarer but possible (yfinance bad day on
-        # the actual product). Should also fail loud.
+    def test_etf_round_trip_spike_scrubbed(self) -> None:
+        # Live-ETF doubled-day pattern (rarer but possible).
         etf = _etf_long(date(2015, 1, 1), [200.0, 410.0, 201.0])  # day 2 doubled
         proxy = _series(date(2014, 12, 28), [40.0, 41.0, 42.0, 43.0, 44.0])
-        with pytest.raises(FetchError, match=r"live ETF series has \d+ day"):
+        out = splice_at_inception(etf, proxy, date(2015, 1, 1), "x").sort("date")
+        # Day 2 of ETF (2015-01-02) is the bad one — close should be null.
+        bad_day_row = out.filter(pl.col("date") == date(2015, 1, 2))
+        assert bad_day_row.height == 1
+        assert bad_day_row.get_column("close")[0] is None
+
+    def test_solo_outlier_still_raises(self) -> None:
+        # Proxy jumps -50% and STAYS (no bounce). Not a yfinance round-trip
+        # — genuine corruption that needs investigation.
+        etf = _etf_long(date(2015, 1, 1), [200.0, 201.0])
+        proxy = _series(date(2014, 12, 28), [40.0, 41.0, 19.5, 19.6, 19.7])
+        with pytest.raises(FetchError, match=r"non-round-trip day"):
             splice_at_inception(etf, proxy, date(2015, 1, 1), "x")
 
     def test_normal_market_moves_pass(self) -> None:
-        # A real-but-large move (-10% Lehman-style) must NOT trigger the
-        # ceiling — only impossible jumps should.
+        # A real-but-large move (-10% Lehman-style) must NOT trigger
+        # scrubbing — the ceiling is 30% and the bounce-back is required.
         etf = _etf_long(date(2015, 1, 1), [200.0, 180.0, 195.0])
         proxy = _series(date(2014, 12, 28), [40.0, 41.0, 36.0, 38.0, 42.0])
         out = splice_at_inception(etf, proxy, date(2015, 1, 1), "x")
         assert out.height == 7  # 4 pre + 3 post — no rows lost
+        # No nulls inserted
+        assert out.filter(pl.col("close").is_null()).height == 0
