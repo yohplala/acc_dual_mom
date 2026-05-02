@@ -117,6 +117,10 @@ class Strategy:
     lookbacks_days: tuple[int, ...] | None = None
     # Per-strategy override of `shared.allocation.rule`. None = use shared.
     allocation_rule: str | None = None
+    # Optional explicit weights (asset_id → weight) for buy_and_hold mode —
+    # enables non-equal-weight static benchmarks like 60/40. Unused for
+    # rotation strategies. Must sum to ~1.0; may reference the safe asset id.
+    static_weights: tuple[tuple[str, float], ...] | None = None
 
     def effective_scoring(self, shared_scoring: Scoring) -> Scoring:
         """Return the scoring config this strategy actually uses, applying
@@ -235,6 +239,16 @@ def _parse_strategy(s: dict[str, Any]) -> Strategy:
     lookbacks: tuple[int, ...] | None = (
         tuple(int(x) for x in raw_lookbacks) if raw_lookbacks is not None else None
     )
+    raw_weights = s.get("static_weights")
+    static_weights: tuple[tuple[str, float], ...] | None = None
+    if raw_weights is not None:
+        items = tuple((str(k), float(v)) for k, v in raw_weights.items())
+        total = sum(w for _, w in items)
+        if abs(total - 1.0) > 1e-6:
+            raise ValueError(
+                f"strategy {s['name']!r}: static_weights must sum to 1.0 (got {total:.6f})"
+            )
+        static_weights = items
     return Strategy(
         name=s["name"],
         asset_ids=tuple(s["assets"]),
@@ -245,6 +259,7 @@ def _parse_strategy(s: dict[str, Any]) -> Strategy:
         mode=mode,
         lookbacks_days=lookbacks,
         allocation_rule=s.get("allocation_rule"),
+        static_weights=static_weights,
     )
 
 

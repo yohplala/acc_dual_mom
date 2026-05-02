@@ -23,7 +23,9 @@ shared:
     benchmark: safe_asset         # candidate score must beat safe-asset score
 
   costs:
-    per_trade_pct: 0.10           # one-way; covers IB tiered + bid-ask
+    # One-way broker commission. Per-asset bid-ask spread is added separately
+    # via `est_spread_bps` on each asset (half-spread per traded notional).
+    per_trade_pct: 0.05
 
   execution:
     # Sunday-anchored cadence: signal uses preceding Friday close,
@@ -38,6 +40,7 @@ universe:
       isin: FR0011871128
       yahoo: PSP5.PA
       ter_pct: 0.12
+      est_spread_bps: 5            # high-AUM flagship, tight spread
       replication: synthetic
       region: us
       inception: 2014-04-29
@@ -54,6 +57,7 @@ universe:
       isin: LU1681038672
       yahoo: RS2K.PA
       ter_pct: 0.35
+      est_spread_bps: 30           # satellite, thinner book
       replication: synthetic
       region: us
       inception: 2017-09-21
@@ -67,6 +71,7 @@ universe:
       isin: FR001400U5Q4
       yahoo: DCAM.PA              # launched 2025-03-04 — short native history
       ter_pct: 0.20
+      est_spread_bps: 10           # mid-tier, recent launch but core sleeve
       replication: synthetic
       region: world
       inception: 2025-03-04
@@ -83,6 +88,7 @@ universe:
       isin: FR0013412038
       yahoo: PCEU.PA
       ter_pct: 0.15
+      est_spread_bps: 10           # broad European core, decent liquidity
       replication: synthetic
       region: europe
       inception: 2018-12-12
@@ -99,6 +105,7 @@ universe:
       isin: LU1598689153
       yahoo: MMS.PA
       ter_pct: 0.40
+      est_spread_bps: 30           # satellite, small-cap, thinner book
       replication: physical
       region: eurozone
       inception: 2024-02-08
@@ -117,6 +124,7 @@ universe:
       isin: FR0013412012
       yahoo: PAASI.PA
       ter_pct: 0.30
+      est_spread_bps: 25           # EM exposure, somewhat thinner spread
       replication: synthetic
       region: em_asia
       inception: 2018-12-19
@@ -134,6 +142,7 @@ universe:
       isin: FR0013411998
       yahoo: PTPXH.PA               # verified via Boursorama
       ter_pct: 0.48
+      est_spread_bps: 30           # satellite, hedged share class, low AUM
       replication: synthetic
       region: japan
       inception: 2019-04-25
@@ -152,6 +161,7 @@ universe:
       isin: LU1834983477
       yahoo: BNK.PA                 # ex-Lyxor, on Yahoo since 2006-08-25
       ter_pct: 0.30
+      est_spread_bps: 20           # sector ETF, decent volume
       replication: synthetic
       region: europe
       inception: 2006-08-25         # native data covers full 2012-02 window
@@ -165,6 +175,7 @@ universe:
       isin: LU1681047236
       yahoo: C50.PA                 # verified via Boursorama
       ter_pct: 0.09
+      est_spread_bps: 5            # eurozone large-cap flagship
       replication: synthetic
       region: eurozone
       inception: 2017-09-29
@@ -335,3 +346,38 @@ strategies:
     assets: [us_large, eu_50, em_asia, japan_hedged]
     rebalance: monthly_first_sunday
     top_n: 3
+
+  # Antonacci's original "Absolute Momentum" — single risky asset (S&P 500)
+  # gated by the safe-asset filter. Holds 100% us_large when its score
+  # beats safe; otherwise 100% safe. The most basic dual-momentum
+  # specification, useful as a methodological baseline.
+  - name: us_only_abs_mom_monthly
+    description: US-only absolute momentum, monthly (us_large vs safe, no relative selection)
+    assets: [us_large]
+    rebalance: monthly_first_sunday
+    top_n: 1
+
+  # GEM-style proxy in our universe: S&P 500 vs MSCI World, top-1 per month.
+  # Antonacci's original GEM was SPY vs ACWI ex-US; MSCI World is ~70% US, so
+  # this is a leakier US/non-US split than Antonacci's, but the closest clean
+  # PEA-eligible analog with continuous history. Top-1 means the strategy
+  # holds exactly one risky asset at a time, or 100% safe.
+  - name: gem_us_world_monthly
+    description: GEM-style proxy, monthly top-1 between us_large and world
+    assets: [us_large, world]
+    rebalance: monthly_first_sunday
+    top_n: 1
+
+  # Static 60/40 benchmark: 60% MSCI World + 40% safe asset, never
+  # rebalanced. The single most-cited static benchmark in retail / PEA
+  # advice — every dual-momentum strategy in this file should beat it
+  # (after costs) for the framework to justify its complexity.
+  - name: static_60_40
+    description: Static 60% world + 40% safe, never rebalanced (canonical benchmark)
+    mode: buy_and_hold
+    assets: [world]
+    rebalance: monthly_first_sunday
+    top_n: 1
+    static_weights:
+      world: 0.6
+      safe: 0.4

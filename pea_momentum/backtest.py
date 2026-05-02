@@ -7,8 +7,11 @@ Convention:
 - During day F, the OLD weights are held; at the close of F we transition to
   NEW weights and pay transaction cost on the turnover. From day F+1 onward
   the new weights apply.
-- Costs: `per_trade_pct` is one-way; total cost = turnover_l1 * per_trade_pct.
-  Charged as a negative return on the fill day.
+- Costs: per_trade_pct is shared one-way (broker fee). Each asset can carry
+  an `est_spread_bps` (estimated round-trip bid-ask spread); half is added
+  per traded notional. Per-asset transition cost = |delta_w| * (per_trade_pct +
+  est_spread_bps / 2) / 100. The total cost is summed across assets and
+  charged as a negative return on the fill day.
 """
 
 from __future__ import annotations
@@ -107,7 +110,7 @@ def run(
     wide = wide.drop_nulls(subset=[safe_id])  # need at least the safe asset
 
     if strategy.mode == "buy_and_hold":
-        return _run_buy_and_hold(wide, strategy, asset_ids)
+        return _run_buy_and_hold(wide, strategy, asset_ids, safe_id)
 
     if wide.is_empty():
         log.warning("backtest %s: no usable price data", strategy.name)
@@ -115,6 +118,12 @@ def run(
 
     dates = wide.get_column("date").to_list()
     cost_pct = config.shared.costs.per_trade_pct / 100.0
+    # Per-asset half-spread (bps → fraction). Safe asset has none — €STR
+    # synthetic, no actual trade.
+    half_spread_by_id: dict[str, float] = {
+        a.id: (a.est_spread_bps / 2.0) / 10_000.0 for a in config.assets
+    }
+    half_spread_by_id[safe_id] = 0.0
     scoring = strategy.effective_scoring(config.shared.scoring)
     date_set = set(dates)
 
@@ -159,7 +168,7 @@ def run(
         )
         new_w_mapped = {(safe_id if a == SAFE_ASSET_KEY else a): w for a, w in new_w.items()}
         turnover = _turnover(prev_weights, new_w_mapped)
-        cost = turnover * cost_pct
+        cost = _transition_cost(prev_weights, new_w_mapped, cost_pct, half_spread_by_id)
         rebalances.append(
             Rebalance(
                 rebalance_date=r_day,
@@ -190,24 +199,59 @@ def _turnover(prev: dict[str, float], new: dict[str, float]) -> float:
     return sum(abs(new.get(k, 0.0) - prev.get(k, 0.0)) for k in keys)
 
 
+def _transition_cost(
+    prev: dict[str, float],
+    new: dict[str, float],
+    per_trade_pct_frac: float,
+    half_spread_by_id: dict[str, float],
+) -> float:
+    """Per-asset rebalance cost = sum_i |delta_w_i| * (broker_fee + half_spread_i)."""
+    keys = set(prev) | set(new)
+    cost = 0.0
+    for k in keys:
+        delta = abs(new.get(k, 0.0) - prev.get(k, 0.0))
+        cost += delta * (per_trade_pct_frac + half_spread_by_id.get(k, 0.0))
+    return cost
+
+
 def _run_buy_and_hold(
     wide: pl.DataFrame,
     strategy: Strategy,
     asset_ids: list[str],
+    safe_id: str,
 ) -> BacktestResult:
-    """Equal-weight buy-and-hold across `asset_ids` from the first available
-    date. No rebalances, no transaction costs — pure benchmark."""
-    asset_cols = [c for c in asset_ids if c in wide.columns]
+    """Buy-and-hold benchmark. Default = equal-weight across `asset_ids`;
+    when `strategy.static_weights` is set (e.g. 60/40), use those instead.
+    Static weights may reference the safe asset id. No rebalances, no
+    transaction costs."""
+    if strategy.static_weights is not None:
+        weights = dict(strategy.static_weights)
+        asset_cols = [a for a in weights if a in wide.columns]
+        if len(asset_cols) != len(weights):
+            missing = [a for a in weights if a not in wide.columns]
+            log.warning(
+                "buy_and_hold %s: static_weights references unavailable assets %s",
+                strategy.name,
+                missing,
+            )
+    else:
+        asset_cols = [c for c in asset_ids if c in wide.columns]
+        if not asset_cols:
+            return _empty_result(strategy.name)
+        n = len(asset_cols)
+        weights = {a: 1.0 / n for a in asset_cols}
+
     if not asset_cols:
         return _empty_result(strategy.name)
+    # Drop rows where any held asset has no price — guarantees the equity
+    # curve starts on the latest-listed sleeve's first available date.
     wide = wide.drop_nulls(subset=asset_cols)
     if wide.is_empty():
         return _empty_result(strategy.name)
 
-    n = len(asset_cols)
-    weights = {a: 1.0 / n for a in asset_cols}
     dates = wide.get_column("date").to_list()
     equity_df = _compound(wide, asset_cols, init_weights=weights, fills=[])
+    _ = safe_id  # unused for now; kept for symmetry with rotation entry-point
 
     # Single synthetic rebalance at start so the dashboard shows the static
     # weights in "New allocation". turnover and cost are zero by definition.
