@@ -392,14 +392,6 @@ def usd_to_eur(idx_usd: pl.DataFrame, eurusd: pl.DataFrame) -> pl.DataFrame:
     return _convert(idx_usd, eurusd, ccy="USD")
 
 
-def jpy_to_eur(idx_jpy: pl.DataFrame, eurjpy: pl.DataFrame) -> pl.DataFrame:
-    """Convert a JPY-denominated `[date, close]` series to EUR using a
-    daily `[date, close]` EURJPY series (JPY per EUR). EUR price = JPY / EURJPY.
-    Raises `FetchError` if either input is empty.
-    """
-    return _convert(idx_jpy, eurjpy, ccy="JPY")
-
-
 def _convert(idx_local: pl.DataFrame, fx_per_eur: pl.DataFrame, ccy: str) -> pl.DataFrame:
     """Local-CCY index series → EUR. fx_per_eur is units-of-local-ccy per 1 EUR.
     Raises `FetchError` rather than silently returning empty when an input
