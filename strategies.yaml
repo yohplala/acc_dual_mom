@@ -24,8 +24,12 @@ shared:
     rounding: largest_remainder   # Hare quota for fair rounding
 
   filter:
-    type: absolute_momentum
-    benchmark: safe_asset         # candidate score must beat safe-asset score
+    # Pre-selection floor before top-N ranking. `positive_momentum`: drop
+    # any asset whose score <= 0. The historical `absolute_momentum` filter
+    # (compare against safe-asset score) is gone - safe is now just another
+    # listable asset that competes via rank-only selection. Include `safe`
+    # in a strategy's `assets:` to give it a chance to win during crashes.
+    type: positive_momentum
 
   costs:
     # One-way broker commission. Per-asset bid-ask spread is added separately

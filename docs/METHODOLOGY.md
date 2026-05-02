@@ -32,22 +32,28 @@ score(asset) = aggregate_over_lookbacks(close(t) / close(t - L) - 1)
 - **Lookbacks** are configured in trading days. The default Antonacci-accelerated set is `[21, 63, 126]` (≈ 1, 3, 6 months). A per-strategy `lookbacks_days: [252]` reproduces classic Antonacci dual-momentum (single 12-month).
 - **Aggregations**: `mean` (default ADM), `median` (robust to a single anomalous lookback), `min` (pessimistic — every lookback must be positive). The latter two are documented sensitivity exhibits, not the recommended live setup.
 
-### Absolute-momentum filter
+### Positive-momentum filter
 
-A candidate asset is kept iff:
-- its score exceeds the safe-asset score on the same lookback set, AND
-- its score is strictly positive.
+A candidate asset is kept iff its score is strictly positive (`> 0`). Anything with non-positive momentum is dropped before top-N ranking. Pure rank-only methodology — there is **no separate "absolute-momentum" filter** against the safe asset.
 
-The safe-asset filter is **mandatory** — if the safe asset has no score at the signal date (insufficient history), the backtest **fails loud** rather than silently defaulting to zero, which would let any positive risky score pass in negative-rate regimes.
+The safe asset (€STR-derived synthetic) is **just another listable asset**: include it in a strategy's `assets:` list and it competes on score with the equity sleeves. During a deep crash where every equity score collapses below zero, the safe asset (whose €STR yield gives it a small positive score) will dominate the top-N selection naturally — that's the rank-only equivalent of the old "absolute filter ⇒ 100% safe" behaviour, and it falls out of the rules for free.
+
+This is **inspired by Antonacci's ADM** but simpler — we keep the >0 floor and the top-N ranking, but drop the explicit two-stage filter (safe-relative + positive). For a strategy without `safe` listed in its universe, the residual (see below) goes to a 0%-return cash placeholder.
 
 ### Allocation rules (`pea_momentum/allocate.py`)
 
 Two rules are supported:
 
-- **`equal_weight`** (the framework default): `1/N` across the selected top-N assets. This is the canonical Antonacci ADM weighting and the recommended live setup.
+- **`equal_weight`** (the framework default): `1/N` across the selected top-N assets. This is the canonical Antonacci-style weighting and the recommended live setup.
 - **`score_proportional`**: `w_i = s_i / Σ s_j` over selected. Amplifies the asset with the loudest momentum number — exactly the asset most likely to mean-revert. Kept as an opt-in sensitivity exhibit (`core_monthly_score_prop`).
 
-After raw weights are computed, they are rounded via **largest-remainder (Hare quota)** to integer multiples of `granularity_pct` (10% by default). Any unallocated portion goes to the safe asset.
+After raw weights are computed, they are rounded via **largest-remainder (Hare quota)** to integer multiples of `granularity_pct` (10% by default). Largest-remainder is exact-summing by construction, so when there are selected candidates the rounded weights total 100% — no residual.
+
+When **no candidate** passes the positive-momentum filter (every asset score ≤ 0), the residual = 100% goes to the **residual holder**:
+- the **safe asset** if it's listed in the strategy's `assets:` (residual earns €STR yield), OR
+- a **`cash`** placeholder (0%-return, no yield) when the strategy has no yielding cash sleeve listed.
+
+The "list safe explicitly to get the defensive crash behaviour" pattern is the YAML-honesty corollary of removing the auto-injection: what you list is what you get.
 
 ## Stitching (`pea_momentum/stitching.py`)
 
