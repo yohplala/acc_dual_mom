@@ -76,20 +76,30 @@ def cmd_backtest(ctx: click.Context, start: str | None, end: str | None) -> None
     """Run every configured strategy and persist equity curves + rebalance logs."""
     cfg: Config = ctx.obj["config"]
     data_root: Path = ctx.obj["data_root"]
+    start_d = date.fromisoformat(start) if start else None
+    end_d = date.fromisoformat(end) if end else None
+    _run_backtests(cfg, data_root, start=start_d, end=end_d)
+
+
+def _run_backtests(
+    cfg: Config,
+    data_root: Path,
+    *,
+    start: date | None,
+    end: date | None,
+) -> list[backtest.BacktestResult]:
+    """Run every configured strategy, persist artefacts, return results in-memory."""
     prices = store.read_prices(data_root)
     if prices.is_empty():
         raise click.ClickException("No prices found; run `pea-mom fetch` first.")
-
     results_root = data_root / "results"
     results_root.mkdir(parents=True, exist_ok=True)
 
-    start_d = date.fromisoformat(start) if start else None
-    end_d = date.fromisoformat(end) if end else None
-
+    results: list[backtest.BacktestResult] = []
     summary: list[dict[str, object]] = []
     for strategy in cfg.strategies:
         click.echo(f"running {strategy.name} ({strategy.rebalance})…")
-        result = backtest.run(prices, strategy, cfg, start=start_d, end=end_d)
+        result = backtest.run(prices, strategy, cfg, start=start, end=end)
         store.write_history(result.equity, data_root, strategy_name=strategy.name)
         rebal_path = results_root / f"{strategy.name}.rebalances.json"
         rebal_path.write_text(backtest.rebalances_to_json(result.rebalances))
@@ -110,9 +120,11 @@ def cmd_backtest(ctx: click.Context, start: str | None, end: str | None) -> None
                 "last_weights": last_w,
             }
         )
+        results.append(result)
 
     (results_root / "summary.json").write_text(json.dumps(summary, indent=2, default=str))
     click.echo(f"OK · {len(summary)} strategies · results in {results_root}")
+    return results
 
 
 @cli.command(name="signal")
@@ -151,11 +163,19 @@ def cmd_render(ctx: click.Context, site_root: str) -> None:
     """Build the HTML report from persisted backtest results."""
     cfg: Config = ctx.obj["config"]
     data_root: Path = ctx.obj["data_root"]
+    results = _load_results(cfg, data_root)
+    if not results:
+        raise click.ClickException("No equity histories to render.")
+    out = _render_results(cfg, data_root, results, site_root)
+    click.echo(f"OK · wrote {out}")
+
+
+def _load_results(cfg: Config, data_root: Path) -> list[backtest.BacktestResult]:
+    """Reconstruct BacktestResults from persisted equity + rebalance artefacts."""
     results_root = data_root / "results"
     if not results_root.exists():
         raise click.ClickException("No backtest results found; run `pea-mom backtest` first.")
-
-    results = []
+    results: list[backtest.BacktestResult] = []
     for strategy in cfg.strategies:
         equity = store.read_history(data_root, strategy.name)
         if equity is None or equity.is_empty():
@@ -166,20 +186,22 @@ def cmd_render(ctx: click.Context, site_root: str) -> None:
         )
         results.append(
             backtest.BacktestResult(
-                strategy_name=strategy.name,
-                equity=equity,
-                rebalances=rebals,
+                strategy_name=strategy.name, equity=equity, rebalances=rebals
             )
         )
+    return results
 
-    if not results:
-        raise click.ClickException("No equity histories to render.")
 
+def _render_results(
+    cfg: Config,
+    data_root: Path,
+    results: list[backtest.BacktestResult],
+    site_root: str,
+) -> Path:
     prices = store.read_prices(data_root)
-    out = render.render(
+    return render.render(
         results, cfg, site_root, prices_long=prices if not prices.is_empty() else None
     )
-    click.echo(f"OK · wrote {out}")
 
 
 @cli.command(name="run")
@@ -187,10 +209,17 @@ def cmd_render(ctx: click.Context, site_root: str) -> None:
 @click.option("--start", default=None)
 @click.pass_context
 def cmd_run(ctx: click.Context, site_root: str, start: str | None) -> None:
-    """Full pipeline: fetch → backtest → render."""
+    """Full pipeline: fetch → backtest → render. Backtest results stay in-memory
+    between the steps; the on-disk artefacts are still written for downstream
+    consumers (signal command, future re-renders)."""
     ctx.invoke(cmd_fetch, start=start)
-    ctx.invoke(cmd_backtest, start=None, end=None)
-    ctx.invoke(cmd_render, site_root=site_root)
+    cfg: Config = ctx.obj["config"]
+    data_root: Path = ctx.obj["data_root"]
+    results = _run_backtests(cfg, data_root, start=None, end=None)
+    if not results:
+        raise click.ClickException("No backtest results to render.")
+    out = _render_results(cfg, data_root, results, site_root)
+    click.echo(f"OK · wrote {out}")
 
 
 @cli.command(name="discover")
