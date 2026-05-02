@@ -55,6 +55,8 @@ def diagnose_strategies(
         for member in g.group:
             disc_id_to_group[member] = g
 
+    safe_id = config.safe_asset.id
+
     out: list[StrategyDiagnostic] = []
     for strategy in config.strategies:
         # strategy_id → discovery_id (only for assets matched + grouped)
@@ -63,6 +65,14 @@ def diagnose_strategies(
         groups_in_strategy: dict[str, list[str]] = {}
 
         for asset_id in strategy.asset_ids:
+            # Skip the safe asset: it's a synthetic €STR series, not a real
+            # PEA ETF, and it lives on `config.safe_asset` rather than in
+            # `config.assets` — `asset_by_id` would raise KeyError. The
+            # discovery universe likewise doesn't carry safe in its
+            # correlation groups, so there are no diagnostics to emit
+            # for it anyway.
+            if asset_id == safe_id:
+                continue
             asset = config.asset_by_id(asset_id)
             disc_id = isin_to_disc_id.get(asset.isin)
             if disc_id is None or disc_id not in disc_id_to_group:
