@@ -201,9 +201,12 @@ universe:
     est_spread_bps: 30                    # satellite, low AUM
     replication: synthetic
     inception: 2019-04-25
-    # No index_proxy: ETF-only history (post-2019). For pre-2019 we'd need
-    # a USD-listed unhedged Japan proxy (e.g. EWJ); kept simple for now and
-    # used purely as a head-to-head with topix_hedged.
+    index_proxy: EWJ                      # iShares MSCI Japan ETF, NYSE Arca, since 1996-03-12
+    index_proxy_kind: usd_tr
+    # MSCI Japan TR (proxy) ≈ TOPIX TR (live ETF) — same family that
+    # topix_hedged uses via IJPE.L, so hedged/unhedged stay apples-to-apples.
+    # USD-listed: EURUSD-converted price gives the EUR-investor unhedged
+    # exposure (full JPY pass-through), matching the live ETF's semantics.
   - id: topix_hedged
     name: Amundi PEA Japon (TOPIX) EUR Hedged Acc
     isin: FR0013411998
