@@ -130,3 +130,55 @@ def test_buy_and_hold_tracks_underlying_uptrend() -> None:
     # `up` grows at 0.05% per day; over ~400 days that's ~22% gain.
     final_eq = result.equity.get_column("equity")[-1]
     assert 1.15 < final_eq < 1.30
+
+
+def _static_60_40_strategy() -> Strategy:
+    return Strategy(
+        name="static_60_40",
+        asset_ids=("up",),
+        rebalance="monthly_first_sunday",
+        top_n=1,
+        reference_date=None,
+        mode="buy_and_hold",
+        static_weights=(("up", 0.6), ("safe", 0.4)),
+    )
+
+
+def test_static_60_40_uses_explicit_weights() -> None:
+    prices = _synthetic_prices(date(2023, 1, 1), days=400)
+    result = run(prices, _static_60_40_strategy(), _config())
+    assert result.rebalances[0].weights == {"up": 0.6, "safe": 0.4}
+    # Final equity must lie between safe-only (0.04% * 400 ~ 4%) and up-only
+    # (0.05% * 400 ~ 22%) - this is the 60/40 mix sanity check.
+    final_eq = result.equity.get_column("equity")[-1]
+    assert 1.04 < final_eq < 1.22
+
+
+def test_per_asset_spread_increases_total_cost() -> None:
+    """An asset with high est_spread_bps charges more per turnover than one
+    without. Configure two strategies with the same underlying signals but
+    one asset wide-spread, the other tight-spread; the wide-spread strategy
+    should have a strictly larger total cost over the run."""
+    base_cfg = _config()
+    cfg_tight = Config(
+        shared=base_cfg.shared,
+        assets=(
+            Asset(id="up", isin="x", yahoo="x", region="x", est_spread_bps=0.0),
+            Asset(id="dn", isin="x", yahoo="x", region="x", est_spread_bps=0.0),
+        ),
+        safe_asset=base_cfg.safe_asset,
+        strategies=(),
+    )
+    cfg_wide = Config(
+        shared=base_cfg.shared,
+        assets=(
+            Asset(id="up", isin="x", yahoo="x", region="x", est_spread_bps=100.0),
+            Asset(id="dn", isin="x", yahoo="x", region="x", est_spread_bps=100.0),
+        ),
+        safe_asset=base_cfg.safe_asset,
+        strategies=(),
+    )
+    prices = _synthetic_prices(date(2023, 1, 1), days=400)
+    cost_tight = sum(r.cost for r in run(prices, _strategy(), cfg_tight).rebalances)
+    cost_wide = sum(r.cost for r in run(prices, _strategy(), cfg_wide).rebalances)
+    assert cost_wide > cost_tight
