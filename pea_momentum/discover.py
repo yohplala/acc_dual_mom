@@ -100,16 +100,45 @@ def amundi_product_url(entry: DiscoveryEntry) -> str:
 
         https://www.amundietf.fr/fr/particuliers/produits/equity/{slug}/{isin-lower}
 
-    where `slug` lowercases the product name, drops non-alphanumeric
-    characters, and joins words with single dashes. Best-effort — if the
-    constructed URL 404s for a particular ETF, set `amundi_url:` in
-    `pea_universe.yaml` to override.
+    The slug lowercases the product name, drops non-alphanumeric characters,
+    and joins words with single dashes. Amundi's URL convention always
+    includes ``ucits-etf`` between the product name and the share-class
+    indicator, even when the source name omits it (e.g. "Amundi Core EURO
+    STOXX 50 EUR Acc" → ``amundi-core-euro-stoxx-50-ucits-etf-eur-acc``).
+    We insert it before the recognised share-class suffix when the slug
+    doesn't already contain it.
+
+    Best-effort — set ``amundi_url:`` in ``pea_universe.yaml`` to override
+    when the heuristic doesn't match Amundi's actual URL.
     """
     if entry.amundi_url:
         return entry.amundi_url
     slug = re.sub(r"[^a-z0-9\s-]", "", entry.name.lower())
     slug = re.sub(r"\s+", "-", slug.strip())
     slug = re.sub(r"-+", "-", slug)
+    if "ucits-etf" not in slug:
+        # Insert "ucits-etf" before the share-class suffix (longest match
+        # wins so "-eur-hedged-acc" beats "-acc"). Falls through to a
+        # plain append if no suffix matches.
+        suffixes = (
+            "-eur-hedged-acc",
+            "-eur-hedged-dist",
+            "-usd-hedged-acc",
+            "-usd-hedged-dist",
+            "-eur-acc",
+            "-eur-dist",
+            "-usd-acc",
+            "-usd-dist",
+            "-acc",
+            "-dist",
+            "-dr",
+        )
+        for suffix in suffixes:
+            if slug.endswith(suffix):
+                slug = slug[: -len(suffix)] + "-ucits-etf" + suffix
+                break
+        else:
+            slug += "-ucits-etf"
     return f"https://www.amundietf.fr/fr/particuliers/produits/equity/{slug}/{entry.isin.lower()}"
 
 

@@ -16,35 +16,101 @@ Resulting series is continuous in level (no jump on the splice date) and
 provenance is preserved via the `source` column ("yfinance" for live ETF,
 "stitched_index_proxy" for synthetic pre-inception segment).
 
-Failures in any of these steps raise `FetchError` — the caller decides
-whether to engage `index_proxy_fallback` for graceful degradation.
+Bad-data scrubbing: yfinance has been observed to return half-priced or
+doubled close values on isolated dates for `^XXX` indices and EURUSD=X.
+The bug pattern is a single-day "round-trip spike" (price drops 50%, then
+returns to trend the next day, or symmetric). We detect that pattern and
+null-out the corrupt day so the daily-return chain shows 0% on the bad day
+and the real return on the recovery day — preserving total return and
+correcting vol/Sharpe (instead of inflating them with spurious daily
+moves). Genuine non-round-trip outliers above the plausibility ceiling
+raise `FetchError` for human investigation.
 """
 
 from __future__ import annotations
 
+import logging
 from datetime import date
 
 import polars as pl
 
 from .errors import FetchError
 
+log = logging.getLogger(__name__)
+
 # Hard ceiling on plausible single-day moves for any equity index or ETF.
 # Worst real single-day move on a major equity index since 1928 is Black
 # Monday 1987 at -22.6%. COVID 2020 worst day was -12%. Anything beyond
 # this threshold is bad data — yfinance has been observed to return
 # half-priced or doubled values on isolated dates for both FX series
-# (EURUSD=X) and `^XXX` index tickers (^GSPC, ^STOXX50E). Failing loud
-# beats silently producing impossible spikes in the equity curve.
+# (EURUSD=X) and `^XXX` index tickers (^GSPC, ^STOXX50E).
 MAX_PLAUSIBLE_DAILY_RETURN = 0.30
+
+
+def _scrub_round_trip_spikes(
+    series: pl.DataFrame,
+    asset_id: str,
+    label: str,
+    threshold: float = MAX_PLAUSIBLE_DAILY_RETURN,
+) -> pl.DataFrame:
+    """Null-out single-day round-trip spikes in a `[date, close]` series.
+
+    A "round-trip spike" is a day t where the close jumps by more than
+    `threshold` (e.g., -50%) AND immediately reverts the next day by a
+    similarly large opposite-sign move. yfinance is the only source we've
+    seen produce this pattern; the corrupt day is bookended by real data
+    on both sides, so nulling close[t] while keeping close[t-1] and
+    close[t+1] preserves the real total return and removes the phantom
+    daily-vol spike. Backtest pipelines forward-fill close (for cross-
+    asset calendar alignment) which makes the nulled day a 0% no-op.
+
+    Logs a warning per scrub so data-quality issues are visible without
+    crashing the run. Solo outliers (>threshold but no opposite-sign
+    bounce) are NOT scrubbed — they're left for `_validate_returns_or_raise`
+    to reject loudly, since they would indicate genuine corruption that
+    needs human investigation.
+    """
+    if series.height < 3:
+        return series
+    sorted_s = series.sort("date")
+    closes = sorted_s.get_column("close").to_list()
+    bad_indices: list[int] = []
+    for t in range(1, len(closes) - 1):
+        c_prev, c_t, c_next = closes[t - 1], closes[t], closes[t + 1]
+        if c_prev is None or c_t is None or c_next is None:
+            continue
+        if c_prev <= 0 or c_t <= 0 or c_next <= 0:
+            continue
+        ret_in = c_t / c_prev - 1.0
+        ret_out = c_next / c_t - 1.0
+        if abs(ret_in) > threshold and abs(ret_out) > threshold and ret_in * ret_out < 0:
+            bad_indices.append(t)
+    if not bad_indices:
+        return sorted_s
+
+    sample = [(closes[t], sorted_s.get_column("date")[t]) for t in bad_indices[:5]]
+    log.warning(
+        "%s %s: scrubbed %d round-trip spike(s) (close set to null, forward-fill "
+        "in the backtest absorbs them). First 5: %s",
+        asset_id,
+        label,
+        len(bad_indices),
+        "; ".join(f"{d} close={c:.4f}" for c, d in sample),
+    )
+    new_closes: list[float | None] = list(closes)
+    for t in bad_indices:
+        new_closes[t] = None
+    return sorted_s.with_columns(pl.Series("close", new_closes).alias("close"))
 
 
 def _validate_returns_or_raise(
     series: pl.DataFrame, asset_id: str, label: str, threshold: float = MAX_PLAUSIBLE_DAILY_RETURN
 ) -> None:
     """Raise `FetchError` if any single-day return on `series` exceeds the
-    plausibility ceiling. `series` must have `[date, close]` sorted ascending.
-    `label` identifies the segment for the error message ("proxy", "live ETF",
-    or "spliced")."""
+    plausibility ceiling. Run AFTER `_scrub_round_trip_spikes` so that only
+    solo outliers (non-round-trip data corruption that needs human
+    investigation) survive to here. `label` identifies the segment for the
+    error message ("proxy", "live ETF", or "FX")."""
     if series.height < 2:
         return
     rets = series.sort("date").with_columns(ret=(pl.col("close") / pl.col("close").shift(1) - 1.0))
@@ -53,11 +119,11 @@ def _validate_returns_or_raise(
         return
     sample = bad.select(["date", "close", "ret"]).head(5).rows()
     raise FetchError(
-        f"splice {asset_id}: {label} series has {bad.height} day(s) with "
-        f"|return| > {threshold:.0%} — implausible for any equity index, "
-        f"strongly suggests bad upstream data (yfinance is known to return "
-        f"half-priced/doubled values for `^XXX` indices and EURUSD=X on "
-        f"isolated dates). First 5: "
+        f"splice {asset_id}: {label} series has {bad.height} non-round-trip day(s) "
+        f"with |return| > {threshold:.0%} — implausible for any equity index, "
+        f"strongly suggests bad upstream data that didn't bounce back the next day "
+        f"(typical yfinance round-trip spikes are scrubbed automatically; this is "
+        f"the residual that needs human investigation). First 5: "
         + "; ".join(f"{d} close={c:.4f} ret={r:+.3f}" for d, c, r in sample)
     )
 
@@ -87,9 +153,16 @@ def splice_at_inception(
     if proxy_long.is_empty():
         raise FetchError(f"splice {asset_id}: proxy series is empty (check the index_proxy ticker)")
 
-    # Validate before scaling so the error message points at the raw upstream
-    # series. The proxy-side check catches yfinance bad-day artefacts; the
-    # ETF-side check catches the same on the live product (rarer but possible).
+    # Two-stage data-quality pass:
+    # 1. Scrub round-trip single-day spikes (the typical yfinance bad-day
+    #    pattern: -50% then +100%, or symmetric). The bad close is set to
+    #    null; downstream forward-fill in backtest.run() absorbs it,
+    #    preserving the real total return while removing the phantom vol.
+    # 2. After scrubbing, check for any remaining solo outliers (>30%
+    #    moves that DIDN'T bounce back). Those indicate genuine
+    #    corruption requiring investigation; raise FetchError.
+    proxy_long = _scrub_round_trip_spikes(proxy_long, asset_id, "proxy")
+    etf_long = _scrub_round_trip_spikes(etf_long, asset_id, "live ETF")
     _validate_returns_or_raise(proxy_long, asset_id, "proxy")
     _validate_returns_or_raise(etf_long, asset_id, "live ETF")
 
@@ -159,8 +232,11 @@ def _convert(idx_local: pl.DataFrame, fx_per_eur: pl.DataFrame, ccy: str) -> pl.
     if fx_per_eur.is_empty():
         raise FetchError(f"{ccy}→EUR: FX series is empty (check EUR{ccy}=X yfinance ticker)")
 
-    # Validate the FX series itself — a 30% one-day move in a major-pair
-    # spot rate is implausible (worst-ever EURUSD daily move ≈ 4-5%).
+    # Scrub round-trip FX spikes first, then loud-fail on residual solo
+    # outliers. A bad EURUSD=X day silently corrupts every cross-currency
+    # proxy by exactly the same factor, so catching it here pinpoints the
+    # cause (worst-ever real EURUSD daily move ≈ 4-5%, well below 30%).
+    fx_per_eur = _scrub_round_trip_spikes(fx_per_eur, f"EUR{ccy}=X", "FX")
     _validate_returns_or_raise(fx_per_eur, asset_id=f"EUR{ccy}=X", label="FX")
 
     fx = fx_per_eur.select(["date", pl.col("close").alias("_fx")])
