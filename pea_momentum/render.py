@@ -239,11 +239,7 @@ def _asset_rows(strategy: Any, config: Config) -> list[list[Any]]:
 
     by_region: dict[str, list[Any]] = {}
     for asset_id in strategy.asset_ids:
-        a = (
-            config.safe_asset
-            if asset_id == config.safe_asset.id
-            else config.asset_by_id(asset_id)
-        )
+        a = config.safe_asset if asset_id == config.safe_asset.id else config.asset_by_id(asset_id)
         by_region.setdefault(a.region if hasattr(a, "region") else "safe", []).append(a)
     rows = []
     for region in REGION_ORDER:
