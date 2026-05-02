@@ -24,7 +24,7 @@ shared:
     # is `equal_weight` (1/N). The alternative `score_proportional` weights
     # by score (s_i / sum(s_j)) — kept as an opt-in sensitivity exhibit:
     # set `allocation_rule: score_proportional` on a per-strategy entry to
-    # override (see `core_monthly_score_prop` below).
+    # override (see `core_sp_m_t3` below).
     rule: equal_weight
     granularity_pct: 10           # round weights to 10% steps
     rounding: largest_remainder   # Hare quota for fair rounding
@@ -34,7 +34,7 @@ shared:
     # any asset whose score <= 0. The historical `absolute_momentum` filter
     # (compare against safe-asset score) is gone — safe is just another
     # listable asset that competes via rank-only selection. Include safe
-    # (`cash_euro_court_terme`) in a strategy's `assets:` to give it a
+    # (`cash_estr`) in a strategy's `assets:` to give it a
     # chance to win during crashes.
     type: positive_momentum
 
@@ -50,92 +50,92 @@ shared:
     fill_close: monday
 
 # Strategies. Conventions under the rank-only methodology:
-# - Include `cash_euro_court_terme` in `assets:` to give safe a chance to
+# - Include `cash_estr` in `assets:` to give safe a chance to
 #   win the top-N during crashes (small positive €STR score beats deeply-
 #   negative equity scores). Strategies without it fall through to a
 #   0%-return CASH placeholder when no candidate passes the >0 floor.
-# - `emu_core_es50_acc` (EURO STOXX 50, eurozone, TER 0.09%) is preferred
-#   over `eu_pea_msci_europe` (MSCI Europe, broader, TER 0.15%) for the
+# - `eurostoxx50` (EURO STOXX 50, eurozone, TER 0.09%) is preferred
+#   over `msci_europe` (MSCI Europe, broader, TER 0.15%) for the
 #   core: lower TER, deeper liquidity, and the correlation-page rep
 #   within the European large-cap-equivalent group.
-# - `world_pea_monde` and `emu_small_cap` retired from the core slots —
-#   `world_pea_monde` was contributing leaky US exposure on top of
-#   `us_pea_sp500`, and `emu_small_cap` carried spread cost without
-#   uncorrelated alpha vs `emu_core_es50_acc`.
+# - `world` and `emu_small` retired from the core slots —
+#   `world` was contributing leaky US exposure on top of
+#   `sp500`, and `emu_small` carried spread cost without
+#   uncorrelated alpha vs `eurostoxx50`.
 strategies:
   # ── HEADLINE: core 6-asset rotation in 4 lookback variants ─────────────
   # Universe: 5 risky equity sleeves + safe. Same universe across all four
   # core variants so the only difference is the scoring lookback and top_n.
-  - name: core_monthly
+  - name: core_adm_m_t3
     description: 6-asset core, monthly, accelerated 1m/3m/6m mean, equal-weight top-3
-    assets: [us_pea_sp500, us_russell2000_eur, emu_core_es50_acc, em_pea_asia, jp_pea_topix_hedged, cash_euro_court_terme]
+    assets: [sp500, russell2000, eurostoxx50, em_asia, topix_hedged, cash_estr]
     rebalance: monthly_first_sunday
     top_n: 3
 
-  - name: core_monthly_top1
+  - name: core_adm_m_t1
     description: 6-asset core, monthly, accelerated 1m/3m/6m mean, top-1 (single-leader concentration)
-    assets: [us_pea_sp500, us_russell2000_eur, emu_core_es50_acc, em_pea_asia, jp_pea_topix_hedged, cash_euro_court_terme]
+    assets: [sp500, russell2000, eurostoxx50, em_asia, topix_hedged, cash_estr]
     rebalance: monthly_first_sunday
     top_n: 1
 
   # Single 6-month lookback (Antonacci's "moderate" dual-momentum variant).
-  - name: core_monthly_top1_dm_6m
+  - name: core_dm6_m_t1
     description: 6-asset core, monthly, single 6-month lookback, top-1
-    assets: [us_pea_sp500, us_russell2000_eur, emu_core_es50_acc, em_pea_asia, jp_pea_topix_hedged, cash_euro_court_terme]
+    assets: [sp500, russell2000, eurostoxx50, em_asia, topix_hedged, cash_estr]
     rebalance: monthly_first_sunday
     top_n: 1
     lookbacks_days: [126]
 
   # Single 12-month lookback (Antonacci's classic dual-momentum variant).
-  - name: core_monthly_top1_dm_12m
+  - name: core_dm12_m_t1
     description: 6-asset core, monthly, single 12-month lookback, top-1
-    assets: [us_pea_sp500, us_russell2000_eur, emu_core_es50_acc, em_pea_asia, jp_pea_topix_hedged, cash_euro_court_terme]
+    assets: [sp500, russell2000, eurostoxx50, em_asia, topix_hedged, cash_estr]
     rebalance: monthly_first_sunday
     top_n: 1
     lookbacks_days: [252]
 
   # ── SENSITIVITY EXHIBITS on the same core universe ────────────────────
   # Score-proportional weighting (vs the equal_weight default).
-  - name: core_monthly_score_prop
+  - name: core_sp_m_t3
     description: 6-asset core, monthly, accelerated, score-proportional weighting (sensitivity)
-    assets: [us_pea_sp500, us_russell2000_eur, emu_core_es50_acc, em_pea_asia, jp_pea_topix_hedged, cash_euro_court_terme]
+    assets: [sp500, russell2000, eurostoxx50, em_asia, topix_hedged, cash_estr]
     rebalance: monthly_first_sunday
     top_n: 3
     allocation_rule: score_proportional
 
   # Weekly cadence on the same universe (cost-drag exhibit).
-  - name: core_weekly
+  - name: core_adm_w_t3
     description: 6-asset core, weekly, accelerated, top-3 (cost-drag exhibit)
-    assets: [us_pea_sp500, us_russell2000_eur, emu_core_es50_acc, em_pea_asia, jp_pea_topix_hedged, cash_euro_court_terme]
+    assets: [sp500, russell2000, eurostoxx50, em_asia, topix_hedged, cash_estr]
     rebalance: weekly_sunday
     top_n: 3
 
   # Top-3 single-lookback variants (paired with the top-1 dm_6m / dm_12m
   # above to disentangle the "concentration" effect from the "lookback"
   # effect).
-  - name: core_monthly_dm_6m
+  - name: core_dm6_m_t3
     description: 6-asset core, monthly, single 6-month lookback, top-3
-    assets: [us_pea_sp500, us_russell2000_eur, emu_core_es50_acc, em_pea_asia, jp_pea_topix_hedged, cash_euro_court_terme]
+    assets: [sp500, russell2000, eurostoxx50, em_asia, topix_hedged, cash_estr]
     rebalance: monthly_first_sunday
     top_n: 3
     lookbacks_days: [126]
 
-  - name: core_monthly_dm_12m
+  - name: core_dm12_m_t3
     description: 6-asset core, monthly, single 12-month lookback, top-3
-    assets: [us_pea_sp500, us_russell2000_eur, emu_core_es50_acc, em_pea_asia, jp_pea_topix_hedged, cash_euro_court_terme]
+    assets: [sp500, russell2000, eurostoxx50, em_asia, topix_hedged, cash_estr]
     rebalance: monthly_first_sunday
     top_n: 3
     lookbacks_days: [252]
 
   # ── SECTOR TILT EXPERIMENT ─────────────────────────────────────────────
-  # Adds sec_eu_banks_acc. NB: banks is ~17% of EURO STOXX 50, so
-  # emu_core_es50_acc + sec_eu_banks_acc are not orthogonal exposures —
+  # Adds eu_banks. NB: banks is ~17% of EURO STOXX 50, so
+  # eurostoxx50 + eu_banks are not orthogonal exposures —
   # top-N picks the stronger of the two when both clear the >0 floor.
   # Per Quantpedia, sector-momentum alpha has decayed post-2010; keep this
   # as an experiment, not a core allocation.
-  - name: sector_satellite_monthly
+  - name: banks_adm_m_t3
     description: 6-asset core + EU banks sector tilt, monthly, accelerated
-    assets: [us_pea_sp500, us_russell2000_eur, emu_core_es50_acc, em_pea_asia, jp_pea_topix_hedged, sec_eu_banks_acc, cash_euro_court_terme]
+    assets: [sp500, russell2000, eurostoxx50, em_asia, topix_hedged, eu_banks, cash_estr]
     rebalance: monthly_first_sunday
     top_n: 3
 
@@ -144,9 +144,9 @@ strategies:
   # exposure (TOPIX); the difference is whether daily JPY/EUR moves enter
   # the score signal (unhedged) or are stripped out (hedged). Includes safe
   # so the strategy can defend during JP-equity drawdowns.
-  - name: japan_hedge_vs_unhedge_adm_monthly
+  - name: jp_hvu_m_t1
     description: Hedged vs unhedged Japan ADM rotation, monthly top-1
-    assets: [jp_pea_topix_hedged, jp_pea_topix, cash_euro_court_terme]
+    assets: [topix_hedged, topix, cash_estr]
     rebalance: monthly_first_sunday
     top_n: 1
 
@@ -154,9 +154,9 @@ strategies:
   # Antonacci-style "Absolute Momentum": single risky asset gated by the
   # safe-asset rank. With safe in the universe and top_n=1, this is exactly
   # the rank-only equivalent of Antonacci's classic absolute-momentum spec.
-  - name: us_only_abs_mom_monthly
+  - name: us_adm_m_t1
     description: US-only single-asset rotation (S&P 500 vs safe), monthly top-1
-    assets: [us_pea_sp500, cash_euro_court_terme]
+    assets: [sp500, cash_estr]
     rebalance: monthly_first_sunday
     top_n: 1
 
@@ -164,49 +164,49 @@ strategies:
   # Antonacci's original GEM was SPY vs ACWI ex-US; MSCI World is ~70% US,
   # so this is leakier than the original but the closest clean PEA analog
   # with continuous history.
-  - name: gem_us_world_monthly
+  - name: gem_adm_m_t1
     description: GEM-style proxy, monthly top-1 between S&P 500 / MSCI World / safe
-    assets: [us_pea_sp500, world_pea_monde, cash_euro_court_terme]
+    assets: [sp500, world, cash_estr]
     rebalance: monthly_first_sunday
     top_n: 1
 
   # ── BUY-AND-HOLD BENCHMARKS (zero-cost references) ────────────────────
-  - name: msci_world_buy_hold
+  - name: world_bh
     description: 100% MSCI World buy-and-hold (zero-cost benchmark)
     mode: buy_and_hold
-    assets: [world_pea_monde]
+    assets: [world]
     rebalance: monthly_first_sunday
     top_n: 1
 
-  - name: world3_buy_hold
+  - name: world3_bh
     description: 1/3 each S&P 500 + Euro Stoxx 50 + Emerging Asia, buy-and-hold
     mode: buy_and_hold
-    assets: [us_pea_sp500, emu_core_es50_acc, em_pea_asia]
+    assets: [sp500, eurostoxx50, em_asia]
     rebalance: monthly_first_sunday
     top_n: 3
 
   # Static 60/40: 60% world + 40% safe, never rebalanced. The canonical
   # static benchmark — every rotation strategy here should beat it after
   # costs to justify its complexity.
-  - name: static_60_40
+  - name: world_60_40_bh
     description: Static 60% world + 40% safe, never rebalanced (canonical benchmark)
     mode: buy_and_hold
-    assets: [world_pea_monde]
+    assets: [world]
     rebalance: monthly_first_sunday
     top_n: 1
     static_weights:
-      world_pea_monde: 0.6
-      cash_euro_court_terme: 0.4
+      world: 0.6
+      cash_estr: 0.4
 
   # ── WORLD-CENTRIC ROTATIONS (kept for continuity with previous lineup) ──
-  - name: world_jp_hedge_adm_monthly
+  - name: world_jp_m_t1
     description: ADM rotation between MSCI World, Japan-hedged, and safe; monthly top-1
-    assets: [world_pea_monde, jp_pea_topix_hedged, cash_euro_court_terme]
+    assets: [world, topix_hedged, cash_estr]
     rebalance: monthly_first_sunday
     top_n: 1
 
-  - name: world3_jp_hedge_adm_monthly
+  - name: world3_jp_m_t3
     description: ADM rotation across S&P 500 + Euro Stoxx 50 + EM Asia + Japan-hedged + safe; monthly top-3
-    assets: [us_pea_sp500, emu_core_es50_acc, em_pea_asia, jp_pea_topix_hedged, cash_euro_court_terme]
+    assets: [sp500, eurostoxx50, em_asia, topix_hedged, cash_estr]
     rebalance: monthly_first_sunday
     top_n: 3

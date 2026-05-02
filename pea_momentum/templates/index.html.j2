@@ -78,9 +78,17 @@
     .chip-high { color: #c98aff; border-color: rgba(201, 138, 255, 0.45); background: rgba(201, 138, 255, 0.12); }
     .chip-row { white-space: nowrap; }
     .chip-row + .chip-row { margin-top: 2px; }
+    /* Inside table cells (signal table), stack chips vertically — one
+       chip per line — so wide cells with many chips don't blow out the
+       table width. The wrapper chip-row stays a flex container; chips
+       inside become block-level. */
+    td.chips .chip-row { display: flex; flex-direction: column; align-items: stretch; gap: 2px; }
+    td.chips .chip { display: block; text-align: center; }
     td.chips { vertical-align: top; text-align: center; }
     th.chips { text-align: center; }
     .dash { color: var(--muted); opacity: 0.5; }
+    /* Allocation cell shows top-N on line 1 + weighting rule on line 2. */
+    td.alloc { line-height: 1.4; }
     /* Performance metrics + signal tables — center every cell + header */
     table.metrics th, table.metrics td { text-align: center; }
     table.signal th, table.signal td { text-align: center; }
@@ -134,7 +142,7 @@
             <td data-value="{{ s.name }}"><span class="pill">{{ s.name }}</span></td>
             <td data-value="{{ s.cadence }}">{{ s.cadence }}</td>
             <td data-value="{{ s.scoring }}">{{ s.scoring }}</td>
-            <td data-value="{{ s.allocation }}">{{ s.allocation }}</td>
+            <td class="alloc" data-value="{{ s.allocation_top }} {{ s.allocation_weight }}">{{ s.allocation_top }}<br>{{ s.allocation_weight }}</td>
             <td class="numeric {{ 'pos' if s.cagr >= 0 else 'neg' }}" data-value="{{ s.cagr }}">{% if s.cagr == s.cagr and s.cagr != -1e308 %}{{ "%.2f%%"|format(s.cagr * 100) }}{% else %}—{% endif %}</td>
             <td data-value="{{ s.last_rebalance }}">{{ s.last_rebalance }}</td>
             {% for bucket in ["world", "us", "europe", "asia", "cash"] %}
