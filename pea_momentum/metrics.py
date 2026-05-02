@@ -13,6 +13,8 @@ from typing import Any
 import numpy as np
 import polars as pl
 
+from .correlations import pairwise_corrcoef
+
 TRADING_DAYS_PER_YEAR = 252
 
 
@@ -32,7 +34,11 @@ class Metrics:
         return asdict(self)
 
 
-def compute(equity: pl.DataFrame, rf_annual: float = 0.0) -> Metrics:
+def compute(equity: pl.DataFrame) -> Metrics:
+    """Sharpe / Sortino are computed on raw daily returns (rf=0). The dual-
+    momentum framework already absorbs the risk-free rate at the strategy
+    level via the absolute-momentum filter against the safe asset, so
+    excess-vs-rf adjustment here would double-count it."""
     if equity.is_empty():
         return Metrics(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0)
 
@@ -51,23 +57,13 @@ def compute(equity: pl.DataFrame, rf_annual: float = 0.0) -> Metrics:
     vol_daily = math.sqrt(var_r)
     vol_ann = vol_daily * math.sqrt(TRADING_DAYS_PER_YEAR)
 
-    rf_daily = (1.0 + rf_annual) ** (1.0 / TRADING_DAYS_PER_YEAR) - 1.0
-    excess = [r - rf_daily for r in daily_returns]
-    sharpe = (
-        (sum(excess) / len(excess)) / vol_daily * math.sqrt(TRADING_DAYS_PER_YEAR)
-        if vol_daily > 0
-        else 0.0
-    )
+    sharpe = mean_r / vol_daily * math.sqrt(TRADING_DAYS_PER_YEAR) if vol_daily > 0 else 0.0
 
-    downside = [r for r in excess if r < 0]
+    downside = [r for r in daily_returns if r < 0]
     if downside:
         ds_var = sum(r * r for r in downside) / len(downside)
         ds_vol = math.sqrt(ds_var)
-        sortino = (
-            (sum(excess) / len(excess)) / ds_vol * math.sqrt(TRADING_DAYS_PER_YEAR)
-            if ds_vol > 0
-            else 0.0
-        )
+        sortino = mean_r / ds_vol * math.sqrt(TRADING_DAYS_PER_YEAR) if ds_vol > 0 else 0.0
     else:
         sortino = float("inf") if mean_r > 0 else 0.0
 
@@ -123,8 +119,6 @@ def avg_pairwise_correlation(
       0.60-0.75  tightly correlated (developed-market equities)
       > 0.75  near-redundant (sector ETFs within one region)
     """
-    from .correlations import pairwise_corrcoef
-
     result = pairwise_corrcoef(prices_long, asset_ids, window_days=None)
     if result is None:
         return None
