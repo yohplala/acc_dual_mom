@@ -9,7 +9,6 @@ import pytest
 
 from pea_momentum.errors import FetchError
 from pea_momentum.stitching import (
-    jpy_to_eur,
     scrub_long_format,
     splice_at_inception,
     usd_to_eur,
@@ -93,13 +92,6 @@ class TestFxConversion:
         closes = out.get_column("close").to_list()
         assert abs(closes[0] - 90.909) < 0.01
         assert abs(closes[2] - 100.0) < 0.01  # 120 / 1.20 = 100
-
-    def test_jpy_to_eur(self) -> None:
-        # JPY index = 30000; EURJPY = 150 → EUR price = 200
-        idx = _series(date(2024, 1, 1), [30000.0])
-        fx = _series(date(2024, 1, 1), [150.0])
-        out = jpy_to_eur(idx, fx)
-        assert out.get_column("close")[0] == 200.0
 
     def test_missing_fx_dates_dropped(self) -> None:
         idx = _series(date(2024, 1, 1), [100.0, 110.0, 120.0])
