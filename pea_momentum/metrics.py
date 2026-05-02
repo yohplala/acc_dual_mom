@@ -36,10 +36,12 @@ class Metrics:
 
 
 def compute(equity: pl.DataFrame) -> Metrics:
-    """Sharpe / Sortino are computed on raw daily returns (rf=0). The dual-
-    momentum framework already absorbs the risk-free rate at the strategy
-    level via the absolute-momentum filter against the safe asset, so
-    excess-vs-rf adjustment here would double-count it."""
+    """Sharpe / Sortino are computed on raw daily returns (rf=0). The
+    framework already absorbs the risk-free rate at the strategy level
+    when the strategy lists `safe` in its `assets:` (the safe sleeve
+    wins the rank during crashes); subtracting rf again at the metric
+    layer would double-count it. Strategies that don't list safe earn
+    0% on residual cash; their Sharpe naturally reflects that."""
     if equity.is_empty():
         return Metrics(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0)
 

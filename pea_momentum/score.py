@@ -9,7 +9,7 @@ Three aggregations are supported across the configured lookbacks:
 - ``mean``    arithmetic average — the default ADM aggregation.
 - ``median``  trimmed-tails view — robust to a single anomalous lookback.
 - ``min``     pessimistic — requires every lookback to be positive for the
-              score to clear the absolute filter; useful as a sensitivity exhibit.
+              score to clear the >0 floor; useful as a sensitivity exhibit.
 """
 
 from __future__ import annotations

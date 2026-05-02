@@ -2,23 +2,27 @@
 
 This document describes how strategies are scored, allocated, costed, and stitched in the `pea_momentum` framework. It is the canonical reference for "what is the dashboard actually showing me". Everything here is a deliberate choice — change behaviour by editing [`strategies.yaml`](../strategies.yaml) and the asset YAML metadata, never the source code.
 
+## Framework label
+
+The framework is **rank-only momentum rotation with a positive-momentum floor**. It is *inspired by* Antonacci's accelerated dual momentum (ADM) and his GEM (Global Equities Momentum), but it is **not strict Antonacci**: there is no two-stage filter against a benchmark. Every asset (including the safe sleeve, when listed) competes purely on score. References to "ADM" / "DM" elsewhere in the doc and dashboard label the *score recipe* (e.g. accelerated 1m/3m/6m mean vs single 12-month lookback), not the filter design.
+
 ## Strategy modes
 
-Three execution modes coexist:
+Two execution modes coexist:
 
-- **`rotation`** — the default. At each rebalance, score every risky asset, filter against the safe asset, pick the top-N, and weight them. The strategy can hold the safe asset (via the absolute filter) when nothing clears the threshold.
-- **`buy_and_hold`** — equal-weight (or explicit `static_weights`) on `assets`, allocated on day one and never rebalanced. No transaction cost. Used as zero-cost reference benchmarks (`msci_world_buy_hold`, `world3_buy_hold`, `static_60_40`).
-- The user-controlled cadence (`weekly_sunday`, `biweekly_sunday`, `monthly_first_sunday`) drives when rotation strategies rebalance. Buy-and-hold ignores the cadence.
+- **`rotation`** — the default. At each rebalance, score every listed asset, drop those with score ≤ 0, pick the top-N, and weight them. The cadence (`weekly_sunday`, `biweekly_sunday`, `monthly_first_sunday`) drives when this fires.
+- **`buy_and_hold`** — equal-weight (or explicit `static_weights`) on `assets`, allocated on day one and never rebalanced. No transaction cost. Used as zero-cost reference benchmarks (`msci_world_buy_hold`, `world3_buy_hold`, `static_60_40`). Buy-and-hold ignores the cadence field.
 
 ### Rotation pipeline (per rebalance day)
 
 ```
-raw close prices ─▶ score (per asset)
-  ──▶ absolute filter (score > safe_score AND score > 0)
+raw close prices ─▶ score (per asset, including safe if listed)
+  ──▶ positive-momentum filter (score > 0)
   ──▶ top-N selection (by score, descending)
   ──▶ weighting rule (equal_weight or score_proportional)
   ──▶ largest-remainder rounding to granularity_pct
-  ──▶ residual allocated to safe asset
+  ──▶ residual (only when no candidate passes) ─▶ residual_holder
+       (= safe asset if listed in `assets:`, else CASH 0%-return placeholder)
 ```
 
 ### Scoring (`pea_momentum/score.py`)
@@ -29,8 +33,8 @@ Score at signal date `t`:
 score(asset) = aggregate_over_lookbacks(close(t) / close(t - L) - 1)
 ```
 
-- **Lookbacks** are configured in trading days. The default Antonacci-accelerated set is `[21, 63, 126]` (≈ 1, 3, 6 months). A per-strategy `lookbacks_days: [252]` reproduces classic Antonacci dual-momentum (single 12-month).
-- **Aggregations**: `mean` (default ADM), `median` (robust to a single anomalous lookback), `min` (pessimistic — every lookback must be positive). The latter two are documented sensitivity exhibits, not the recommended live setup.
+- **Lookbacks** are configured in trading days via the `lookbacks_days` field. The default accelerated set is `[21, 63, 126]` (≈ 1, 3, 6 months). A per-strategy override `lookbacks_days: [252]` produces the single-12-month variant; `[126]` produces the single-6-month variant.
+- **Aggregations**: `mean` (default), `median` (robust to a single anomalous lookback), `min` (pessimistic — every lookback must be positive). The latter two are documented sensitivity exhibits, not the recommended live setup.
 
 ### Positive-momentum filter
 
@@ -143,7 +147,7 @@ Computed on the daily equity curve plus the rebalance log:
 
 ### `rf=0` in Sharpe / Sortino
 
-The dual-momentum framework already absorbs the risk-free rate at the strategy level via the absolute-momentum filter against the safe asset (the strategy literally rotates to safe when nothing beats it). Subtracting `rf` again at the metric layer would double-count it. The dashboard's Sharpe is therefore directly comparable across strategies that share the same safe-asset benchmark.
+The framework already absorbs the risk-free rate at the strategy level: a strategy that lists `safe` in its `assets:` will rotate into it during crashes (€STR yield wins the rank when equity scores collapse), and one that doesn't list `safe` falls through to a 0%-return CASH placeholder. Subtracting `rf` again at the metric layer would double-count the safe-asset return for safe-listing strategies. The dashboard's Sharpe is therefore directly comparable across rotation strategies with similar `safe` treatment.
 
 ### Per-rebalance hit rate
 
@@ -157,6 +161,25 @@ The broad PEA-eligible Amundi universe in [`pea_universe.yaml`](../pea_universe.
 - **Best-in-group representative** (`correlations.best_in_group`) picks the **lowest-TER** member of each group. TER is decided ex-ante, so the choice is immune to in-sample selection bias — unlike a 1-year CAGR ranking, which would be momentum-on-momentum and defeat the prospective spirit of dual momentum.
 
 `diagnostics.diagnose_strategies` then cross-references each strategy's asset slice against these groups and emits two diagnostic types: **`remove`** (the strategy uses 2+ assets in the same redundancy group — keep one, drop the others) and **`replace`** (the strategy uses an asset that isn't the lowest-TER pick in its group).
+
+## Glossary
+
+For future readers: the canonical vocabulary used across YAML, code, and dashboard. If a term doesn't appear here, it's not part of the framework's API surface.
+
+| Concept | YAML | Code field | Dashboard label | Notes |
+|---|---|---|---|---|
+| Score lookback windows (trading days) | `lookbacks_days: [21, 63, 126]` | `Strategy.lookbacks_days`, `Scoring.lookbacks_days` | `Scoring` (e.g. `ADM 1m/3m/6m mean`, `DM 12m`) | Days, not months. 21 ≈ 1 month. |
+| Score aggregation across lookbacks | `aggregation: mean` | `Scoring.aggregation` | (folded into Scoring label) | `mean` / `median` / `min` |
+| Allocation weighting rule | `rule: equal_weight` (shared) or `allocation_rule: score_proportional` (per strategy) | `Allocation.rule`, `Strategy.allocation_rule` | `Allocation` (e.g. `top-3 equal`, `top-1 score-prop`) | `equal_weight` is canonical; `score_proportional` is the opt-in sensitivity exhibit. |
+| Number of selected sleeves | `top_n: 3` | `Strategy.top_n` | (folded into Allocation label) | |
+| Rebalance cadence | `rebalance: monthly_first_sunday` | `Strategy.rebalance` | `Cadence` (e.g. `monthly`, `weekly`, `biweekly`) | Sunday-anchored only. |
+| Strategy mode | `mode: rotation` (default) or `mode: buy_and_hold` | `Strategy.mode` | Reflected in `Scoring` label (`Buy & Hold`) | |
+| Static buy-and-hold weights | `static_weights: {world: 0.6, safe: 0.4}` | `Strategy.static_weights` | (folded into `B&H static` label) | Optional; absent ⇒ equal-weight. |
+| Pre-selection filter | `filter: { type: positive_momentum }` | `Filter.type` | (implicit) | `score > 0` floor. The historical `absolute_momentum` (vs safe-score) is gone. |
+| Safe asset | `universe.safe_asset:` block | `Config.safe_asset`, `SafeAsset` | `safe` chip in the **Cash** column | Just another listable asset under the rank-only methodology — list it in a strategy's `assets:` to give it a chance to win the top-N. |
+| Cash residual | (n/a) | `allocate.CASH_KEY` | `cash` chip | 0%-return placeholder used when no candidate passes the >0 floor AND `safe` isn't listed in the strategy. |
+| Per-asset bid-ask spread (bps) | `est_spread_bps: 5` | `Asset.est_spread_bps` | (folded into `total_cost`) | Half-spread added per traded notional. |
+| Asset region (geographic bucket) | `region: us` | `Asset.region` | Drives the **World / US / Europe / Asia** signal-table columns. | Coarse buckets: `world` / `us` / `europe` (incl. eurozone/france/germany) / `asia` (incl. japan/em_asia/em). Safe ⇒ `cash` column. |
 
 ## Pointers
 
