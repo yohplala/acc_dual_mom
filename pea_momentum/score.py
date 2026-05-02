@@ -17,7 +17,6 @@ from __future__ import annotations
 import statistics
 from datetime import date
 
-import numpy as np
 import polars as pl
 
 from .universe import Scoring
@@ -28,12 +27,6 @@ AGGREGATION_MIN = "min"
 SUPPORTED_AGGREGATIONS: frozenset[str] = frozenset(
     {AGGREGATION_MEAN, AGGREGATION_MEDIAN, AGGREGATION_MIN}
 )
-
-_NUMPY_AGG: dict[str, np.ufunc | object] = {
-    AGGREGATION_MEAN: np.mean,
-    AGGREGATION_MEDIAN: np.median,
-    AGGREGATION_MIN: np.min,
-}
 
 
 def score_at(
@@ -47,7 +40,9 @@ def score_at(
     Missing assets or insufficient history yield no entry in the output. The
     backtest treats missing scores as "ineligible this period".
 
-    Vectorised across assets via a single pivot + numpy-array indexing.
+    Pure-polars: per-asset shifts compute every lookback's ROC in a single
+    expression sweep, then horizontal aggregation collapses them to one
+    score per asset at the most-recent close ≤ as_of.
     """
     if cfg.aggregation not in SUPPORTED_AGGREGATIONS:
         raise ValueError(
@@ -58,33 +53,48 @@ def score_at(
     relevant = prices_long.filter(pl.col("asset_id").is_in(asset_ids) & (pl.col("date") <= as_of))
     if relevant.is_empty():
         return {}
-    wide = relevant.pivot(values="close", index="date", on="asset_id").sort("date")
-    asset_cols = [c for c in wide.columns if c != "date"]
-    if not asset_cols:
-        return {}
 
-    n = wide.height
-    max_lb = max(cfg.lookbacks_days)
-    if n <= max_lb:
-        return {}
+    sorted_long = relevant.sort(["asset_id", "date"])
+    roc_cols = [f"_roc_{lb}" for lb in cfg.lookbacks_days]
+    # Per-asset shift: close at row N divided by close at row N-L gives the
+    # L-day ROC at every row. We only need the last row per asset; the
+    # subsequent filter selects it.
+    with_rocs = sorted_long.with_columns(
+        *[
+            (
+                pl.col("close")
+                / pl.when(pl.col("close").shift(lb).over("asset_id") > 0)
+                .then(pl.col("close").shift(lb).over("asset_id"))
+                .otherwise(None)
+                - 1.0
+            ).alias(f"_roc_{lb}")
+            for lb in cfg.lookbacks_days
+        ]
+    )
 
-    arr = wide.select(asset_cols).to_numpy()  # (n, n_assets)
-    last = arr[-1]  # (n_assets,)
+    last_per_asset = with_rocs.filter(pl.col("date") == pl.col("date").max().over("asset_id"))
 
-    rocs: list[np.ndarray] = []
-    for lb in cfg.lookbacks_days:
-        prior = arr[-1 - lb]
-        with np.errstate(divide="ignore", invalid="ignore"):
-            roc = np.where(prior > 0, last / prior - 1.0, np.nan)
-        rocs.append(roc)
-    score_arr = _NUMPY_AGG[cfg.aggregation](np.stack(rocs), axis=0)  # type: ignore[operator]
+    if cfg.aggregation == AGGREGATION_MEAN:
+        score_expr = pl.mean_horizontal(roc_cols)
+    elif cfg.aggregation == AGGREGATION_MIN:
+        score_expr = pl.min_horizontal(roc_cols)
+    else:  # AGGREGATION_MEDIAN — polars has no median_horizontal, so list-then-median.
+        score_expr = pl.concat_list(roc_cols).list.median()
 
-    out: dict[str, float] = {}
-    for i, asset_id in enumerate(asset_cols):
-        v = score_arr[i]
-        if not np.isnan(v):
-            out[asset_id] = float(v)
-    return out
+    # `*_horizontal` skip-nulls by default; we want strict propagation so that
+    # an asset with insufficient history (any lookback null) is excluded
+    # rather than silently scored on a partial average.
+    all_present = pl.all_horizontal([pl.col(c).is_not_null() for c in roc_cols])
+    scored = last_per_asset.with_columns(
+        _score=pl.when(all_present).then(score_expr).otherwise(None)
+    ).drop_nulls(subset=["_score"])
+    return dict(
+        zip(
+            scored.get_column("asset_id").to_list(),
+            scored.get_column("_score").to_list(),
+            strict=True,
+        )
+    )
 
 
 def _score_series(
