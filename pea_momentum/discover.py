@@ -1,9 +1,9 @@
 """Fetch close prices for the broad PEA-eligible Amundi ETF discovery universe.
 
-Independent of `fetch.py` (which fetches the strategy universe). The
-discovery universe lives in `pea_universe.yaml` and contains every
+Independent of `fetch.py` (which fetches the active strategy universe).
+The discovery universe lives in `pea_universe.yaml` and contains every
 PEA-eligible Amundi ETF — used for correlation-matrix exploration and
-redundancy detection, not for active strategies.
+redundancy detection, not for live strategies.
 
 Loud failures are *partial* here — a single bad ticker should not break
 the discovery fetch. Each per-asset failure is logged and skipped; the
@@ -14,44 +14,30 @@ from __future__ import annotations
 
 import logging
 import re
-from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 
 import polars as pl
-import yaml
 
 from . import fetch
 from .errors import FetchError
-from .universe import Asset
+from .universe import Asset, load_full_universe
 
 log = logging.getLogger(__name__)
 
 
-@dataclass(frozen=True, slots=True)
-class DiscoveryEntry:
-    id: str
-    name: str
-    isin: str
-    currency: str
-    ter_pct: float
-    category: str
-    yahoo: str | None
-    leveraged: bool = False
-    amundi_url: str | None = None
-
-    @property
-    def region(self) -> str:
-        """Coarse geographic / asset-class perimeter, derived from `category`.
-
-        Used by `find_groups()` to skip unioning two assets whose daily
-        correlation exceeds the threshold but which sit in distinct
-        perimeters (e.g. MSCI World vs S&P 500: same beta, different
-        underlying universes — should not be flagged as redundant)."""
-        return _coarse_region(self.category)
+# Backwards-compat alias: external code that imported `DiscoveryEntry` keeps
+# working — every catalog row is now just an `Asset`.
+DiscoveryEntry = Asset
 
 
-def _coarse_region(category: str) -> str:
+def coarse_region(category: str) -> str:
+    """Coarse geographic / asset-class perimeter, derived from `category`.
+
+    Used by `find_groups()` to skip unioning two assets whose daily
+    correlation exceeds the threshold but which sit in distinct
+    perimeters (e.g. MSCI World vs S&P 500: same beta, different
+    underlying universes — should not be flagged as redundant)."""
     cat = category.upper()
     if cat.startswith("USA"):
         return "USA"
@@ -69,27 +55,14 @@ def _coarse_region(category: str) -> str:
         return "CASH"
     if cat.startswith("THEMATIC"):
         return "THEMATIC"
-    # Default bucket: Eurozone, Europe, individual EU countries, EU sectors
-    # (all the sector ETFs in our YAML are European-focused)
+    # Default: Eurozone, Europe, individual EU countries, EU sectors
     return "EUROPE"
 
 
-def load_discovery_universe(path: str | Path = "pea_universe.yaml") -> list[DiscoveryEntry]:
-    raw = yaml.safe_load(Path(path).read_text())
-    return [
-        DiscoveryEntry(
-            id=e["id"],
-            name=e["name"],
-            isin=e["isin"],
-            currency=e["currency"],
-            ter_pct=float(e["ter_pct"]),
-            category=e.get("category", "Other"),
-            yahoo=e.get("yahoo"),
-            leveraged=bool(e.get("leveraged", False)),
-            amundi_url=e.get("amundi_url"),
-        )
-        for e in raw["universe"]
-    ]
+def load_discovery_universe(path: str | Path = "pea_universe.yaml") -> list[Asset]:
+    """Read every entry in `pea_universe.yaml` as an `Asset`. Active-only
+    fields (region, est_spread_bps, …) are populated where present."""
+    return list(load_full_universe(path))
 
 
 _AMUNDI_URL_BASE = "https://www.amundietf.fr/fr/particuliers/produits"
@@ -115,18 +88,11 @@ _FIXED_INCOME_KEYWORDS = ("money-market", "short-term")
 _FIXED_INCOME_PREFIXES = ("cash", "bond")
 
 
-def amundi_product_url(entry: DiscoveryEntry) -> str:
+def amundi_product_url(entry: Asset) -> str:
     """Resolve the Amundi product page URL for `entry`.
 
     Returns `entry.amundi_url` verbatim when set in the YAML; otherwise
-    constructs the URL from name + ISIN using Amundi's observed slug pattern:
-
-        {base}/{asset_class}/{slug}/{isin-lower}
-
-    The slug is the lowercase name with non-alphanumerics dropped and spaces
-    replaced by dashes. Amundi inserts `ucits-etf` between the product name
-    and the share-class suffix even when the source name omits it, so we
-    mirror that.
+    constructs the URL from name + ISIN using Amundi's observed slug pattern.
 
     Best-effort — set `amundi_url:` in `pea_universe.yaml` to override when
     the heuristic mismatches (e.g. products with expanded English index
@@ -160,7 +126,7 @@ def _amundi_asset_class(category: str) -> str:
 
 
 def fetch_discovery_universe(
-    entries: list[DiscoveryEntry],
+    entries: list[Asset],
     start: date,
     *,
     skip_leveraged: bool = True,
@@ -182,7 +148,7 @@ def fetch_discovery_universe(
     failed = 0
 
     for entry in entries:
-        if entry.yahoo is None:
+        if not entry.yahoo:
             skipped_no_ticker += 1
             continue
         if skip_leveraged and entry.leveraged:
@@ -192,9 +158,8 @@ def fetch_discovery_universe(
             skipped_non_eur += 1
             continue
 
-        as_asset = _entry_to_asset(entry)
         try:
-            df = fetch.fetch_yahoo(as_asset, start=start)
+            df = fetch.fetch_yahoo(entry, start=start)
             frames.append(df)
         except FetchError as exc:
             log.warning("discovery fetch failed for %s (%s): %s", entry.id, entry.yahoo, exc)
@@ -214,15 +179,3 @@ def fetch_discovery_universe(
             schema={"date": pl.Date, "asset_id": pl.Utf8, "close": pl.Float64, "source": pl.Utf8}
         )
     return pl.concat(frames)
-
-
-def _entry_to_asset(entry: DiscoveryEntry) -> Asset:
-    """Adapt a `DiscoveryEntry` into the `Asset` shape that `fetch.fetch_yahoo`
-    expects. We don't use the proxy / inception fields here — discovery
-    fetches live ETF history only."""
-    return Asset(
-        id=entry.id,
-        isin=entry.isin,
-        yahoo=entry.yahoo or "",
-        region=entry.category.lower(),
-    )
