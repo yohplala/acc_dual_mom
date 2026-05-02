@@ -16,6 +16,20 @@ class Asset:
     isin: str
     yahoo: str
     region: str
+    # Display name (Amundi product name, used in dashboards).
+    name: str = ""
+    # Annual TER as a percentage (e.g. 0.12 for 12 bps). Used for cost
+    # modelling diagnostics; not subtracted from backtest returns since
+    # auto_adjust=True closes are already net of fund fees.
+    ter_pct: float = 0.0
+    # "synthetic" (swap-based) or "physical" (sampling/full replication).
+    # Informational only; not used in scoring.
+    replication: str | None = None
+    # Estimated round-trip bid-ask spread in bps. Half is added to
+    # `shared.costs.per_trade_pct` per asset traded at rebalance time.
+    # Default 0 keeps cost ≡ shared per_trade_pct for assets without
+    # explicit spread data.
+    est_spread_bps: float = 0.0
     # Optional Yahoo ticker for the underlying index, used to extend price
     # history backward before the ETF launched. None disables stitching for
     # this asset (history is limited to the ETF's own data).
@@ -34,6 +48,8 @@ class Asset:
 class SafeAsset:
     id: str
     proxy: str
+    name: str = ""
+    ter_pct: float = 0.0
 
 
 @dataclass(frozen=True, slots=True)
@@ -61,11 +77,23 @@ class Costs:
 
 
 @dataclass(frozen=True, slots=True)
+class Execution:
+    """Sunday-anchored: signal uses preceding Friday close, fill at the
+    following Monday close. The values are parsed for transparency; only
+    the canonical pair is supported today and any deviation raises at
+    config-load time."""
+
+    signal_close: str = "friday"
+    fill_close: str = "monday"
+
+
+@dataclass(frozen=True, slots=True)
 class Shared:
     scoring: Scoring
     allocation: Allocation
     filter: Filter
     costs: Costs
+    execution: Execution = Execution()
 
 
 @dataclass(frozen=True, slots=True)
@@ -74,6 +102,7 @@ class Strategy:
     asset_ids: tuple[str, ...]
     rebalance: str
     top_n: int
+    description: str = ""
     reference_date: date | None = None
     # `rotation` runs the score → filter → top-N → score-prop allocation.
     # `buy_and_hold` allocates equal weights to `asset_ids` on day one and
@@ -86,6 +115,21 @@ class Strategy:
     # 6-month lookback). Same `aggregation` rule applies (mean for >1
     # lookback; for a single value, mean returns the value as-is).
     lookbacks_days: tuple[int, ...] | None = None
+    # Per-strategy override of `shared.allocation.rule`. None = use shared.
+    allocation_rule: str | None = None
+
+    def effective_scoring(self, shared_scoring: Scoring) -> Scoring:
+        """Return the scoring config this strategy actually uses, applying
+        the per-strategy lookback override if set."""
+        if self.lookbacks_days is None:
+            return shared_scoring
+        return Scoring(
+            lookbacks_days=self.lookbacks_days,
+            aggregation=shared_scoring.aggregation,
+        )
+
+    def effective_allocation_rule(self, shared_rule: str) -> str:
+        return self.allocation_rule or shared_rule
 
 
 @dataclass(frozen=True, slots=True)
@@ -116,6 +160,8 @@ def _parse(raw: dict[str, Any]) -> Config:
     shared_raw = raw["shared"]
     universe_raw = raw["universe"]
 
+    execution = _parse_execution(shared_raw.get("execution"))
+
     shared = Shared(
         scoring=Scoring(
             lookbacks_days=tuple(shared_raw["scoring"]["lookbacks_days"]),
@@ -131,6 +177,7 @@ def _parse(raw: dict[str, Any]) -> Config:
             benchmark=shared_raw["filter"]["benchmark"],
         ),
         costs=Costs(per_trade_pct=float(shared_raw["costs"]["per_trade_pct"])),
+        execution=execution,
     )
 
     assets = tuple(
@@ -139,6 +186,10 @@ def _parse(raw: dict[str, Any]) -> Config:
             isin=a["isin"],
             yahoo=a["yahoo"],
             region=a["region"],
+            name=a.get("name", ""),
+            ter_pct=float(a.get("ter_pct", 0.0)),
+            replication=a.get("replication"),
+            est_spread_bps=float(a.get("est_spread_bps", 0.0)),
             index_proxy=a.get("index_proxy"),
             index_proxy_kind=a.get("index_proxy_kind"),
             inception=_parse_date(a.get("inception")),
@@ -147,7 +198,12 @@ def _parse(raw: dict[str, Any]) -> Config:
     )
 
     sa = universe_raw["safe_asset"]
-    safe_asset = SafeAsset(id=sa["id"], proxy=sa["proxy"])
+    safe_asset = SafeAsset(
+        id=sa["id"],
+        proxy=sa["proxy"],
+        name=sa.get("name", ""),
+        ter_pct=float(sa.get("ter_pct", 0.0)),
+    )
 
     strategies = tuple(_parse_strategy(s) for s in raw["strategies"])
 
@@ -184,10 +240,28 @@ def _parse_strategy(s: dict[str, Any]) -> Strategy:
         asset_ids=tuple(s["assets"]),
         rebalance=s["rebalance"],
         top_n=int(s["top_n"]),
+        description=s.get("description", ""),
         reference_date=_parse_date(s.get("reference_date")),
         mode=mode,
         lookbacks_days=lookbacks,
+        allocation_rule=s.get("allocation_rule"),
     )
+
+
+def _parse_execution(raw: dict[str, Any] | None) -> Execution:
+    """Validate the execution block. Today only the canonical Friday→Monday
+    cadence is supported; raise loud if a deviation is requested so the YAML
+    doesn't silently lie about behaviour."""
+    if raw is None:
+        return Execution()
+    signal = str(raw.get("signal_close", "friday")).lower()
+    fill = str(raw.get("fill_close", "monday")).lower()
+    if signal != "friday" or fill != "monday":
+        raise ValueError(
+            f"shared.execution: only signal_close=friday/fill_close=monday is "
+            f"implemented, got signal_close={signal!r}, fill_close={fill!r}"
+        )
+    return Execution(signal_close=signal, fill_close=fill)
 
 
 def _parse_date(value: Any) -> date | None:

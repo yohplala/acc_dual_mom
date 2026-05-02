@@ -16,7 +16,6 @@ shared:
   allocation:
     rule: score_proportional      # w_i = s_i / sum(s_j) over selected
     granularity_pct: 10           # round weights to 10% steps
-    min_weight_pct: 0
     rounding: largest_remainder   # Hare quota for fair rounding
 
   filter:
