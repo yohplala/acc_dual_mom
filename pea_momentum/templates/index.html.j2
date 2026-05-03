@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>PEA Accelerated Dual Momentum</title>
+  <title>{{ page_title|default('PEA Accelerated Dual Momentum') }}</title>
   <script src="https://cdn.plot.ly/plotly-2.35.2.min.js" charset="utf-8"></script>
   <style>
     :root {
@@ -101,12 +101,23 @@
 </head>
 <body>
   <div class="container">
-    <h1>PEA Accelerated Dual Momentum</h1>
+    <h1>{{ page_title|default('PEA Accelerated Dual Momentum') }}</h1>
     <div class="subtitle">
+      {%- if page_subtitle %}{{ page_subtitle }} · {% endif -%}
       {{ summary.n_strategies }} strategies · last update {{ summary.last_update }} ·
       data range {{ summary.data_start }} → {{ summary.data_end }}
     </div>
-    <nav><a href="correlations.html">Correlation matrix →</a></nav>
+    <nav>
+      {%- for link in nav_links|default([]) %}
+        {%- if link.current %}
+          <span style="color: var(--muted); font-size: 13px; margin-right: 12px;">{{ link.label }}</span>
+        {%- else %}
+          <a href="{{ link.href }}" style="margin-right: 12px;">{{ link.label }}</a>
+        {%- endif %}
+      {%- else %}
+        <a href="correlations.html">Correlation matrix →</a>
+      {%- endfor %}
+    </nav>
 
     {%- macro asset_chip(c, label) -%}
       {%- if c.url -%}

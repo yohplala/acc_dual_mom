@@ -198,10 +198,26 @@ def _render_results(
     results: list[backtest.BacktestResult],
     site_root: str,
 ) -> Path:
+    """Render the main dashboard plus every per-region page that has at
+    least one strategy. The main page gets nav links to all available
+    regional pages so users can hop between them."""
     prices = store.read_prices(data_root)
-    return render.render(
-        results, cfg, site_root, prices_long=prices if not prices.is_empty() else None
+    prices_long = prices if not prices.is_empty() else None
+
+    available = render.available_regions(results, cfg)
+    main_nav = render._build_nav_links(current_page="index", available_regions=available)
+    main_out = render.render(
+        results,
+        cfg,
+        site_root,
+        prices_long=prices_long,
+        nav_links=main_nav,
     )
+    for region in sorted(available):
+        out = render.render_region(results, cfg, site_root, region=region, prices_long=prices_long)
+        if out is not None:
+            click.echo(f"  · regional page: {out}")
+    return main_out
 
 
 @cli.command(name="run")

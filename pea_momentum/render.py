@@ -27,7 +27,7 @@ from .metrics import (
     rebalance_hit_rate,
     turnover_per_year,
 )
-from .universe import Config, Strategy
+from .universe import Asset, Config, Strategy
 
 TEMPLATES_DIR = Path(__file__).parent / "templates"
 
@@ -56,7 +56,22 @@ def render(
     output_dir: str | Path,
     prices_long: pl.DataFrame | None = None,
     template_name: str = "index.html.j2",
+    *,
+    page_title: str | None = None,
+    page_subtitle: str | None = None,
+    nav_links: list[dict[str, object]] | None = None,
+    output_filename: str = "index.html",
 ) -> Path:
+    """Render a strategy dashboard page.
+
+    `page_title` / `page_subtitle` override the `<title>` / `<h1>` of the
+    template (defaults: the canonical "PEA Accelerated Dual Momentum"
+    headline). `nav_links` is a list of `{href, label, current}` dicts
+    rendered as the top nav (default: a single "Correlation matrix →"
+    link). `output_filename` is the file written under `output_dir` —
+    `index.html` for the main dashboard, `<region>.html` for per-region
+    pages.
+    """
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
     template = _ENV.get_template(template_name)
@@ -85,11 +100,137 @@ def render(
         equity_layout=json.dumps(equity_layout),
         drawdown_traces=json.dumps(drawdown_traces),
         drawdown_layout=json.dumps(drawdown_layout),
+        page_title=page_title,
+        page_subtitle=page_subtitle,
+        nav_links=nav_links,
     )
 
-    out_file = output_path / "index.html"
+    out_file = output_path / output_filename
     out_file.write_text(rendered)
     return out_file
+
+
+# Coarse-region labels used in the per-region page titles. The bucket keys
+# match `discover.dashboard_bucket(category)` so a strategy is "in" a region
+# iff every non-cash asset in its universe resolves to that bucket.
+_REGION_PAGE_LABELS: dict[str, str] = {
+    "us": "US",
+    "europe": "Europe",
+    "asia": "Asia",
+    "world": "World",
+}
+
+
+def _strategy_region(strategy: Strategy, asset_by_id: dict[str, Asset]) -> str | None:
+    """Return the region key (`us` / `europe` / `asia` / `world`) for a
+    strategy iff every non-cash sleeve in its universe falls in that
+    region's bucket. Returns None for multi-region (cross-regional)
+    strategies, which belong on the main dashboard, not a region page."""
+    risky_buckets: set[str] = set()
+    for aid in strategy.asset_ids:
+        a = asset_by_id.get(aid)
+        if a is None:
+            continue
+        bucket = dashboard_bucket(a.category)
+        if bucket != "cash":
+            risky_buckets.add(bucket)
+    if len(risky_buckets) == 1:
+        only = next(iter(risky_buckets))
+        if only in _REGION_PAGE_LABELS:
+            return only
+    return None
+
+
+def _build_nav_links(current_page: str, available_regions: set[str]) -> list[dict[str, object]]:
+    """Top-nav for any rendered page. Lists the main dashboard, every
+    region page that has at least one strategy, and the correlation
+    matrix. The `current_page` entry is rendered as plain text instead
+    of a link."""
+    links: list[dict[str, object]] = [
+        {"href": "index.html", "label": "Main dashboard", "current": current_page == "index"},
+    ]
+    for region in ("us", "europe", "asia", "world"):
+        if region not in available_regions:
+            continue
+        links.append(
+            {
+                "href": f"{region}.html",
+                "label": f"{_REGION_PAGE_LABELS[region]} →",
+                "current": current_page == region,
+            }
+        )
+    links.append(
+        {
+            "href": "correlations.html",
+            "label": "Correlation matrix →",
+            "current": current_page == "correlations",
+        }
+    )
+    return links
+
+
+def render_region(
+    results: list[BacktestResult],
+    config: Config,
+    output_dir: str | Path,
+    region: str,
+    prices_long: pl.DataFrame | None = None,
+) -> Path | None:
+    """Render a per-region dashboard page (e.g. `asia.html`) using the
+    same template as the main dashboard, filtered to strategies whose
+    risky universe is entirely within the region's bucket. Returns the
+    output path, or None when no strategy qualifies for the region."""
+    asset_by_id = {a.id: a for a in config.assets}
+    strategy_by_name = {s.name: s for s in config.strategies}
+
+    region_results: list[BacktestResult] = []
+    for r in results:
+        s = strategy_by_name.get(r.strategy_name)
+        if s is None:
+            continue
+        if _strategy_region(s, asset_by_id) == region:
+            region_results.append(r)
+    if not region_results:
+        return None
+
+    # Region-page nav lists every region with at least one strategy so
+    # users can hop between them. Compute on the full results set, not
+    # the filtered subset.
+    available_regions: set[str] = set()
+    for r in results:
+        s = strategy_by_name.get(r.strategy_name)
+        if s is None:
+            continue
+        reg = _strategy_region(s, asset_by_id)
+        if reg is not None:
+            available_regions.add(reg)
+
+    label = _REGION_PAGE_LABELS.get(region, region.title())
+    return render(
+        results=region_results,
+        config=config,
+        output_dir=output_dir,
+        prices_long=prices_long,
+        page_title=f"{label} — buy-and-hold benchmarks",
+        page_subtitle=f"{label}-region strategies only",
+        nav_links=_build_nav_links(current_page=region, available_regions=available_regions),
+        output_filename=f"{region}.html",
+    )
+
+
+def available_regions(results: list[BacktestResult], config: Config) -> set[str]:
+    """Return the set of region keys with at least one matching strategy."""
+    asset_by_id = {a.id: a for a in config.assets}
+    strategy_by_name = {s.name: s for s in config.strategies}
+    out: set[str] = set()
+    for r in results:
+        s = strategy_by_name.get(r.strategy_name)
+        if s is None:
+            continue
+        reg = _strategy_region(s, asset_by_id)
+        if reg is not None:
+            out.add(reg)
+    return out
 
 
 def _result_cagr(result: BacktestResult) -> float:
