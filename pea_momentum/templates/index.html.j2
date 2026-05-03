@@ -167,7 +167,7 @@
       {%- endif -%}
     {%- endmacro -%}
 
-    <h2>Strategies &amp; latest signal</h2>
+    <h2>Strategies</h2>
     <div class="panel">
       <table class="signal">
         <thead>
@@ -177,6 +177,7 @@
             <th class="sortable" data-sort="text" title="Score recipe: ADM = mean of multiple lookbacks (accelerated dual-momentum); DM = single-lookback dual-momentum; Buy & Hold = no scoring.">Scoring</th>
             <th class="sortable" data-sort="text" title="Allocation recipe: top-N (number of sleeves held) + weighting rule (equal = 1/N, score-prop = score-proportional). B&H = buy-and-hold static weights.">Allocation</th>
             <th class="numeric sortable sort-desc" data-sort="num" title="Compound Annual Growth Rate. Default sort key: rows are pre-sorted by CAGR desc; click any other sortable header to re-rank.">CAGR</th>
+            <th class="numeric sortable" data-sort="num" title="Trailing 12-month return: equity[t]/equity[t-252] - 1 as of the most recent equity-curve date. Sort desc to surface the current momentum leader. Empty (—) when the curve has fewer than 252 trading days.">12m</th>
             <th class="sortable" data-sort="text">Last rebalance</th>
             <th class="chips" title="World + Cash sleeves with current allocation overlaid: id only when not held this period, id + pct% when held (color-coded by weight)">World<br>Cash</th>
             <th class="chips" title="US, Europe, Asia sleeves with current allocation overlaid: id only when not held this period, id + pct% when held (color-coded by weight). Order: US first, then Europe, then Asia">US<br>Europe<br>Asia</th>
@@ -191,6 +192,7 @@
             <td data-value="{{ s.scoring }}">{{ s.scoring }}</td>
             <td class="alloc" data-value="{{ s.allocation_top }} {{ s.allocation_weight }}">{{ s.allocation_top }}{% if s.allocation_weight %}<br>{{ s.allocation_weight }}{% endif %}</td>
             <td class="numeric {{ 'pos' if s.cagr >= 0 else 'neg' }}" data-value="{{ s.cagr }}">{% if s.cagr == s.cagr and s.cagr != -1e308 %}{{ "%.2f%%"|format(s.cagr * 100) }}{% else %}—{% endif %}</td>
+            <td class="numeric {% if s.trailing_12m is not none %}{{ 'pos' if s.trailing_12m >= 0 else 'neg' }}{% endif %}" data-value="{% if s.trailing_12m is not none %}{{ s.trailing_12m }}{% else %}-999{% endif %}">{% if s.trailing_12m is not none %}{{ "%.2f%%"|format(s.trailing_12m * 100) }}{% else %}—{% endif %}</td>
             <td data-value="{{ s.last_rebalance }}">{{ s.last_rebalance }}</td>
             {# World + Cash consolidated, with current allocation overlaid. #}
             <td class="chips">

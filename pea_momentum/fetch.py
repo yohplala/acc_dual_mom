@@ -419,8 +419,91 @@ def _synth_eur_hedged_jp(start: date) -> pl.DataFrame:
     ).select(["date", "close"])
 
 
+def _synth_eur_hedged_sp500(start: date) -> pl.DataFrame:
+    """Synthesise EUR-hedged S&P 500 from longer-history components.
+
+    Construction:
+        L_synth(t) = SPY(t) / SPY(0)
+                   * (estr(t) / estr(0))
+                   / (usd_short(t) / usd_short(0))
+
+    Decomposition:
+        SPY in USD = pure US-equity local return (no FX baked in for a USD
+            investor; for a EUR-hedged investor this is the equity P&L
+            with USD/EUR FX neutralised).
+        estr / estr(0) = compounded EUR short-rate level (with EONIA
+            splice pre-2019, same path as fetch_synth_asset). Adds the
+            EUR carry leg.
+        usd_short / usd_short(0) = compounded ^IRX (13-week US T-Bill)
+            level. Subtracts the USD carry leg.
+        Net: r_eur_hedged ≈ r_spy + (r_EUR - r_USD) per period — exactly
+        the carry a EUR investor earns by selling USD forward to hedge.
+
+    Approximations:
+    - USD short rate proxied by ^IRX (13-week T-Bill yield). The
+      overnight-rate equivalent (Fed Funds) isn't on Yahoo; ^IRX is
+      a close proxy, particularly for multi-year backtests.
+    - Both rate legs use ACT/360 daily accrual (matches ECB convention;
+      US T-Bills are ACT/360 by treasury practice).
+
+    Coverage: SPY since 1995-01, ^IRX since 1985, EONIA splice since
+    1999-01-04 → synth's deepest first date is 1999-01-04 (gated by
+    EONIA). For default fetch range (2008-01-01+), synth starts there.
+    """
+    spy = _fetch_yahoo_close_only("SPY", start=start).rename({"close": "spy"})
+    irx = _fetch_yahoo_close_only("^IRX", start=start).rename({"close": "irx_pct"})
+
+    if start >= ESTR_START:
+        eur_rates = fetch_estr(start=start)
+    else:
+        eonia = fetch_eonia(start=start)
+        if eonia.is_empty():
+            raise FetchError(
+                f"synth eur_hedged_sp500: EONIA fetch returned empty data — "
+                f"cannot construct pre-{ESTR_START} EUR-rate term."
+            )
+        estr_after = fetch_estr(start=ESTR_START)
+        eur_rates = (
+            pl.concat([eonia.filter(pl.col("date") < ESTR_START), estr_after])
+            .sort("date")
+            .unique(subset=["date"], keep="last")
+        )
+    if eur_rates.is_empty():
+        raise FetchError("synth eur_hedged_sp500: ECB EUR short-rate series is empty")
+    eur_level = (
+        eur_rates.with_columns(daily_factor=(1.0 + pl.col("rate_pct") / 100.0 / 360.0))
+        .with_columns(eur_idx=pl.col("daily_factor").cum_prod() * ESTR_BASE_PRICE)
+        .select(["date", "eur_idx"])
+    )
+
+    # ^IRX returns the 13-week T-Bill yield in % annualized; daily accrual
+    # follows the same ACT/360 convention as ECB rates. yfinance returns
+    # the yield level on each business day; we compound 1 + yield/360/100
+    # day-by-day to get a USD-rate price index.
+    usd_level = (
+        irx.with_columns(daily_factor=(1.0 + pl.col("irx_pct") / 100.0 / 360.0))
+        .with_columns(usd_idx=pl.col("daily_factor").cum_prod() * ESTR_BASE_PRICE)
+        .select(["date", "usd_idx"])
+    )
+
+    joined = spy.join(eur_level, on="date", how="inner").join(usd_level, on="date", how="inner")
+    if joined.is_empty():
+        raise FetchError(
+            "synth eur_hedged_sp500: no overlapping dates across SPY, ECB EUR rate, and ^IRX"
+        )
+    joined = joined.sort("date")
+
+    # Compose the synthetic EUR-hedged S&P 500 level.
+    return joined.with_columns(
+        close=(pl.col("spy") / pl.col("spy").first())
+        * (pl.col("eur_idx") / pl.col("eur_idx").first())
+        / (pl.col("usd_idx") / pl.col("usd_idx").first())
+    ).select(["date", "close"])
+
+
 _SYNTH_PROXY_RECIPES: dict[str, Callable[[date], pl.DataFrame]] = {
     "eur_hedged_jp": _synth_eur_hedged_jp,
+    "eur_hedged_sp500": _synth_eur_hedged_sp500,
 }
 
 

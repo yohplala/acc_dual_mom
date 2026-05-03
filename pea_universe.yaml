@@ -79,13 +79,101 @@ universe:
     # SPY (USD-listed, 33y history) replaces CSPX.AS (2010-05) for full
     # GFC + dot-com bust coverage. EURUSD-converted via the standard usd_tr
     # path. Same SPX TR exposure; one extra FX-conversion step is the cost.
-  - { id: sp500_hedged,  name: Amundi PEA S&P 500 EUR Hedged Acc,            isin: FR0011871136, currency: EUR, ter_pct: 0.12, sfdr: Article 6, category: USA-Hedged,   yahoo: PSPH.PA }
-  - { id: sp500_screened,name: Amundi PEA S&P 500 Screened UCITS ETF Acc,    isin: FR0013412285, currency: EUR, ter_pct: 0.25, sfdr: Article 8, category: USA-ESG,      yahoo: PE500.PA }
-  - { id: sp500_scr_hed, name: Amundi PEA S&P 500 Screened EUR Hedged Acc,   isin: FR0013412293, currency: EUR, ter_pct: 0.28, sfdr: Article 8, category: USA-Hedged-ESG, yahoo: P500H.PA }
-  - { id: us_msci_esg,          name: Amundi PEA MSCI USA ESG Selection EUR,        isin: LU1681042864, currency: EUR, ter_pct: 0.35, sfdr: Article 8, category: USA-ESG,      yahoo: CU2.PA, amundi_url: 'https://www.amundietf.fr/fr/particuliers/produits/equity/amundi-pea-msci-usa-esg-selection-ucits-etf-eur/lu1681042864' }
+  - id: sp500_hedged
+    name: Amundi PEA S&P 500 EUR Hedged Acc
+    isin: FR0011871136
+    yahoo: PSPH.PA
+    currency: EUR
+    ter_pct: 0.12
+    sfdr: Article 6
+    category: USA-Hedged
+    inception: 2018-11-26
+    # Multi-stage chain. IUSE.L (cleanest, real EUR-hedged S&P 500 ETF)
+    # since 2010-09-30. The `eur_hedged_sp500` synth recipe (see fetch.py)
+    # extends pre-2010 history via SPY × (estr/estr_0) / (^IRX_idx/^IRX_idx_0).
+    # Default fetch range gates synth at 2008-01 → IUSE.L gives cleanest
+    # 2010-09+ exposure, synth fills the 2008-2010 segment.
+    index_proxy_chain:
+      - { ticker: IUSE.L, kind: eur_tr }            # since 2010-09-30
+      - { ticker: eur_hedged_sp500, kind: synth }    # via SPY+^IRX+€STR, since 1999
+  - id: sp500_screened
+    name: Amundi PEA S&P 500 Screened UCITS ETF Acc
+    isin: FR0013412285
+    yahoo: PE500.PA
+    currency: EUR
+    ter_pct: 0.25
+    sfdr: Article 8
+    category: USA-ESG
+    inception: 2019-04-25
+    index_proxy: DSI                       # iShares MSCI KLD 400 Social ETF, NYSE Arca, since 2006-11-17
+    index_proxy_kind: usd_tr
+    # MSCI KLD 400 Social ≠ S&P 500 ESG (different methodology), but the
+    # closest available ESG-screened US equity proxy with pre-2019
+    # history. ESG-methodology drift is real but accepted; broad SPX
+    # would have less drift on factor exposure but no ESG screening at
+    # all, which is a bigger conceptual mismatch.
+  - id: sp500_scr_hed
+    name: Amundi PEA S&P 500 Screened EUR Hedged Acc
+    isin: FR0013412293
+    yahoo: P500H.PA
+    currency: EUR
+    ter_pct: 0.28
+    sfdr: Article 8
+    category: USA-Hedged-ESG
+    inception: 2019-04-25
+    # Multi-stage chain. Same as sp500_hedged: IUSE.L (broad EUR-hedged
+    # SPX) → eur_hedged_sp500 synth. ESG-screening drift in the proxy
+    # segment is unavoidable — no EUR-hedged ESG-S&P-500 ETF exists
+    # with pre-2019 history.
+    index_proxy_chain:
+      - { ticker: IUSE.L, kind: eur_tr }
+      - { ticker: eur_hedged_sp500, kind: synth }
+  - id: us_msci_esg
+    name: Amundi PEA MSCI USA ESG Selection EUR
+    isin: LU1681042864
+    yahoo: CU2.PA
+    currency: EUR
+    ter_pct: 0.35
+    sfdr: Article 8
+    category: USA-ESG
+    amundi_url: 'https://www.amundietf.fr/fr/particuliers/produits/equity/amundi-pea-msci-usa-esg-selection-ucits-etf-eur/lu1681042864'
+    inception: 2008-12-04
+    index_proxy: DSI                       # iShares MSCI KLD 400 Social ETF, NYSE Arca, since 2006-11-17
+    index_proxy_kind: usd_tr
+    # MSCI KLD 400 Social ≠ MSCI USA ESG Selection (different scoring)
+    # but the closest available pre-2008 ESG-screened US equity proxy.
+    # ESG-methodology drift accepted in the proxy segment.
   - { id: us_msci_esg_usd,      name: Amundi PEA MSCI USA ESG Selection USD,        isin: LU1681042948, currency: USD, ter_pct: 0.35, sfdr: Article 8, category: USA-ESG,      yahoo: null }
-  - { id: us_pea_nasdaq,        name: Amundi PEA Nasdaq-100 UCITS ETF Acc,          isin: FR0011871110, currency: EUR, ter_pct: 0.30, sfdr: Article 6, category: USA-Tech,     yahoo: PUST.PA, amundi_url: 'https://www.amundietf.fr/fr/particuliers/produits/equity/amundi-pea-nasdaq100-ucits-etf-acc/fr0011871110' }
-  - { id: us_pea_us_tech,       name: Amundi PEA US Tech Screened UCITS ETF Acc,    isin: FR0013412269, currency: EUR, ter_pct: 0.30, sfdr: Article 8, category: USA-Tech-ESG, yahoo: PANX.PA }
+  - id: us_pea_nasdaq
+    name: Amundi PEA Nasdaq-100 UCITS ETF Acc
+    isin: FR0011871110
+    yahoo: PUST.PA
+    currency: EUR
+    ter_pct: 0.30
+    sfdr: Article 6
+    category: USA-Tech
+    amundi_url: 'https://www.amundietf.fr/fr/particuliers/produits/equity/amundi-pea-nasdaq100-ucits-etf-acc/fr0011871110'
+    inception: 2014-05-20
+    index_proxy: QQQ                       # Invesco Nasdaq-100 Trust, NASDAQ, since 1999-03-10
+    index_proxy_kind: usd_tr
+    # Same Nasdaq-100 index, USD-listed, full dot-com bust + GFC + 2014-on
+    # history. EUR-investor sees JPY/USD-style FX pass-through via
+    # EURUSD conversion.
+  - id: us_pea_us_tech
+    name: Amundi PEA US Tech Screened UCITS ETF Acc
+    isin: FR0013412269
+    yahoo: PANX.PA
+    currency: EUR
+    ter_pct: 0.30
+    sfdr: Article 8
+    category: USA-Tech-ESG
+    inception: 2019-04-25
+    index_proxy: QQQ                       # Invesco Nasdaq-100 Trust, NASDAQ, since 1999-03-10
+    index_proxy_kind: usd_tr
+    # Closest "US Tech" exposure with multi-decade history. The live ETF
+    # adds ESG screening on top of a Nasdaq-spirit universe; QQQ is
+    # broad Nasdaq-100, no ESG. Methodology drift accepted in the
+    # pre-2019 segment.
   - id: russell2000
     name: Amundi Russell 2000 UCITS ETF EUR Acc
     isin: LU1681038672
@@ -101,8 +189,35 @@ universe:
     index_proxy: IWM                      # iShares Russell 2000 ETF, USD-listed since 2000
     index_proxy_kind: usd_tr
   - { id: us_russell2000_usd,   name: Amundi Russell 2000 UCITS ETF USD Acc,        isin: LU1681038839, currency: USD, ter_pct: 0.35, sfdr: Article 6, category: USA-Small,    yahoo: null }
-  - { id: us_value,             name: Amundi PEA MSCI USA Value Advanced Acc,       isin: FR001400KH45, currency: EUR, ter_pct: 0.50, sfdr: Article 8, category: USA-Value,    yahoo: USVE.PA }
-  - { id: us_industrials,       name: Amundi PEA S&P US Industrials Screened Acc,   isin: FR0011869270, currency: EUR, ter_pct: 0.50, sfdr: Article 8, category: USA-Sector,   yahoo: PDJE.PA }
+  - id: us_value
+    name: Amundi PEA MSCI USA Value Advanced Acc
+    isin: FR001400KH45
+    yahoo: USVE.PA
+    currency: EUR
+    ter_pct: 0.50
+    sfdr: Article 8
+    category: USA-Value
+    inception: 2024-02-06
+    index_proxy: IUSV                      # iShares Core S&P US Value, NYSE Arca, since 2000-08-04
+    index_proxy_kind: usd_tr
+    # Direct US value-factor exposure with 24+ years of history. MSCI USA
+    # Value (live ETF) and S&P US Value (proxy) differ on the value
+    # definition (book/price vs P/E) but produce qualitatively similar
+    # value-factor returns over multi-year windows.
+  - id: us_industrials
+    name: Amundi PEA S&P US Industrials Screened Acc
+    isin: FR0011869270
+    yahoo: PDJE.PA
+    currency: EUR
+    ter_pct: 0.50
+    sfdr: Article 8
+    category: USA-Sector
+    inception: 2014-05-13
+    index_proxy: XLI                       # Industrial Select Sector SPDR, NYSE Arca, since 1998-12-22
+    index_proxy_kind: usd_tr
+    # XLI tracks the Industrials sub-sector of the S&P 500, equivalent
+    # to the "S&P US Industrials" exposure. ESG-screening drift accepted
+    # in the proxy segment.
   - { id: us_consumer_staples,  name: Amundi PEA S&P US Consumer Staples Acc,       isin: FR001400KE06, currency: EUR, ter_pct: 0.50, sfdr: Article 8, category: USA-Sector,   yahoo: null }
   - { id: us_lev_nasdaq_2x,     name: Amundi Nasdaq-100 Daily (2x) Leveraged Acc,   isin: FR0010342592, currency: EUR, ter_pct: 0.60, sfdr: Article 6, category: Leveraged-USA, yahoo: LQQ.PA, leveraged: true, amundi_url: 'https://www.amundietf.fr/fr/particuliers/produits/equity/amundi-nasdaq100-daily-2x-leveraged-ucits-etf-acc/fr0010342592' }
   - { id: us_lev_msci_2x,       name: Amundi MSCI USA Daily (2x) Leveraged Acc,     isin: FR0010755611, currency: EUR, ter_pct: 0.50, sfdr: Article 6, category: Leveraged-USA, yahoo: null, leveraged: true }
@@ -154,18 +269,80 @@ universe:
   - { id: emu_ii_chf_hedged,    name: Amundi EURO STOXX 50 II CHF Hedged Acc,       isin: FR0012399731, currency: CHF, ter_pct: 0.20, sfdr: Article 6, category: Eurozone-Hedged, yahoo: null }
   - { id: emu_ii_gbp_hedged,    name: Amundi EURO STOXX 50 II GBP Hedged Acc,       isin: FR0012399772, currency: GBP, ter_pct: 0.20, sfdr: Article 6, category: Eurozone-Hedged, yahoo: null }
   - { id: emu_msci_emu_dist,    name: Amundi Core MSCI EMU UCITS ETF Dist,          isin: LU1646360971, currency: EUR, ter_pct: 0.12, sfdr: Article 6, category: Eurozone,     yahoo: MFE.PA }
-  - { id: emu_msci_emu_acc,     name: Amundi Core MSCI EMU UCITS ETF Acc,           isin: LU1646361276, currency: EUR, ter_pct: 0.12, sfdr: Article 6, category: Eurozone,     yahoo: MFEC.PA }
+  - id: emu_msci_emu_acc
+    name: Amundi Core MSCI EMU UCITS ETF Acc
+    isin: LU1646361276
+    yahoo: MFEC.PA
+    currency: EUR
+    ter_pct: 0.12
+    sfdr: Article 6
+    category: Eurozone
+    inception: 2020-05-29
+    # Multi-stage chain. CEU.PA is the cleanest EUR-native MSCI EMU proxy
+    # but starts 2008-09-16 (just after Lehman). EZU is iShares MSCI
+    # Eurozone (USD-listed, very close index) since 2000-07-31, used to
+    # extend pre-Lehman GFC peak coverage.
+    index_proxy_chain:
+      - { ticker: CEU.PA, kind: eur_tr }   # iShares Core MSCI EMU EUR Acc Paris, since 2008-09-16
+      - { ticker: EZU,    kind: usd_tr }   # iShares MSCI Eurozone, NYSE Arca, since 2000-07-31
   - { id: emu_prime,            name: Amundi Prime Eurozone UCITS ETF DR (C),       isin: LU2089238112, currency: EUR, ter_pct: 0.05, sfdr: Article 6, category: Eurozone,     yahoo: null }
   - { id: emu_prime_dist,       name: Amundi Prime Eurozone UCITS ETF DR (D),       isin: LU1931974429, currency: EUR, ter_pct: 0.05, sfdr: Article 6, category: Eurozone,     yahoo: null }
-  - { id: emu_esg_select_acc,   name: Amundi MSCI EMU ESG Selection DR EUR (C),     isin: LU1602144575, currency: EUR, ter_pct: 0.25, sfdr: Article 8, category: Eurozone-ESG, yahoo: CMU.PA, amundi_url: 'https://www.amundietf.fr/fr/particuliers/produits/equity/amundi-msci-emu-esg-selection-ucits-etf-dr-eur-c/lu1602144575' }
+  - id: emu_esg_select_acc
+    name: Amundi MSCI EMU ESG Selection DR EUR (C)
+    isin: LU1602144575
+    yahoo: CMU.PA
+    currency: EUR
+    ter_pct: 0.25
+    sfdr: Article 8
+    category: Eurozone-ESG
+    amundi_url: 'https://www.amundietf.fr/fr/particuliers/produits/equity/amundi-msci-emu-esg-selection-ucits-etf-dr-eur-c/lu1602144575'
+    inception: 2018-02-14
+    # Multi-stage chain — same pattern as emu_esg_broad_acc: ESG-spirit
+    # IESE.L → broad MSCI EMU CEU.PA → MSCI Eurozone EZU. ESG drift in
+    # the proxy segment is accepted.
+    index_proxy_chain:
+      - { ticker: IESE.L, kind: usd_tr }   # iShares MSCI EMU ESG Screened UCITS ETF LSE, since 2011-03-01
+      - { ticker: CEU.PA, kind: eur_tr }   # iShares Core MSCI EMU EUR Acc Paris, since 2008-09-16
+      - { ticker: EZU,    kind: usd_tr }   # iShares MSCI Eurozone, NYSE Arca, since 2000-07-31
   - { id: emu_esg_select_dist,  name: Amundi MSCI EMU ESG Selection DR EUR (D),     isin: LU2059756325, currency: EUR, ter_pct: 0.25, sfdr: Article 8, category: Eurozone-ESG, yahoo: null }
-  - { id: emu_esg_broad_acc,    name: Amundi MSCI EMU ESG Broad Transition Acc,     isin: LU0908501058, currency: EUR, ter_pct: 0.12, sfdr: Article 8, category: Eurozone-ESG, yahoo: MFED.PA }
+  - id: emu_esg_broad_acc
+    name: Amundi MSCI EMU ESG Broad Transition Acc
+    isin: LU0908501058
+    yahoo: MFED.PA
+    currency: EUR
+    ter_pct: 0.12
+    sfdr: Article 8
+    category: Eurozone-ESG
+    inception: 2024-02-19
+    # Multi-stage chain. IESE.L is the closest ESG-spirit MSCI EMU sibling
+    # (different ESG methodology — UN Global Compact-screened vs Amundi's
+    # Broad Transition — but same EMU large-cap universe). CEU.PA is
+    # broad MSCI EMU, no ESG, used to extend pre-2011 history. Default
+    # fetch range (2008+) hits CEU.PA's 2008-09 first date, so the chain
+    # delivers a real 3-year extension at default settings.
+    index_proxy_chain:
+      - { ticker: IESE.L, kind: usd_tr }   # iShares MSCI EMU ESG Screened UCITS ETF LSE, since 2011-03-01
+      - { ticker: CEU.PA, kind: eur_tr }   # iShares Core MSCI EMU UCITS ETF EUR Acc Paris, since 2008-09-16
+      - { ticker: EZU,    kind: usd_tr }   # iShares MSCI Eurozone, NYSE Arca, since 2000-07-31
   - { id: emu_esg_broad_dist,   name: Amundi MSCI EMU ESG Broad Transition Dist,    isin: LU0908501132, currency: EUR, ter_pct: 0.12, sfdr: Article 8, category: Eurozone-ESG, yahoo: null }
   - { id: emu_climate_paris,    name: Amundi MSCI EMU Climate Paris Aligned Acc,    isin: LU2182388582, currency: EUR, ter_pct: 0.15, sfdr: Article 8, category: Eurozone-Climate, yahoo: null }
   - { id: emu_climate_sp,       name: Amundi S&P Eurozone Climate Paris Aligned Acc, isin: LU2195226068, currency: EUR, ter_pct: 0.20, sfdr: Article 8, category: Eurozone-Climate, yahoo: null }
   - { id: emu_climate_sp_dist,  name: Amundi S&P Eurozone Climate Paris Aligned Dist, isin: LU2932780914, currency: EUR, ter_pct: 0.14, sfdr: Article 8, category: Eurozone-Climate, yahoo: null }
   - { id: emu_msci_sri_climate, name: Amundi MSCI EMU SRI Climate Paris Aligned DR, isin: LU2109787635, currency: EUR, ter_pct: 0.18, sfdr: Article 8, category: Eurozone-Climate, yahoo: null }
-  - { id: emu_high_div,         name: Amundi MSCI EMU High Dividend Acc,            isin: FR0010717090, currency: EUR, ter_pct: 0.30, sfdr: Article 6, category: Eurozone-Div, yahoo: CD8.PA }
+  - id: emu_high_div
+    name: Amundi MSCI EMU High Dividend Acc
+    isin: FR0010717090
+    yahoo: CD8.PA
+    currency: EUR
+    ter_pct: 0.30
+    sfdr: Article 6
+    category: Eurozone-Div
+    inception: 2009-02-26
+    index_proxy: IDVY.L                    # iShares EuroStoxx Select Dividend 30 UCITS ETF LSE, since 2009-01-02
+    index_proxy_kind: usd_tr
+    # EuroStoxx Select Dividend 30 (proxy) and MSCI EMU High Dividend
+    # (live) are both broad eurozone dividend-screened universes. Slight
+    # composition drift; near-identical factor exposure.
   - { id: emu_value,            name: Amundi MSCI EMU Value Factor Dist,            isin: LU1598690169, currency: EUR, ter_pct: 0.40, sfdr: Article 6, category: Eurozone-Value, yahoo: null }
   - id: emu_small
     name: Amundi MSCI EMU Small Cap ESG BT Dist
@@ -179,14 +356,31 @@ universe:
     est_spread_bps: 30                    # satellite, small-cap, thinner book
     replication: physical
     inception: 2024-02-08
-    index_proxy: SXRJ.DE                  # iShares MSCI EMU Small Cap UCITS ETF EUR Acc Xetra, since 2009-07-01
+    index_proxy: SXRJ.DE                  # iShares MSCI EMU Small Cap UCITS ETF EUR Acc Xetra, since 2009-11-27
     index_proxy_kind: eur_tr
+    # XXSC.DE (Xtrackers MSCI EMU Small Cap) was probed as a pre-Lehman
+    # extension tier but yfinance returns 6+ implausible single-day
+    # returns (>30%) on its early history that don't match the round-
+    # trip-spike scrub pattern. Chain extension disabled until a clean
+    # pre-2009 proxy can be sourced; emu_small starts 2009-11 for now.
   - { id: emu_lev_2x,           name: Amundi EURO STOXX 50 Daily (2x) Leveraged Acc, isin: FR0010468983, currency: EUR, ter_pct: 0.40, sfdr: Article 6, category: Leveraged-Eurozone, yahoo: null, leveraged: true }
   - { id: emu_inv_1x,           name: Amundi EURO STOXX 50 Daily (-1x) Inverse Acc, isin: FR0010424135, currency: EUR, ter_pct: 0.40, sfdr: Article 6, category: Inverse-Eurozone, yahoo: null, leveraged: true }
 
   # ─── Country: France ───────────────────────────────────────────────
   - { id: fr_cac40_dist,        name: Amundi CAC 40 UCITS ETF Dist,                 isin: FR0007052782, currency: EUR, ter_pct: 0.25, sfdr: Article 6, category: France,       yahoo: CAC.PA }
-  - { id: fr_cac40_acc,         name: Amundi CAC 40 UCITS ETF Acc,                  isin: FR0013380607, currency: EUR, ter_pct: 0.25, sfdr: Article 6, category: France,       yahoo: CACC.PA }
+  - id: fr_cac40_acc
+    name: Amundi CAC 40 UCITS ETF Acc
+    isin: FR0013380607
+    yahoo: CACC.PA
+    currency: EUR
+    ter_pct: 0.25
+    sfdr: Article 6
+    category: France
+    inception: 2018-12-13
+    index_proxy: CAC.PA                    # Lyxor CAC 40 (DR) UCITS ETF Paris, EUR, since 2008-01-02
+    index_proxy_kind: eur_tr
+    # Same CAC 40 index, EUR-native (no FX). 10+ years of GFC-spanning
+    # history.
   - { id: fr_cac40_esg_acc,     name: Amundi CAC 40 ESG UCITS ETF Acc,              isin: LU1681046931, currency: EUR, ter_pct: 0.25, sfdr: Article 8, category: France-ESG,   yahoo: null }
   - { id: fr_cac40_esg_dist,    name: Amundi CAC 40 ESG UCITS ETF Dist,             isin: LU1681047079, currency: EUR, ter_pct: 0.25, sfdr: Article 8, category: France-ESG,   yahoo: null }
   - { id: fr_cac_climate,       name: Amundi CAC Transition Climat UCITS ETF,       isin: FR0010655704, currency: EUR, ter_pct: 0.25, sfdr: Article 8, category: France-Climate, yahoo: null }
@@ -195,7 +389,19 @@ universe:
   - { id: fr_cac40_inv_1x,      name: Amundi CAC 40 Daily (-1x) Inverse Acc,        isin: FR0010591362, currency: EUR, ter_pct: 0.40, sfdr: Article 6, category: Inverse-France, yahoo: null, leveraged: true }
 
   # ─── Country: Germany ──────────────────────────────────────────────
-  - { id: de_dax_dr,            name: Amundi ETF DAX UCITS ETF DR,                  isin: FR0010655712, currency: EUR, ter_pct: 0.10, sfdr: Article 6, category: Germany,      yahoo: CG1.PA }
+  - id: de_dax_dr
+    name: Amundi ETF DAX UCITS ETF DR
+    isin: FR0010655712
+    yahoo: CG1.PA
+    currency: EUR
+    ter_pct: 0.10
+    sfdr: Article 6
+    category: Germany
+    inception: 2008-09-16
+    index_proxy: '^GDAXI'                  # DAX index (TR by default), EUR-quoted, since 1987-12-30
+    index_proxy_kind: eur_tr
+    # DAX is a total-return index by construction — exactly what the
+    # live ETF tracks. EUR-native, 21+ years of pre-Lehman history.
   - { id: de_dax_ii_acc,        name: Amundi DAX II UCITS ETF Acc,                  isin: LU0252633754, currency: EUR, ter_pct: 0.15, sfdr: Article 6, category: Germany,      yahoo: null }
   - { id: de_dax_ii_dist,       name: Amundi DAX II UCITS ETF Dist,                 isin: LU2090062436, currency: EUR, ter_pct: 0.15, sfdr: Article 6, category: Germany,      yahoo: null }
   - { id: de_mdax_dist,         name: Amundi MDAX UCITS ETF Dist,                   isin: FR0011857234, currency: EUR, ter_pct: 0.20, sfdr: Article 6, category: Germany-Mid,  yahoo: null }
@@ -206,10 +412,52 @@ universe:
 
   # ─── Country: other Europe ─────────────────────────────────────────
   - { id: it_ftse_mib_dist,     name: Amundi FTSE MIB UCITS ETF Dist,               isin: FR0010010827, currency: EUR, ter_pct: 0.35, sfdr: Article 6, category: Italy,        yahoo: ETFMIB.MI }
-  - { id: it_ftse_mib_acc,      name: Amundi FTSE MIB UCITS ETF Acc,                isin: FR0014002H76, currency: EUR, ter_pct: 0.35, sfdr: Article 6, category: Italy,        yahoo: MIBA.MI }
-  - { id: it_mib_esg,           name: Amundi Italy MIB ESG UCITS ETF Acc,           isin: LU1681037518, currency: EUR, ter_pct: 0.18, sfdr: Article 8, category: Italy-ESG,    yahoo: FMI.PA, amundi_url: 'https://www.amundietf.fr/fr/particuliers/produits/equity/amundi-italy-mib-esg-ucits-etf-dr-eur-c/lu1681037518' }
+  - id: it_ftse_mib_acc
+    name: Amundi FTSE MIB UCITS ETF Acc
+    isin: FR0014002H76
+    yahoo: MIBA.MI
+    currency: EUR
+    ter_pct: 0.35
+    sfdr: Article 6
+    category: Italy
+    inception: 2021-04-19
+    index_proxy: ETFMIB.MI                 # Amundi FTSE MIB UCITS ETF Dist (older share class, same fund family), since 2008-01-02
+    index_proxy_kind: eur_tr
+    # Same Amundi fund's Dist share class. yfinance auto_adjust=True
+    # backs out distributions, giving a TR-equivalent series. Full GFC
+    # coverage.
+  - id: it_mib_esg
+    name: Amundi Italy MIB ESG UCITS ETF Acc
+    isin: LU1681037518
+    yahoo: FMI.PA
+    currency: EUR
+    ter_pct: 0.18
+    sfdr: Article 8
+    category: Italy-ESG
+    amundi_url: 'https://www.amundietf.fr/fr/particuliers/produits/equity/amundi-italy-mib-esg-ucits-etf-dr-eur-c/lu1681037518'
+    inception: 2018-01-31
+    index_proxy: ETFMIB.MI                 # Amundi FTSE MIB UCITS ETF Dist (broad MIB, no ESG screen), since 2008-01-02
+    index_proxy_kind: eur_tr
+    # Broad FTSE MIB (proxy) ≠ MIB-ESG (live ETF) — ESG screening differs
+    # but the underlying universe is the same Italian large-cap set with
+    # ~30 stocks of overlap. Same proxy used by it_ftse_mib_acc; ESG drift
+    # accepted. Full GFC + EU sovereign-debt-crisis coverage.
   - { id: es_ibex_dist,         name: Amundi IBEX 35 UCITS ETF Dist,                isin: FR0010251744, currency: EUR, ter_pct: 0.30, sfdr: Article 6, category: Spain,        yahoo: null }
-  - { id: es_ibex_acc,          name: Amundi IBEX 35 UCITS ETF Acc,                 isin: FR0010655746, currency: EUR, ter_pct: 0.30, sfdr: Article 6, category: Spain,        yahoo: CS1.PA }
+  - id: es_ibex_acc
+    name: Amundi IBEX 35 UCITS ETF Acc
+    isin: FR0010655746
+    yahoo: CS1.PA
+    currency: EUR
+    ter_pct: 0.30
+    sfdr: Article 6
+    category: Spain
+    inception: 2024-04-05
+    index_proxy: EWP                       # iShares MSCI Spain ETF, NYSE Arca, since 1996-03-18
+    index_proxy_kind: usd_tr
+    # MSCI Spain (proxy) ≠ IBEX 35 (live ETF) — different index, ~25
+    # vs 35 stocks, ~80% market-cap overlap. Best available Spain proxy
+    # with multi-decade history. Index drift is real but acceptable for
+    # broad Spain-equity exposure tracking.
   - { id: gr_msci_greece,       name: Amundi MSCI Greece UCITS ETF Dist,            isin: FR0010405431, currency: EUR, ter_pct: 0.45, sfdr: Article 6, category: Greece,       yahoo: GRE.PA }
 
   # ─── Asia / Emerging ───────────────────────────────────────────────
@@ -255,10 +503,69 @@ universe:
     index_proxy_chain:
       - { ticker: IJPE.L, kind: eur_tr }            # since 2010-09-30
       - { ticker: eur_hedged_jp, kind: synth }       # since 1996 via EWJ + USDJPY + ECB
-  - { id: cn_pea_china,         name: Amundi PEA Chine (MSCI China) Screened Acc,   isin: FR0011871078, currency: EUR, ter_pct: 0.65, sfdr: Article 8, category: China,        yahoo: PASI.PA }
-  - { id: in_pea_india,         name: Amundi PEA Inde (MSCI India) Acc,             isin: FR0011869320, currency: EUR, ter_pct: 0.85, sfdr: Article 6, category: India,        yahoo: PINR.PA }
-  - { id: ap_asia_pacific,      name: Amundi PEA Asie Pacifique (MSCI ACAPxJP) Acc, isin: FR0011869312, currency: EUR, ter_pct: 0.60, sfdr: Article 6, category: Asia-Pacific, yahoo: PAEJ.PA, amundi_url: 'https://www.amundietf.fr/fr/particuliers/produits/equity/lyxor-pea-asie-pacifique-msci-ac-asia-pacific-ex-japan-ucits-etf-capi/fr0011869312' }
-  - { id: em_pea_emerging,      name: Amundi PEA Emergent (MSCI Emerging) ESG Acc,  isin: FR0013412020, currency: EUR, ter_pct: 0.30, sfdr: Article 8, category: Emerging,     yahoo: PAEEM.PA, amundi_url: 'https://www.amundietf.fr/fr/particuliers/produits/equity/amundi-pea-emergent-msci-emerging-esg-transition-ucits-etf-acc/fr0013412020' }
+  - id: cn_pea_china
+    name: Amundi PEA Chine (MSCI China) Screened Acc
+    isin: FR0011871078
+    yahoo: PASI.PA
+    currency: EUR
+    ter_pct: 0.65
+    sfdr: Article 8
+    category: China
+    inception: 2014-05-20
+    index_proxy: FXI                       # iShares China Large-Cap (FTSE China 50) ETF, since 2004-10-08
+    index_proxy_kind: usd_tr
+    # FTSE China 50 (proxy) ≠ MSCI China (live ETF), but FXI is the
+    # longest-history China ETF. MCHI (since 2011) tracks MSCI China
+    # exactly but is shorter; FXI's 2004 start covers the 2007-2008
+    # peak/trough far better. Index drift accepted.
+  - id: in_pea_india
+    name: Amundi PEA Inde (MSCI India) Acc
+    isin: FR0011869320
+    yahoo: PINR.PA
+    currency: EUR
+    ter_pct: 0.85
+    sfdr: Article 6
+    category: India
+    inception: 2014-05-13
+    # Multi-stage chain. INDA (cleanest, MSCI India ETF, since 2012-02)
+    # → INP (iPath India Index ETN, since 2006-12, delisted 2020-01).
+    # INP delisted but its pre-2012 history is what we need for GFC
+    # coverage; chain only uses INP for the pre-2012-02 segment, so
+    # the delisting doesn't affect post-2012 data.
+    index_proxy_chain:
+      - { ticker: INDA, kind: usd_tr }     # iShares MSCI India ETF, NASDAQ, since 2012-02-03
+      - { ticker: INP,  kind: usd_tr }     # iPath MSCI India Index ETN, since 2006-12-20 (delisted 2020-01)
+  - id: ap_asia_pacific
+    name: Amundi PEA Asie Pacifique (MSCI ACAPxJP) Acc
+    isin: FR0011869312
+    yahoo: PAEJ.PA
+    currency: EUR
+    ter_pct: 0.60
+    sfdr: Article 6
+    category: Asia-Pacific
+    amundi_url: 'https://www.amundietf.fr/fr/particuliers/produits/equity/lyxor-pea-asie-pacifique-msci-ac-asia-pacific-ex-japan-ucits-etf-capi/fr0011869312'
+    inception: 2014-05-13
+    index_proxy: AAXJ                      # iShares MSCI All Country Asia ex Japan ETF, NASDAQ, since 2008-08-15
+    index_proxy_kind: usd_tr
+    # Same MSCI AC Asia ex Japan index. AAXJ is also the dirtier proxy
+    # tier on em_asia's chain — re-using it here for ap_asia_pacific is
+    # methodologically sound (it IS the index this asset tracks).
+  - id: em_pea_emerging
+    name: Amundi PEA Emergent (MSCI Emerging) ESG Acc
+    isin: FR0013412020
+    yahoo: PAEEM.PA
+    currency: EUR
+    ter_pct: 0.30
+    sfdr: Article 8
+    category: Emerging
+    amundi_url: 'https://www.amundietf.fr/fr/particuliers/produits/equity/amundi-pea-emergent-msci-emerging-esg-transition-ucits-etf-acc/fr0013412020'
+    inception: 2019-04-25
+    index_proxy: EEM                       # iShares MSCI Emerging Markets ETF, NYSE Arca, since 2003-04-14
+    index_proxy_kind: usd_tr
+    # MSCI EM (proxy) and the live ESG variant share the same emerging-
+    # market universe; ESG-screening drift is post-2018 and accepted
+    # for the pre-2019 segment. 16+ years of GFC- and dotcom-recovery
+    # history.
   - id: em_asia
     name: Amundi PEA Asie Emergente Screened Acc
     isin: FR0013412012
@@ -307,7 +614,19 @@ universe:
   - { id: sec_emu_banks,        name: Amundi Euro Stoxx Banks UCITS ETF Acc,        isin: LU1829219390, currency: EUR, ter_pct: 0.30, sfdr: Article 6, category: Sector-Banks, yahoo: null }
 
   # ─── Sector: STOXX Europe 600 sectors ──────────────────────────────
-  - { id: sec_healthcare_acc,   name: Amundi STOXX Europe 600 Healthcare Acc,       isin: LU1834986900, currency: EUR, ter_pct: 0.30, sfdr: Article 6, category: Sector-Health, yahoo: HLT.PA }
+  - id: sec_healthcare_acc
+    name: Amundi STOXX Europe 600 Healthcare Acc
+    isin: LU1834986900
+    yahoo: HLT.PA
+    currency: EUR
+    ter_pct: 0.30
+    sfdr: Article 6
+    category: Sector-Health
+    inception: 2024-04-17
+    index_proxy: EXV4.DE                   # iShares STOXX Europe 600 Healthcare UCITS ETF DE Acc, EUR, since 2008-01-02
+    index_proxy_kind: eur_tr
+    # Same STOXX Europe 600 Healthcare index, iShares DE listing.
+    # EUR-native, full GFC coverage.
   - { id: sec_healthcare_dist,  name: Amundi STOXX Europe 600 Healthcare Dist,      isin: LU2082997516, currency: EUR, ter_pct: 0.30, sfdr: Article 6, category: Sector-Health, yahoo: null }
   - { id: sec_basic_resources_a, name: Amundi STOXX Europe 600 Basic Resources Acc, isin: LU1834983550, currency: EUR, ter_pct: 0.30, sfdr: Article 6, category: Sector-Resources, yahoo: null }
   - { id: sec_basic_resources_d, name: Amundi STOXX Europe 600 Basic Resources Dist, isin: LU2082996385, currency: EUR, ter_pct: 0.30, sfdr: Article 6, category: Sector-Resources, yahoo: null }

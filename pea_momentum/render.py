@@ -143,7 +143,7 @@ _REGION_PAGE_LABELS: dict[str, str] = {
 # label for the current page.
 _NAV_LINKS_ORDER: tuple[tuple[str, str, str], ...] = (
     # (page_id, label, href)
-    ("index", "Main", "index.html"),
+    ("index", "Strategies", "index.html"),
     ("us", "US", "us.html"),
     ("europe", "Europe", "europe.html"),
     ("asia", "Asia", "asia.html"),
@@ -313,8 +313,10 @@ def _signal_row(
     alloc_top, alloc_weight = _allocation_label(strategy, config.shared.allocation.rule)
     current_chips = _alloc_chips(last.weights if last else {}, asset_meta)
     universe_buckets = _universe_buckets(strategy, config, asset_meta)
+    trailing_12m = _trailing_12m_return(result.equity)
     return {
         "name": strategy.label,
+        "trailing_12m": trailing_12m,
         "cadence": _CADENCE_LABELS.get(strategy.rebalance, strategy.rebalance),
         "scoring": _scoring_label(strategy, config.shared.scoring.lookbacks_days),
         "allocation_top": alloc_top,
