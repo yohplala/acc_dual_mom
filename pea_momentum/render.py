@@ -92,6 +92,8 @@ def render(
     equity_traces, equity_layout = _equity_figure(sorted_results, strategy_by_name)
     drawdown_traces, drawdown_layout = _drawdown_figure(sorted_results, strategy_by_name)
 
+    # Resolve None defaults here rather than in the template — Jinja2's
+    # `default` filter only fires on UNDEFINED, not on explicit None.
     rendered = template.render(
         summary=summary,
         signals=signals,
@@ -100,9 +102,9 @@ def render(
         equity_layout=json.dumps(equity_layout),
         drawdown_traces=json.dumps(drawdown_traces),
         drawdown_layout=json.dumps(drawdown_layout),
-        page_title=page_title,
+        page_title=page_title or "PEA Accelerated Dual Momentum",
         page_subtitle=page_subtitle,
-        nav_links=nav_links,
+        nav_links=nav_links or [],
     )
 
     out_file = output_path / output_filename
@@ -113,12 +115,32 @@ def render(
 # Coarse-region labels used in the per-region page titles. The bucket keys
 # match `discover.dashboard_bucket(category)` so a strategy is "in" a region
 # iff every non-cash asset in its universe resolves to that bucket.
+# Note: `world` is intentionally NOT a regional page — `world_bh` is shown
+# as a reference line on the US / Europe / Asia pages instead.
 _REGION_PAGE_LABELS: dict[str, str] = {
     "us": "US",
     "europe": "Europe",
     "asia": "Asia",
-    "world": "World",
 }
+
+# Fixed top-nav order. Same buttons on every page so users always see
+# the full navigation. Each link is rendered as a centred button via
+# `index.html.j2`; the `current` flag swaps to a plain non-clickable
+# label for the current page.
+_NAV_LINKS_ORDER: tuple[tuple[str, str, str], ...] = (
+    # (page_id, label, href)
+    ("index", "Main", "index.html"),
+    ("us", "US", "us.html"),
+    ("europe", "Europe", "europe.html"),
+    ("asia", "Asia", "asia.html"),
+    ("correlations", "Correlation", "correlations.html"),
+)
+
+# Reference strategies added to every regional page. `world_bh` (MSCI World
+# B&H) gives a single global benchmark line so the regional ETF candidates
+# can be eyeballed against the broader equity baseline without leaving
+# the page.
+_REGIONAL_REFERENCE_STRATEGIES: tuple[str, ...] = ("world_bh",)
 
 
 def _strategy_region(strategy: Strategy, asset_by_id: dict[str, Asset]) -> str | None:
@@ -141,32 +163,17 @@ def _strategy_region(strategy: Strategy, asset_by_id: dict[str, Asset]) -> str |
     return None
 
 
-def _build_nav_links(current_page: str, available_regions: set[str]) -> list[dict[str, object]]:
-    """Top-nav for any rendered page. Lists the main dashboard, every
-    region page that has at least one strategy, and the correlation
-    matrix. The `current_page` entry is rendered as plain text instead
-    of a link."""
-    links: list[dict[str, object]] = [
-        {"href": "index.html", "label": "Main dashboard", "current": current_page == "index"},
+def _build_nav_links(current_page: str) -> list[dict[str, object]]:
+    """Top-nav for any rendered page. Always returns the same fixed
+    5-button row (Main / US / Europe / Asia / Correlation) regardless of
+    which regional pages are populated. The button matching `current_page`
+    is rendered as a non-clickable label via the template's `nav-current`
+    class.
+    """
+    return [
+        {"href": href, "label": label, "current": current_page == page_id}
+        for page_id, label, href in _NAV_LINKS_ORDER
     ]
-    for region in ("us", "europe", "asia", "world"):
-        if region not in available_regions:
-            continue
-        links.append(
-            {
-                "href": f"{region}.html",
-                "label": f"{_REGION_PAGE_LABELS[region]} →",
-                "current": current_page == region,
-            }
-        )
-    links.append(
-        {
-            "href": "correlations.html",
-            "label": "Correlation matrix →",
-            "current": current_page == "correlations",
-        }
-    )
-    return links
 
 
 def render_region(
@@ -175,11 +182,20 @@ def render_region(
     output_dir: str | Path,
     region: str,
     prices_long: pl.DataFrame | None = None,
+    include_reference: tuple[str, ...] = _REGIONAL_REFERENCE_STRATEGIES,
 ) -> Path | None:
     """Render a per-region dashboard page (e.g. `asia.html`) using the
     same template as the main dashboard, filtered to strategies whose
-    risky universe is entirely within the region's bucket. Returns the
-    output path, or None when no strategy qualifies for the region."""
+    risky universe is entirely within the region's bucket.
+
+    `include_reference` lists strategy names that are appended as
+    reference lines regardless of region (default: `world_bh`, the MSCI
+    World benchmark). Reference strategies are de-duplicated against
+    region-matched strategies so they aren't double-listed if a strategy
+    is both regional and a reference.
+
+    Returns the output path; returns None only when neither the region
+    filter nor the reference list yield any result (true empty page)."""
     asset_by_id = {a.id: a for a in config.assets}
     strategy_by_name = {s.name: s for s in config.strategies}
 
@@ -190,20 +206,17 @@ def render_region(
             continue
         if _strategy_region(s, asset_by_id) == region:
             region_results.append(r)
+
+    # Append reference strategies (world_bh by default) so each regional
+    # page carries a global benchmark line for visual comparison.
+    seen = {r.strategy_name for r in region_results}
+    for r in results:
+        if r.strategy_name in include_reference and r.strategy_name not in seen:
+            region_results.append(r)
+            seen.add(r.strategy_name)
+
     if not region_results:
         return None
-
-    # Region-page nav lists every region with at least one strategy so
-    # users can hop between them. Compute on the full results set, not
-    # the filtered subset.
-    available_regions: set[str] = set()
-    for r in results:
-        s = strategy_by_name.get(r.strategy_name)
-        if s is None:
-            continue
-        reg = _strategy_region(s, asset_by_id)
-        if reg is not None:
-            available_regions.add(reg)
 
     label = _REGION_PAGE_LABELS.get(region, region.title())
     return render(
@@ -212,25 +225,10 @@ def render_region(
         output_dir=output_dir,
         prices_long=prices_long,
         page_title=f"{label} — buy-and-hold benchmarks",
-        page_subtitle=f"{label}-region strategies only",
-        nav_links=_build_nav_links(current_page=region, available_regions=available_regions),
+        page_subtitle=f"{label}-region strategies + global reference",
+        nav_links=_build_nav_links(current_page=region),
         output_filename=f"{region}.html",
     )
-
-
-def available_regions(results: list[BacktestResult], config: Config) -> set[str]:
-    """Return the set of region keys with at least one matching strategy."""
-    asset_by_id = {a.id: a for a in config.assets}
-    strategy_by_name = {s.name: s for s in config.strategies}
-    out: set[str] = set()
-    for r in results:
-        s = strategy_by_name.get(r.strategy_name)
-        if s is None:
-            continue
-        reg = _strategy_region(s, asset_by_id)
-        if reg is not None:
-            out.add(reg)
-    return out
 
 
 def _result_cagr(result: BacktestResult) -> float:
@@ -631,6 +629,7 @@ def render_correlations(
         url_by_id=url_by_id,
         heatmap_traces=json.dumps(heatmap_traces),
         heatmap_layout=json.dumps(heatmap_layout),
+        nav_links=_build_nav_links(current_page="correlations"),
     )
 
     out_file = output_path / "correlations.html"

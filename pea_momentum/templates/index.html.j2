@@ -93,9 +93,32 @@
     table.metrics th, table.metrics td { text-align: center; }
     table.signal th, table.signal td { text-align: center; }
     footer { margin-top: 48px; color: var(--muted); font-size: 12px; text-align: center; }
-    nav { margin-bottom: 16px; }
-    nav a { color: var(--accent); text-decoration: none; font-size: 13px; }
-    nav a:hover { text-decoration: underline; }
+    nav {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin: 8px 0 24px 0;
+    }
+    nav a, nav .nav-current {
+      display: inline-block;
+      padding: 8px 18px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--panel);
+      font-size: 14px;
+      font-weight: 500;
+      text-decoration: none;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+    }
+    nav a { color: var(--accent); }
+    nav a:hover { background: var(--bg); border-color: var(--accent); }
+    nav .nav-current {
+      background: var(--accent);
+      color: var(--bg);
+      border-color: var(--accent);
+      cursor: default;
+    }
     @media (max-width: 800px) { .grid-2 { grid-template-columns: 1fr; } }
   </style>
 </head>
@@ -110,12 +133,12 @@
     <nav>
       {%- for link in nav_links|default([]) %}
         {%- if link.current %}
-          <span style="color: var(--muted); font-size: 13px; margin-right: 12px;">{{ link.label }}</span>
+          <span class="nav-current">{{ link.label }}</span>
         {%- else %}
-          <a href="{{ link.href }}" style="margin-right: 12px;">{{ link.label }}</a>
+          <a href="{{ link.href }}">{{ link.label }}</a>
         {%- endif %}
       {%- else %}
-        <a href="correlations.html">Correlation matrix →</a>
+        <a href="correlations.html">Correlation</a>
       {%- endfor %}
     </nav>
 

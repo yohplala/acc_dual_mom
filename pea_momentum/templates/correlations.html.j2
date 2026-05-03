@@ -37,9 +37,32 @@
     .pill.remove { background: rgba(248, 81, 73, 0.18); color: var(--negative); }
     .pill.replace { background: rgba(210, 153, 34, 0.18); color: #d29922; }
     .members { color: var(--muted); font-size: 12px; }
-    nav { margin-bottom: 16px; }
-    nav a { color: var(--accent); text-decoration: none; margin-right: 16px; font-size: 13px; }
-    nav a:hover { text-decoration: underline; }
+    nav {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin: 8px 0 24px 0;
+    }
+    nav a, nav .nav-current {
+      display: inline-block;
+      padding: 8px 18px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--panel);
+      font-size: 14px;
+      font-weight: 500;
+      text-decoration: none;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+    }
+    nav a { color: var(--accent); }
+    nav a:hover { background: var(--bg); border-color: var(--accent); }
+    nav .nav-current {
+      background: var(--accent);
+      color: var(--bg);
+      border-color: var(--accent);
+      cursor: default;
+    }
     .pill a { color: inherit; text-decoration: none; }
     .pill a:hover { text-decoration: underline; }
     footer { margin-top: 48px; color: var(--muted); font-size: 12px; text-align: center; }
@@ -52,7 +75,17 @@
       {{ summary.n_assets }} assets · pairwise Pearson correlation of daily returns over the
       trailing {{ summary.window_days }} business days · last update {{ summary.last_update }}
     </div>
-    <nav><a href="index.html">← Strategy dashboard</a></nav>
+    <nav>
+      {%- for link in nav_links|default([]) %}
+        {%- if link.current %}
+          <span class="nav-current">{{ link.label }}</span>
+        {%- else %}
+          <a href="{{ link.href }}">{{ link.label }}</a>
+        {%- endif %}
+      {%- else %}
+        <a href="index.html">← Strategy dashboard</a>
+      {%- endfor %}
+    </nav>
 
     <h2>Correlation heatmap</h2>
     <div class="panel">
