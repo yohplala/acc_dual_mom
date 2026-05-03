@@ -249,3 +249,117 @@ def test_filter_top_1_per_region_drops_world_and_cash_buckets() -> None:
     scores = {"us_a": 0.10, "world_x": 0.50, "cash_a": 0.30}
     result = _filter_top_1_per_region(scores, asset_by_id)
     assert set(result.keys()) == {"us_a"}
+
+
+# ── Regional fixed-weight rule ───────────────────────────────────────────
+
+
+def test_apply_regional_weights_replaces_scores_with_targets() -> None:
+    """`_apply_regional_weights` looks up each asset's region via
+    dashboard_bucket and overwrites its score with the configured
+    target. Magnitudes and signs of the original momentum scores are
+    discarded — selection has already happened at this point."""
+    from pea_momentum.backtest import _apply_regional_weights
+
+    asset_by_id = {
+        "us_a": Asset(id="us_a", isin="x", yahoo="x", category="USA"),
+        "eu_a": Asset(id="eu_a", isin="x", yahoo="x", category="Eurozone"),
+        "as_a": Asset(id="as_a", isin="x", yahoo="x", category="Japan"),
+    }
+    scores = {"us_a": 0.05, "eu_a": -0.02, "as_a": 0.10}
+    regional = (("us", 0.6), ("europe", 0.1), ("asia", 0.3))
+    result = _apply_regional_weights(scores, asset_by_id, regional)
+    assert result == {"us_a": 0.6, "eu_a": 0.1, "as_a": 0.3}
+
+
+def test_apply_regional_weights_drops_assets_in_missing_regions() -> None:
+    """If a region isn't in `regional_weights`, its picked asset is
+    dropped (target weight 0 = no contribution). Lets a strategy run
+    a 2-region split (e.g. US 70 / Asia 30) without listing Europe."""
+    from pea_momentum.backtest import _apply_regional_weights
+
+    asset_by_id = {
+        "us_a": Asset(id="us_a", isin="x", yahoo="x", category="USA"),
+        "eu_a": Asset(id="eu_a", isin="x", yahoo="x", category="Eurozone"),
+    }
+    scores = {"us_a": 0.05, "eu_a": 0.02}
+    regional = (("us", 0.7), ("asia", 0.3))  # europe absent
+    result = _apply_regional_weights(scores, asset_by_id, regional)
+    assert result == {"us_a": 0.7}
+
+
+def _regional_static_strategy() -> Strategy:
+    """Top-1-per-region selection with US=60% / EU=10% / Asia=30% fixed
+    split. Uses the synthetic `up` (USA) / `dn` (USA) / `safe` assets
+    of `_config()` plus extra Europe/Asia assets the test injects."""
+    return Strategy(
+        name="regional_static",
+        asset_ids=("up", "eu", "as"),
+        rebalance="weekly_sunday",
+        top_n=3,
+        lookbacks_days=(63,),
+        reference_date=None,
+        selection_rule="top_1_per_region",
+        regional_weights=(("us", 0.6), ("europe", 0.1), ("asia", 0.3)),
+    )
+
+
+def test_regional_weights_produce_configured_split() -> None:
+    """End-to-end: with one asset per region (so the top-1-per-region
+    filter keeps all three) and a 60/10/30 regional split, the final
+    weights match the configuration after granularity rounding."""
+    cfg = Config(
+        shared=_config().shared,
+        assets=(
+            Asset(id="up", isin="x", yahoo="x", category="USA"),
+            Asset(id="eu", isin="x", yahoo="x", category="Eurozone"),
+            Asset(id="as", isin="x", yahoo="x", category="Japan"),
+        ),
+        strategies=(),
+    )
+    rows: list[dict[str, object]] = []
+    for i in range(400):
+        d = date(2023, 1, 1) + timedelta(days=i)
+        rows.append({"date": d, "asset_id": "up", "close": 100.0 * (1.0005**i)})
+        rows.append({"date": d, "asset_id": "eu", "close": 100.0 * (1.0003**i)})
+        rows.append({"date": d, "asset_id": "as", "close": 100.0 * (1.0004**i)})
+    prices = pl.DataFrame(rows).cast({"date": pl.Date, "asset_id": pl.Utf8, "close": pl.Float64})
+    result = run(prices, _regional_static_strategy(), cfg)
+    final = result.rebalances[-1].weights
+    assert final.get("up", 0.0) == 0.6
+    assert final.get("eu", 0.0) == 0.1
+    assert final.get("as", 0.0) == 0.3
+
+
+def test_regional_weights_renormalise_when_region_missing() -> None:
+    """If only US and Asia have eligible assets at a rebalance (Europe
+    absent from the universe), the 0.6/0.3 targets renormalise to
+    ~0.667/0.333. After 10% granularity rounding that becomes 70/30."""
+    cfg = Config(
+        shared=_config().shared,
+        assets=(
+            Asset(id="up", isin="x", yahoo="x", category="USA"),
+            Asset(id="as", isin="x", yahoo="x", category="Japan"),
+        ),
+        strategies=(),
+    )
+    rows: list[dict[str, object]] = []
+    for i in range(400):
+        d = date(2023, 1, 1) + timedelta(days=i)
+        rows.append({"date": d, "asset_id": "up", "close": 100.0 * (1.0005**i)})
+        rows.append({"date": d, "asset_id": "as", "close": 100.0 * (1.0004**i)})
+    prices = pl.DataFrame(rows).cast({"date": pl.Date, "asset_id": pl.Utf8, "close": pl.Float64})
+    strategy = Strategy(
+        name="regional_static_2",
+        asset_ids=("up", "as"),
+        rebalance="weekly_sunday",
+        top_n=3,
+        lookbacks_days=(63,),
+        reference_date=None,
+        selection_rule="top_1_per_region",
+        regional_weights=(("us", 0.6), ("europe", 0.1), ("asia", 0.3)),
+    )
+    result = run(prices, strategy, cfg)
+    final = result.rebalances[-1].weights
+    assert final.get("up", 0.0) == 0.7
+    assert final.get("as", 0.0) == 0.3

@@ -137,6 +137,114 @@ strategies:
         load_config(strategies, universe)
 
 
+def test_regional_weights_requires_top_1_per_region(tmp_path: Path) -> None:
+    """`regional_weights` only makes sense paired with the per-region
+    selection rule — without it, the fixed split has no asset slot to
+    map onto. Loud-fail at config-load time rather than letting
+    ambiguous configs slip through."""
+    universe = tmp_path / "universe.yaml"
+    _write_yaml(universe, _MINIMAL_UNIVERSE_YAML)
+    strategies = tmp_path / "strategies.yaml"
+    _write_yaml(
+        strategies,
+        """\
+shared:
+  scoring: { lookbacks_days: [21], aggregation: mean }
+  allocation: { rule: equal_weight, granularity_pct: 10, rounding: largest_remainder }
+  costs: { per_trade_pct: 0.0 }
+strategies:
+  - name: bad
+    assets: [a]
+    rebalance: monthly_first_sunday
+    top_n: 1
+    regional_weights: { us: 0.6, europe: 0.1, asia: 0.3 }
+""",
+    )
+    with pytest.raises(ValueError, match="regional_weights requires"):
+        load_config(strategies, universe)
+
+
+def test_regional_weights_must_sum_to_one(tmp_path: Path) -> None:
+    """Sum-to-1 invariant — weights are interpreted as final portfolio
+    fractions, so anything else would silently re-scale or leave a gap
+    routed to the residual holder. Reject up front."""
+    universe = tmp_path / "universe.yaml"
+    _write_yaml(universe, _MINIMAL_UNIVERSE_YAML)
+    strategies = tmp_path / "strategies.yaml"
+    _write_yaml(
+        strategies,
+        """\
+shared:
+  scoring: { lookbacks_days: [21], aggregation: mean }
+  allocation: { rule: equal_weight, granularity_pct: 10, rounding: largest_remainder }
+  costs: { per_trade_pct: 0.0 }
+strategies:
+  - name: bad
+    assets: [a]
+    rebalance: monthly_first_sunday
+    top_n: 1
+    selection_rule: top_1_per_region
+    regional_weights: { us: 0.5, europe: 0.1, asia: 0.3 }
+""",
+    )
+    with pytest.raises(ValueError, match="must sum to 1"):
+        load_config(strategies, universe)
+
+
+def test_regional_weights_unknown_region_raises(tmp_path: Path) -> None:
+    """Only us/europe/asia are valid keys — `world` and free-form
+    strings are rejected. Mirrors the regional-page lineup."""
+    universe = tmp_path / "universe.yaml"
+    _write_yaml(universe, _MINIMAL_UNIVERSE_YAML)
+    strategies = tmp_path / "strategies.yaml"
+    _write_yaml(
+        strategies,
+        """\
+shared:
+  scoring: { lookbacks_days: [21], aggregation: mean }
+  allocation: { rule: equal_weight, granularity_pct: 10, rounding: largest_remainder }
+  costs: { per_trade_pct: 0.0 }
+strategies:
+  - name: bad
+    assets: [a]
+    rebalance: monthly_first_sunday
+    top_n: 1
+    selection_rule: top_1_per_region
+    regional_weights: { us: 0.6, world: 0.1, asia: 0.3 }
+""",
+    )
+    with pytest.raises(ValueError, match="unknown regions"):
+        load_config(strategies, universe)
+
+
+def test_regional_weights_valid_config_loads(tmp_path: Path) -> None:
+    """Happy path — valid 60/10/30 split with selection_rule set is
+    accepted and persisted on the parsed Strategy."""
+    universe = tmp_path / "universe.yaml"
+    _write_yaml(universe, _MINIMAL_UNIVERSE_YAML)
+    strategies = tmp_path / "strategies.yaml"
+    _write_yaml(
+        strategies,
+        """\
+shared:
+  scoring: { lookbacks_days: [21], aggregation: mean }
+  allocation: { rule: equal_weight, granularity_pct: 10, rounding: largest_remainder }
+  costs: { per_trade_pct: 0.0 }
+strategies:
+  - name: ok
+    assets: [a]
+    rebalance: monthly_first_sunday
+    top_n: 3
+    selection_rule: top_1_per_region
+    regional_weights: { us: 0.6, europe: 0.1, asia: 0.3 }
+""",
+    )
+    cfg = load_config(strategies, universe)
+    manual = next(s for s in cfg.strategies if s.name == "ok")
+    assert manual.regional_weights is not None
+    assert dict(manual.regional_weights) == {"us": 0.6, "europe": 0.1, "asia": 0.3}
+
+
 def test_static_weights_matching_assets_is_valid(tmp_path: Path) -> None:
     """The good case: keys exactly match `assets:` (set equality). Loads
     without raising."""

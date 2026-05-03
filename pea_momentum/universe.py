@@ -158,6 +158,14 @@ class Strategy:
     # path; the DM / ADM lookback recipe in `lookbacks_days` and the
     # aggregation in `shared.scoring.aggregation` are reused as-is.
     selection_rule: str = "top_n"
+    # Optional fixed per-region weights (region_id → weight, sums to 1).
+    # Only meaningful with `selection_rule: top_1_per_region`: each
+    # region's selected asset receives the configured weight regardless
+    # of its score magnitude. Missing regions (no asset met the history
+    # bar at this rebalance) are dropped and the remaining target
+    # weights are renormalised proportionally — same shrinkage rule as
+    # score_proportional applies when a top-N slot is empty.
+    regional_weights: tuple[tuple[str, float], ...] | None = None
 
     def effective_scoring(self, shared_scoring: Scoring) -> Scoring:
         if self.lookbacks_days is None:
@@ -214,6 +222,14 @@ VALID_MODES: frozenset[str] = frozenset({"rotation", "buy_and_hold"})
 # asset within each {us, europe, asia} bucket — the resulting (≤ 3-entry)
 # scores dict then enters the regular allocate() pipeline.
 VALID_SELECTION_RULES: frozenset[str] = frozenset({"top_n", "top_1_per_region"})
+
+# Regions a strategy's `regional_weights:` mapping may reference. Mirrors
+# `backtest._REGIONAL_BUCKETS` — the set `dashboard_bucket()` returns for
+# the three regional pages (us / europe / asia). World and cash are
+# intentionally excluded: regional-rotation strategies don't earmark
+# fixed weight to "world" (it's a meta-region) or to "cash" (which lives
+# in the asset list as a synthetic-€STR sleeve, not a region).
+VALID_REGIONAL_WEIGHT_REGIONS: frozenset[str] = frozenset({"us", "europe", "asia"})
 
 
 def load_config(
@@ -486,6 +502,27 @@ def _parse_strategy(s: dict[str, Any], catalog_by_id: dict[str, Asset]) -> Strat
             f"strategy {s.get('name', '?')!r}: unknown selection_rule {selection_rule!r} "
             f"(valid: {sorted(VALID_SELECTION_RULES)})"
         )
+    raw_regional = s.get("regional_weights")
+    regional_weights: tuple[tuple[str, float], ...] | None = None
+    if raw_regional is not None:
+        if selection_rule != "top_1_per_region":
+            raise ValueError(
+                f"strategy {s['name']!r}: regional_weights requires "
+                f"selection_rule: top_1_per_region (got {selection_rule!r})"
+            )
+        items = tuple((str(k), float(v)) for k, v in raw_regional.items())
+        unknown = {k for k, _ in items} - VALID_REGIONAL_WEIGHT_REGIONS
+        if unknown:
+            raise ValueError(
+                f"strategy {s['name']!r}: regional_weights has unknown regions "
+                f"{sorted(unknown)} (valid: {sorted(VALID_REGIONAL_WEIGHT_REGIONS)})"
+            )
+        total = sum(w for _, w in items)
+        if abs(total - 1.0) > 1e-6:
+            raise ValueError(
+                f"strategy {s['name']!r}: regional_weights must sum to 1.0 (got {total:.6f})"
+            )
+        regional_weights = items
     return Strategy(
         name=s["name"],
         asset_ids=tuple(s["assets"]),
@@ -498,6 +535,7 @@ def _parse_strategy(s: dict[str, Any], catalog_by_id: dict[str, Asset]) -> Strat
         allocation_rule=s.get("allocation_rule"),
         static_weights=static_weights,
         selection_rule=selection_rule,
+        regional_weights=regional_weights,
     )
 
 

@@ -158,11 +158,18 @@ def run(
         if not scores:
             n_signal_skips += 1
             continue
+        rule_override = strategy.allocation_rule
+        if strategy.regional_weights is not None:
+            scores = _apply_regional_weights(scores, asset_by_id, strategy.regional_weights)
+            # Force score_proportional: with scores set to regional targets,
+            # |score|-prop allocation reproduces the configured split (and
+            # auto-renormalises if a region is missing).
+            rule_override = "score_proportional"
         new_w = allocate(
             scores=scores,
             top_n=strategy.top_n,
             alloc=config.shared.allocation,
-            rule_override=strategy.allocation_rule,
+            rule_override=rule_override,
             residual_holder=residual_holder,
         )
         turnover = _turnover(prev_weights, new_w)
@@ -203,6 +210,36 @@ def run(
 
 
 _REGIONAL_BUCKETS: tuple[str, ...] = ("us", "europe", "asia")
+
+
+def _apply_regional_weights(
+    scores: dict[str, float],
+    asset_by_id: dict[str, Asset],
+    regional_weights: tuple[tuple[str, float], ...],
+) -> dict[str, float]:
+    """Replace momentum scores with the strategy's fixed per-region target
+    weights. Downstream `allocate(rule=score_proportional)` then
+    reproduces the configured split exactly (all values positive, sums
+    to ≤ 1, |score|-prop = score-prop in the all-positive case).
+
+    If a configured region has no asset in `scores` (the top-1-per-region
+    filter dropped it because no asset met the history bar), that
+    region's weight is implicitly forfeited and `score_proportional`
+    renormalises across the remaining regions — same shrinkage rule
+    that applies anywhere else when a top-N slot can't be filled.
+    """
+    region_to_w = dict(regional_weights)
+    out: dict[str, float] = {}
+    for asset_id in scores:
+        a = asset_by_id.get(asset_id)
+        if a is None:
+            continue
+        bucket = dashboard_bucket(a.category)
+        w = region_to_w.get(bucket)
+        if w is None or w <= 0.0:
+            continue
+        out[asset_id] = w
+    return out
 
 
 def _filter_top_1_per_region(

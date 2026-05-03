@@ -417,3 +417,99 @@ strategies:
     lookbacks_days: [126]
     allocation_rule: score_proportional
     selection_rule: top_1_per_region
+
+  - name: regional_dm6_sp_q_t3
+    description: Best DM 6m per region (US/EU/Asia), score-proportional, quarterly top-3
+    assets: [
+      sp500, russell2000, us_pea_nasdaq, sp500_hedged, sp500_screened, sp500_scr_hed,
+      us_msci_esg, us_pea_us_tech, us_value, us_industrials,
+      eurostoxx50, msci_europe, de_dax_dr, fr_cac40_acc, it_ftse_mib_acc, es_ibex_acc,
+      eu_banks, sec_healthcare_acc, emu_msci_emu_acc, emu_ii_acc, emu_high_div,
+      emu_small, emu_esg_broad_acc, emu_esg_select_acc, it_mib_esg, gr_msci_greece,
+      em_asia, topix, topix_hedged, ap_asia_pacific, in_pea_india, cn_pea_china, em_pea_emerging,
+    ]
+    rebalance: quarterly_first_sunday
+    top_n: 3
+    lookbacks_days: [126]
+    allocation_rule: score_proportional
+    selection_rule: top_1_per_region
+
+  - name: regional_dm6_sp_s_t3
+    description: Best DM 6m per region (US/EU/Asia), score-proportional, semiannual top-3
+    assets: [
+      sp500, russell2000, us_pea_nasdaq, sp500_hedged, sp500_screened, sp500_scr_hed,
+      us_msci_esg, us_pea_us_tech, us_value, us_industrials,
+      eurostoxx50, msci_europe, de_dax_dr, fr_cac40_acc, it_ftse_mib_acc, es_ibex_acc,
+      eu_banks, sec_healthcare_acc, emu_msci_emu_acc, emu_ii_acc, emu_high_div,
+      emu_small, emu_esg_broad_acc, emu_esg_select_acc, it_mib_esg, gr_msci_greece,
+      em_asia, topix, topix_hedged, ap_asia_pacific, in_pea_india, cn_pea_china, em_pea_emerging,
+    ]
+    rebalance: semiannual_first_sunday
+    top_n: 3
+    lookbacks_days: [126]
+    allocation_rule: score_proportional
+    selection_rule: top_1_per_region
+
+  # ── Static-weight regional family (US 60% / Asia 30% / EU 10%) ──
+  # Same DM-6m-per-region scoring + selection as the `_sp_` family above,
+  # but the regional split is fixed (no score_proportional). The momentum
+  # scores still pick which asset wins inside each region — the regional
+  # weights only decide the inter-region split. If a region has no asset
+  # with enough history at a rebalance, its target weight is forfeited and
+  # the remaining regions are renormalised proportionally.
+  - name: regional_dm6_st_m_t3
+    description: Best DM 6m per region (US/EU/Asia), static 60/30/10 split, monthly top-3
+    assets: [
+      sp500, russell2000, us_pea_nasdaq, sp500_hedged, sp500_screened, sp500_scr_hed,
+      us_msci_esg, us_pea_us_tech, us_value, us_industrials,
+      eurostoxx50, msci_europe, de_dax_dr, fr_cac40_acc, it_ftse_mib_acc, es_ibex_acc,
+      eu_banks, sec_healthcare_acc, emu_msci_emu_acc, emu_ii_acc, emu_high_div,
+      emu_small, emu_esg_broad_acc, emu_esg_select_acc, it_mib_esg, gr_msci_greece,
+      em_asia, topix, topix_hedged, ap_asia_pacific, in_pea_india, cn_pea_china, em_pea_emerging,
+    ]
+    rebalance: monthly_first_sunday
+    top_n: 3
+    lookbacks_days: [126]
+    selection_rule: top_1_per_region
+    regional_weights:
+      us: 0.6
+      asia: 0.3
+      europe: 0.1
+
+  - name: regional_dm6_st_q_t3
+    description: Best DM 6m per region (US/EU/Asia), static 60/30/10 split, quarterly top-3
+    assets: [
+      sp500, russell2000, us_pea_nasdaq, sp500_hedged, sp500_screened, sp500_scr_hed,
+      us_msci_esg, us_pea_us_tech, us_value, us_industrials,
+      eurostoxx50, msci_europe, de_dax_dr, fr_cac40_acc, it_ftse_mib_acc, es_ibex_acc,
+      eu_banks, sec_healthcare_acc, emu_msci_emu_acc, emu_ii_acc, emu_high_div,
+      emu_small, emu_esg_broad_acc, emu_esg_select_acc, it_mib_esg, gr_msci_greece,
+      em_asia, topix, topix_hedged, ap_asia_pacific, in_pea_india, cn_pea_china, em_pea_emerging,
+    ]
+    rebalance: quarterly_first_sunday
+    top_n: 3
+    lookbacks_days: [126]
+    selection_rule: top_1_per_region
+    regional_weights:
+      us: 0.6
+      asia: 0.3
+      europe: 0.1
+
+  - name: regional_dm6_st_s_t3
+    description: Best DM 6m per region (US/EU/Asia), static 60/30/10 split, semiannual top-3
+    assets: [
+      sp500, russell2000, us_pea_nasdaq, sp500_hedged, sp500_screened, sp500_scr_hed,
+      us_msci_esg, us_pea_us_tech, us_value, us_industrials,
+      eurostoxx50, msci_europe, de_dax_dr, fr_cac40_acc, it_ftse_mib_acc, es_ibex_acc,
+      eu_banks, sec_healthcare_acc, emu_msci_emu_acc, emu_ii_acc, emu_high_div,
+      emu_small, emu_esg_broad_acc, emu_esg_select_acc, it_mib_esg, gr_msci_greece,
+      em_asia, topix, topix_hedged, ap_asia_pacific, in_pea_india, cn_pea_china, em_pea_emerging,
+    ]
+    rebalance: semiannual_first_sunday
+    top_n: 3
+    lookbacks_days: [126]
+    selection_rule: top_1_per_region
+    regional_weights:
+      us: 0.6
+      asia: 0.3
+      europe: 0.1
