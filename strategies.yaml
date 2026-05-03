@@ -530,3 +530,15 @@ strategies:
     top_n: 2
     lookbacks_days: [126]
     allocation_rule: score_proportional
+
+  # Same 2-asset pool, but pure rotation: hold only the stronger 6m
+  # leader each month. Top-1 makes allocation_rule irrelevant (100% to
+  # the winner regardless), so no `_sp_` / `_eq_` tag in the name. More
+  # decisive than the score-proportional sister strategy, with the
+  # higher turnover that comes from a monthly + binary switch.
+  - name: pair_dm6_m_t1
+    description: US tech vs EM Asia, DM 6m, monthly top-1 rotation
+    assets: [us_pea_us_tech, em_asia]
+    rebalance: monthly_first_sunday
+    top_n: 1
+    lookbacks_days: [126]
