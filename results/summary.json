@@ -1,0 +1,870 @@
+[
+  {
+    "strategy": "core_adm_m_t3",
+    "n_rebalances": 153,
+    "n_swaps_rejected": 66,
+    "n_fill_skips": 2,
+    "n_signal_skips": 0,
+    "final_equity": 3.4150616235104057,
+    "last_weights": {
+      "em_asia": 0.4,
+      "topix": 0.3,
+      "eurostoxx50": 0.3
+    }
+  },
+  {
+    "strategy": "core_adm_m_t1",
+    "n_rebalances": 65,
+    "n_swaps_rejected": 44,
+    "n_fill_skips": 2,
+    "n_signal_skips": 0,
+    "final_equity": 2.048642513142571,
+    "last_weights": {
+      "em_asia": 1.0
+    }
+  },
+  {
+    "strategy": "core_dm6_m_t1",
+    "n_rebalances": 88,
+    "n_swaps_rejected": 0,
+    "n_fill_skips": 2,
+    "n_signal_skips": 0,
+    "final_equity": 1.2844025527496836,
+    "last_weights": {
+      "em_asia": 1.0
+    }
+  },
+  {
+    "strategy": "core_dm12_m_t1",
+    "n_rebalances": 56,
+    "n_swaps_rejected": 0,
+    "n_fill_skips": 2,
+    "n_signal_skips": 5,
+    "final_equity": 3.7286017841500403,
+    "last_weights": {
+      "em_asia": 1.0
+    }
+  },
+  {
+    "strategy": "core_sp_m_t3",
+    "n_rebalances": 198,
+    "n_swaps_rejected": 50,
+    "n_fill_skips": 2,
+    "n_signal_skips": 0,
+    "final_equity": 3.1759046020980586,
+    "last_weights": {
+      "em_asia": 0.4,
+      "topix": 0.4,
+      "eurostoxx50": 0.2
+    }
+  },
+  {
+    "strategy": "core_adm_w_t3",
+    "n_rebalances": 353,
+    "n_swaps_rejected": 268,
+    "n_fill_skips": 15,
+    "n_signal_skips": 0,
+    "final_equity": 2.919032623239462,
+    "last_weights": {
+      "em_asia": 0.4,
+      "russell2000": 0.3,
+      "topix": 0.3
+    }
+  },
+  {
+    "strategy": "core_dm6_m_t3",
+    "n_rebalances": 147,
+    "n_swaps_rejected": 42,
+    "n_fill_skips": 2,
+    "n_signal_skips": 0,
+    "final_equity": 2.472993042507473,
+    "last_weights": {
+      "em_asia": 0.4,
+      "topix": 0.3,
+      "eurostoxx50": 0.3
+    }
+  },
+  {
+    "strategy": "core_dm12_m_t3",
+    "n_rebalances": 107,
+    "n_swaps_rejected": 30,
+    "n_fill_skips": 2,
+    "n_signal_skips": 5,
+    "final_equity": 3.6944459571377752,
+    "last_weights": {
+      "em_asia": 0.4,
+      "topix": 0.3,
+      "eurostoxx50": 0.3
+    }
+  },
+  {
+    "strategy": "banks_adm_m_t3",
+    "n_rebalances": 155,
+    "n_swaps_rejected": 56,
+    "n_fill_skips": 2,
+    "n_signal_skips": 0,
+    "final_equity": 3.9013622154442547,
+    "last_weights": {
+      "em_asia": 0.4,
+      "topix": 0.3,
+      "eu_banks": 0.3
+    }
+  },
+  {
+    "strategy": "jp_adm_m_t1",
+    "n_rebalances": 47,
+    "n_swaps_rejected": 0,
+    "n_fill_skips": 2,
+    "n_signal_skips": 0,
+    "final_equity": 1.2459411532718059,
+    "last_weights": {
+      "topix": 1.0
+    }
+  },
+  {
+    "strategy": "us_adm_m_t1",
+    "n_rebalances": 23,
+    "n_swaps_rejected": 20,
+    "n_fill_skips": 4,
+    "n_signal_skips": 0,
+    "final_equity": 4.077573989121789,
+    "last_weights": {
+      "sp500": 1.0
+    }
+  },
+  {
+    "strategy": "gem_adm_m_t1",
+    "n_rebalances": 28,
+    "n_swaps_rejected": 72,
+    "n_fill_skips": 1,
+    "n_signal_skips": 0,
+    "final_equity": 3.7541885829530632,
+    "last_weights": {
+      "world": 1.0
+    }
+  },
+  {
+    "strategy": "world_bh",
+    "n_rebalances": 0,
+    "n_swaps_rejected": 0,
+    "n_fill_skips": 0,
+    "n_signal_skips": 0,
+    "final_equity": 5.203541505659362,
+    "last_weights": {
+      "world": 1.0
+    }
+  },
+  {
+    "strategy": "sp500_bh",
+    "n_rebalances": 0,
+    "n_swaps_rejected": 0,
+    "n_fill_skips": 0,
+    "n_signal_skips": 0,
+    "final_equity": 9.499931275386862,
+    "last_weights": {
+      "sp500": 1.0
+    }
+  },
+  {
+    "strategy": "em_asia_bh",
+    "n_rebalances": 0,
+    "n_swaps_rejected": 0,
+    "n_fill_skips": 0,
+    "n_signal_skips": 0,
+    "final_equity": 4.161659739502132,
+    "last_weights": {
+      "em_asia": 1.0
+    }
+  },
+  {
+    "strategy": "topix_bh",
+    "n_rebalances": 0,
+    "n_swaps_rejected": 0,
+    "n_fill_skips": 0,
+    "n_signal_skips": 0,
+    "final_equity": 3.3046140152076657,
+    "last_weights": {
+      "topix": 1.0
+    }
+  },
+  {
+    "strategy": "topix_hedged_bh",
+    "n_rebalances": 0,
+    "n_swaps_rejected": 0,
+    "n_fill_skips": 0,
+    "n_signal_skips": 0,
+    "final_equity": 3.5490196838295778,
+    "last_weights": {
+      "topix_hedged": 1.0
+    }
+  },
+  {
+    "strategy": "world3_bh",
+    "n_rebalances": 0,
+    "n_swaps_rejected": 0,
+    "n_fill_skips": 0,
+    "n_signal_skips": 0,
+    "final_equity": 5.154325113337339,
+    "last_weights": {
+      "sp500": 0.3333333333333333,
+      "eurostoxx50": 0.3333333333333333,
+      "em_asia": 0.3333333333333333
+    }
+  },
+  {
+    "strategy": "world3_em_bh",
+    "n_rebalances": 0,
+    "n_swaps_rejected": 0,
+    "n_fill_skips": 0,
+    "n_signal_skips": 0,
+    "final_equity": 6.264003326069308,
+    "last_weights": {
+      "em_asia": 0.3,
+      "sp500": 0.5,
+      "eurostoxx50": 0.2
+    }
+  },
+  {
+    "strategy": "wld3_noeu_uh_bh",
+    "n_rebalances": 0,
+    "n_swaps_rejected": 0,
+    "n_fill_skips": 0,
+    "n_signal_skips": 0,
+    "final_equity": 6.543925521100253,
+    "last_weights": {
+      "em_asia": 0.3,
+      "sp500": 0.5,
+      "topix": 0.2
+    }
+  },
+  {
+    "strategy": "wld4_nohdg_bh",
+    "n_rebalances": 0,
+    "n_swaps_rejected": 0,
+    "n_fill_skips": 0,
+    "n_signal_skips": 0,
+    "final_equity": 5.1653123707937025,
+    "last_weights": {
+      "em_asia": 0.3,
+      "sp500": 0.3,
+      "eurostoxx50": 0.2,
+      "topix": 0.2
+    }
+  },
+  {
+    "strategy": "world_60_40_bh",
+    "n_rebalances": 0,
+    "n_swaps_rejected": 0,
+    "n_fill_skips": 0,
+    "n_signal_skips": 0,
+    "final_equity": 2.966506476913502,
+    "last_weights": {
+      "world": 0.6,
+      "cash_estr": 0.4
+    }
+  },
+  {
+    "strategy": "world_jp_m_t1",
+    "n_rebalances": 45,
+    "n_swaps_rejected": 40,
+    "n_fill_skips": 1,
+    "n_signal_skips": 0,
+    "final_equity": 1.9080907632082618,
+    "last_weights": {
+      "topix": 1.0
+    }
+  },
+  {
+    "strategy": "world3_jp_m_t3",
+    "n_rebalances": 131,
+    "n_swaps_rejected": 57,
+    "n_fill_skips": 2,
+    "n_signal_skips": 0,
+    "final_equity": 3.037989283039793,
+    "last_weights": {
+      "em_asia": 0.4,
+      "topix": 0.3,
+      "eurostoxx50": 0.3
+    }
+  },
+  {
+    "strategy": "world4_dm6_s_t1",
+    "n_rebalances": 27,
+    "n_swaps_rejected": 0,
+    "n_fill_skips": 0,
+    "n_signal_skips": 0,
+    "final_equity": 3.530537676720859,
+    "last_weights": {
+      "em_asia": 1.0
+    }
+  },
+  {
+    "strategy": "world4safe_dm6_s_t1",
+    "n_rebalances": 25,
+    "n_swaps_rejected": 0,
+    "n_fill_skips": 0,
+    "n_signal_skips": 0,
+    "final_equity": 4.596362965527859,
+    "last_weights": {
+      "em_asia": 1.0
+    }
+  },
+  {
+    "strategy": "geo4safe_dm12_m_t3",
+    "n_rebalances": 108,
+    "n_swaps_rejected": 0,
+    "n_fill_skips": 2,
+    "n_signal_skips": 5,
+    "final_equity": 2.9248105859311537,
+    "last_weights": {
+      "em_asia": 0.4,
+      "topix": 0.3,
+      "eurostoxx50": 0.3
+    }
+  },
+  {
+    "strategy": "geo3_dm6_q_t1",
+    "n_rebalances": 37,
+    "n_swaps_rejected": 0,
+    "n_fill_skips": 2,
+    "n_signal_skips": 0,
+    "final_equity": 3.225101697701427,
+    "last_weights": {
+      "em_asia": 1.0
+    }
+  },
+  {
+    "strategy": "regional_dm12_sp_q_t3",
+    "n_rebalances": 65,
+    "n_swaps_rejected": 43,
+    "n_fill_skips": 1,
+    "n_signal_skips": 2,
+    "final_equity": 5.940388789239298,
+    "last_weights": {
+      "eu_banks": 0.7,
+      "topix_hedged": 0.2,
+      "cn_pea_china": 0.1
+    }
+  },
+  {
+    "strategy": "regional_dm18_sp_m_t3",
+    "n_rebalances": 183,
+    "n_swaps_rejected": 103,
+    "n_fill_skips": 1,
+    "n_signal_skips": 11,
+    "final_equity": 4.410812799020193,
+    "last_weights": {
+      "eu_banks": 0.6,
+      "topix_hedged": 0.3,
+      "us_industrials": 0.1
+    }
+  },
+  {
+    "strategy": "regional_dm6_sp_m_t3",
+    "n_rebalances": 197,
+    "n_swaps_rejected": 138,
+    "n_fill_skips": 1,
+    "n_signal_skips": 0,
+    "final_equity": 3.401814779756954,
+    "last_weights": {
+      "topix_hedged": 0.4,
+      "eu_banks": 0.4,
+      "us_industrials": 0.2
+    }
+  },
+  {
+    "strategy": "regional_dm6_sp_q_t3",
+    "n_rebalances": 71,
+    "n_swaps_rejected": 0,
+    "n_fill_skips": 1,
+    "n_signal_skips": 0,
+    "final_equity": 5.255152209927723,
+    "last_weights": {
+      "eu_banks": 0.4,
+      "topix_hedged": 0.3,
+      "us_pea_us_tech": 0.3
+    }
+  },
+  {
+    "strategy": "regional_dm6_sp_s_t3",
+    "n_rebalances": 36,
+    "n_swaps_rejected": 0,
+    "n_fill_skips": 0,
+    "n_signal_skips": 0,
+    "final_equity": 4.442670779252927,
+    "last_weights": {
+      "eu_banks": 0.4,
+      "topix_hedged": 0.3,
+      "us_pea_us_tech": 0.3
+    }
+  },
+  {
+    "strategy": "regional_dm6_st_m_t3",
+    "n_rebalances": 180,
+    "n_swaps_rejected": 0,
+    "n_fill_skips": 1,
+    "n_signal_skips": 0,
+    "final_equity": 4.100261023465822,
+    "last_weights": {
+      "us_industrials": 0.6,
+      "eu_banks": 0.1,
+      "topix_hedged": 0.3
+    }
+  },
+  {
+    "strategy": "regional_dm6_st_q_t3",
+    "n_rebalances": 70,
+    "n_swaps_rejected": 0,
+    "n_fill_skips": 1,
+    "n_signal_skips": 0,
+    "final_equity": 7.070375772686052,
+    "last_weights": {
+      "us_pea_us_tech": 0.6,
+      "eu_banks": 0.1,
+      "topix_hedged": 0.3
+    }
+  },
+  {
+    "strategy": "regional_dm6_st_s_t3",
+    "n_rebalances": 35,
+    "n_swaps_rejected": 0,
+    "n_fill_skips": 0,
+    "n_signal_skips": 0,
+    "final_equity": 6.502645741866333,
+    "last_weights": {
+      "us_pea_us_tech": 0.6,
+      "eu_banks": 0.1,
+      "topix_hedged": 0.3
+    }
+  },
+  {
+    "strategy": "pair_dm6_sp_q_t2",
+    "n_rebalances": 52,
+    "n_swaps_rejected": 0,
+    "n_fill_skips": 7,
+    "n_signal_skips": 0,
+    "final_equity": 10.72863778180432,
+    "last_weights": {
+      "em_asia": 0.5,
+      "us_pea_us_tech": 0.5
+    }
+  },
+  {
+    "strategy": "pair_dm6_m_t1",
+    "n_rebalances": 34,
+    "n_swaps_rejected": 0,
+    "n_fill_skips": 16,
+    "n_signal_skips": 0,
+    "final_equity": 13.062166255088968,
+    "last_weights": {
+      "em_asia": 1.0
+    }
+  },
+  {
+    "strategy": "tri_adm136_m_t1",
+    "n_rebalances": 41,
+    "n_swaps_rejected": 25,
+    "n_fill_skips": 7,
+    "n_signal_skips": 0,
+    "final_equity": 10.400655531802853,
+    "last_weights": {
+      "topix_hedged": 1.0
+    }
+  },
+  {
+    "strategy": "trisafe_adm136_m_t1",
+    "n_rebalances": 48,
+    "n_swaps_rejected": 26,
+    "n_fill_skips": 2,
+    "n_signal_skips": 0,
+    "final_equity": 7.369218847108978,
+    "last_weights": {
+      "topix_hedged": 1.0
+    }
+  },
+  {
+    "strategy": "tri_adm248_m_t1",
+    "n_rebalances": 49,
+    "n_swaps_rejected": 0,
+    "n_fill_skips": 7,
+    "n_signal_skips": 1,
+    "final_equity": 10.641057152954842,
+    "last_weights": {
+      "topix_hedged": 1.0
+    }
+  },
+  {
+    "strategy": "trisafe_adm248_m_t1",
+    "n_rebalances": 59,
+    "n_swaps_rejected": 0,
+    "n_fill_skips": 2,
+    "n_signal_skips": 1,
+    "final_equity": 6.730614782078439,
+    "last_weights": {
+      "topix_hedged": 1.0
+    }
+  },
+  {
+    "strategy": "asia/ap_asia_pacific",
+    "n_rebalances": 0,
+    "n_swaps_rejected": 0,
+    "n_fill_skips": 0,
+    "n_signal_skips": 0,
+    "final_equity": 3.6444740139753935,
+    "last_weights": {
+      "ap_asia_pacific": 1.0
+    }
+  },
+  {
+    "strategy": "asia/cn_pea_china",
+    "n_rebalances": 0,
+    "n_swaps_rejected": 0,
+    "n_fill_skips": 0,
+    "n_signal_skips": 0,
+    "final_equity": 1.0773743563245872,
+    "last_weights": {
+      "cn_pea_china": 1.0
+    }
+  },
+  {
+    "strategy": "asia/em_asia",
+    "n_rebalances": 0,
+    "n_swaps_rejected": 0,
+    "n_fill_skips": 0,
+    "n_signal_skips": 0,
+    "final_equity": 4.161659739502132,
+    "last_weights": {
+      "em_asia": 1.0
+    }
+  },
+  {
+    "strategy": "asia/em_pea_emerging",
+    "n_rebalances": 0,
+    "n_swaps_rejected": 0,
+    "n_fill_skips": 0,
+    "n_signal_skips": 0,
+    "final_equity": 2.968144708623423,
+    "last_weights": {
+      "em_pea_emerging": 1.0
+    }
+  },
+  {
+    "strategy": "asia/in_pea_india",
+    "n_rebalances": 0,
+    "n_swaps_rejected": 0,
+    "n_fill_skips": 0,
+    "n_signal_skips": 0,
+    "final_equity": 2.7653467167097965,
+    "last_weights": {
+      "in_pea_india": 1.0
+    }
+  },
+  {
+    "strategy": "asia/topix",
+    "n_rebalances": 0,
+    "n_swaps_rejected": 0,
+    "n_fill_skips": 0,
+    "n_signal_skips": 0,
+    "final_equity": 3.3046140152076657,
+    "last_weights": {
+      "topix": 1.0
+    }
+  },
+  {
+    "strategy": "asia/topix_hedged",
+    "n_rebalances": 0,
+    "n_swaps_rejected": 0,
+    "n_fill_skips": 0,
+    "n_signal_skips": 0,
+    "final_equity": 3.5490196838295778,
+    "last_weights": {
+      "topix_hedged": 1.0
+    }
+  },
+  {
+    "strategy": "europe/de_dax_dr",
+    "n_rebalances": 0,
+    "n_swaps_rejected": 0,
+    "n_fill_skips": 0,
+    "n_signal_skips": 0,
+    "final_equity": 3.361645312059935,
+    "last_weights": {
+      "de_dax_dr": 1.0
+    }
+  },
+  {
+    "strategy": "europe/emu_esg_broad_acc",
+    "n_rebalances": 0,
+    "n_swaps_rejected": 0,
+    "n_fill_skips": 0,
+    "n_signal_skips": 0,
+    "final_equity": 5.031375331874128,
+    "last_weights": {
+      "emu_esg_broad_acc": 1.0
+    }
+  },
+  {
+    "strategy": "europe/emu_esg_select_acc",
+    "n_rebalances": 0,
+    "n_swaps_rejected": 0,
+    "n_fill_skips": 0,
+    "n_signal_skips": 0,
+    "final_equity": 3.6195974814341945,
+    "last_weights": {
+      "emu_esg_select_acc": 1.0
+    }
+  },
+  {
+    "strategy": "europe/emu_high_div",
+    "n_rebalances": 0,
+    "n_swaps_rejected": 0,
+    "n_fill_skips": 0,
+    "n_signal_skips": 0,
+    "final_equity": 2.6898976082224304,
+    "last_weights": {
+      "emu_high_div": 1.0
+    }
+  },
+  {
+    "strategy": "europe/emu_ii_acc",
+    "n_rebalances": 0,
+    "n_swaps_rejected": 0,
+    "n_fill_skips": 0,
+    "n_signal_skips": 0,
+    "final_equity": 1.892100835969016,
+    "last_weights": {
+      "emu_ii_acc": 1.0
+    }
+  },
+  {
+    "strategy": "europe/emu_msci_emu_acc",
+    "n_rebalances": 0,
+    "n_swaps_rejected": 0,
+    "n_fill_skips": 0,
+    "n_signal_skips": 0,
+    "final_equity": 3.6278770225565866,
+    "last_weights": {
+      "emu_msci_emu_acc": 1.0
+    }
+  },
+  {
+    "strategy": "europe/emu_small",
+    "n_rebalances": 0,
+    "n_swaps_rejected": 0,
+    "n_fill_skips": 0,
+    "n_signal_skips": 0,
+    "final_equity": 3.946497861514283,
+    "last_weights": {
+      "emu_small": 1.0
+    }
+  },
+  {
+    "strategy": "europe/es_ibex_acc",
+    "n_rebalances": 0,
+    "n_swaps_rejected": 0,
+    "n_fill_skips": 0,
+    "n_signal_skips": 0,
+    "final_equity": 2.9900344764031357,
+    "last_weights": {
+      "es_ibex_acc": 1.0
+    }
+  },
+  {
+    "strategy": "europe/eu_banks",
+    "n_rebalances": 0,
+    "n_swaps_rejected": 0,
+    "n_fill_skips": 0,
+    "n_signal_skips": 0,
+    "final_equity": 1.5415102429929215,
+    "last_weights": {
+      "eu_banks": 1.0
+    }
+  },
+  {
+    "strategy": "europe/eurostoxx50",
+    "n_rebalances": 0,
+    "n_swaps_rejected": 0,
+    "n_fill_skips": 0,
+    "n_signal_skips": 0,
+    "final_equity": 2.4297226903441116,
+    "last_weights": {
+      "eurostoxx50": 1.0
+    }
+  },
+  {
+    "strategy": "europe/fr_cac40_acc",
+    "n_rebalances": 0,
+    "n_swaps_rejected": 0,
+    "n_fill_skips": 0,
+    "n_signal_skips": 0,
+    "final_equity": 2.5800359449746084,
+    "last_weights": {
+      "fr_cac40_acc": 1.0
+    }
+  },
+  {
+    "strategy": "europe/gr_msci_greece",
+    "n_rebalances": 0,
+    "n_swaps_rejected": 0,
+    "n_fill_skips": 0,
+    "n_signal_skips": 0,
+    "final_equity": 0.30983246779110496,
+    "last_weights": {
+      "gr_msci_greece": 1.0
+    }
+  },
+  {
+    "strategy": "europe/it_ftse_mib_acc",
+    "n_rebalances": 0,
+    "n_swaps_rejected": 0,
+    "n_fill_skips": 0,
+    "n_signal_skips": 0,
+    "final_equity": 2.4867133903575165,
+    "last_weights": {
+      "it_ftse_mib_acc": 1.0
+    }
+  },
+  {
+    "strategy": "europe/it_mib_esg",
+    "n_rebalances": 0,
+    "n_swaps_rejected": 0,
+    "n_fill_skips": 0,
+    "n_signal_skips": 0,
+    "final_equity": 2.4169095309607713,
+    "last_weights": {
+      "it_mib_esg": 1.0
+    }
+  },
+  {
+    "strategy": "europe/msci_europe",
+    "n_rebalances": 0,
+    "n_swaps_rejected": 0,
+    "n_fill_skips": 0,
+    "n_signal_skips": 0,
+    "final_equity": 2.9512682617058648,
+    "last_weights": {
+      "msci_europe": 1.0
+    }
+  },
+  {
+    "strategy": "europe/sec_healthcare_acc",
+    "n_rebalances": 0,
+    "n_swaps_rejected": 0,
+    "n_fill_skips": 0,
+    "n_signal_skips": 0,
+    "final_equity": 3.849762073621813,
+    "last_weights": {
+      "sec_healthcare_acc": 1.0
+    }
+  },
+  {
+    "strategy": "us/russell2000",
+    "n_rebalances": 0,
+    "n_swaps_rejected": 0,
+    "n_fill_skips": 0,
+    "n_signal_skips": 0,
+    "final_equity": 5.809055589678666,
+    "last_weights": {
+      "russell2000": 1.0
+    }
+  },
+  {
+    "strategy": "us/sp500",
+    "n_rebalances": 0,
+    "n_swaps_rejected": 0,
+    "n_fill_skips": 0,
+    "n_signal_skips": 0,
+    "final_equity": 9.499931275386862,
+    "last_weights": {
+      "sp500": 1.0
+    }
+  },
+  {
+    "strategy": "us/sp500_hedged",
+    "n_rebalances": 0,
+    "n_swaps_rejected": 0,
+    "n_fill_skips": 0,
+    "n_signal_skips": 0,
+    "final_equity": 5.6851126601072135,
+    "last_weights": {
+      "sp500_hedged": 1.0
+    }
+  },
+  {
+    "strategy": "us/sp500_scr_hed",
+    "n_rebalances": 0,
+    "n_swaps_rejected": 0,
+    "n_fill_skips": 0,
+    "n_signal_skips": 0,
+    "final_equity": 5.603830092309219,
+    "last_weights": {
+      "sp500_scr_hed": 1.0
+    }
+  },
+  {
+    "strategy": "us/sp500_screened",
+    "n_rebalances": 0,
+    "n_swaps_rejected": 0,
+    "n_fill_skips": 0,
+    "n_signal_skips": 0,
+    "final_equity": 9.246255530129966,
+    "last_weights": {
+      "sp500_screened": 1.0
+    }
+  },
+  {
+    "strategy": "us/us_industrials",
+    "n_rebalances": 0,
+    "n_swaps_rejected": 0,
+    "n_fill_skips": 0,
+    "n_signal_skips": 0,
+    "final_equity": 8.42601112482945,
+    "last_weights": {
+      "us_industrials": 1.0
+    }
+  },
+  {
+    "strategy": "us/us_msci_esg",
+    "n_rebalances": 0,
+    "n_swaps_rejected": 0,
+    "n_fill_skips": 0,
+    "n_signal_skips": 0,
+    "final_equity": 8.565500644196634,
+    "last_weights": {
+      "us_msci_esg": 1.0
+    }
+  },
+  {
+    "strategy": "us/us_pea_nasdaq",
+    "n_rebalances": 0,
+    "n_swaps_rejected": 0,
+    "n_fill_skips": 0,
+    "n_signal_skips": 0,
+    "final_equity": 19.587223390044777,
+    "last_weights": {
+      "us_pea_nasdaq": 1.0
+    }
+  },
+  {
+    "strategy": "us/us_pea_us_tech",
+    "n_rebalances": 0,
+    "n_swaps_rejected": 0,
+    "n_fill_skips": 0,
+    "n_signal_skips": 0,
+    "final_equity": 21.056249152125392,
+    "last_weights": {
+      "us_pea_us_tech": 1.0
+    }
+  },
+  {
+    "strategy": "us/us_value",
+    "n_rebalances": 0,
+    "n_swaps_rejected": 0,
+    "n_fill_skips": 0,
+    "n_signal_skips": 0,
+    "final_equity": 7.289334187207582,
+    "last_weights": {
+      "us_value": 1.0
+    }
+  }
+]

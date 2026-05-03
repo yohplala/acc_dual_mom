@@ -1,0 +1,3273 @@
+[
+  {
+    "rebalance_date": "2008-09-07",
+    "signal_date": "2008-09-05",
+    "fill_date": "2008-09-08",
+    "scores": {
+      "us_pea_us_tech": -0.01517139214415486
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 2.0,
+    "cost": 0.001,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2008-10-05",
+    "signal_date": "2008-10-03",
+    "fill_date": "2008-10-06",
+    "scores": {
+      "topix_hedged": -0.21621931845869966,
+      "us_pea_us_tech": -0.14603083314360613
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2008-11-02",
+    "signal_date": "2008-10-31",
+    "fill_date": "2008-11-03",
+    "scores": {
+      "topix_hedged": -0.3135936871154879,
+      "us_pea_us_tech": -0.11515469485050756
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2008-12-07",
+    "signal_date": "2008-12-05",
+    "fill_date": "2008-12-08",
+    "scores": {
+      "topix_hedged": -0.30240942982252195,
+      "us_pea_us_tech": -0.15999499080348825
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2009-01-04",
+    "signal_date": "2009-01-02",
+    "fill_date": "2009-01-05",
+    "scores": {
+      "topix_hedged": -0.19829214982525378,
+      "us_pea_us_tech": -0.23317961827004677
+    },
+    "weights": {
+      "topix_hedged": 1.0
+    },
+    "turnover": 2.0,
+    "cost": 0.0025,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2009-02-01",
+    "signal_date": "2009-01-30",
+    "fill_date": "2009-02-02",
+    "scores": {
+      "topix_hedged": -0.26969389221597717,
+      "us_pea_us_tech": -0.16128867208560996
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 2.0,
+    "cost": 0.0025,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2009-03-01",
+    "signal_date": "2009-02-27",
+    "fill_date": "2009-03-02",
+    "scores": {
+      "topix_hedged": -0.24908026896255187,
+      "us_pea_us_tech": -0.08450326111334157
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2009-04-05",
+    "signal_date": "2009-04-03",
+    "fill_date": "2009-04-06",
+    "scores": {
+      "topix_hedged": -0.0745052019074196,
+      "us_pea_us_tech": -0.019289453423200764
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2009-05-03",
+    "signal_date": "2009-05-01",
+    "fill_date": "2009-05-04",
+    "scores": {
+      "em_asia": 0.16734255981626237,
+      "topix_hedged": -0.03434149507549766,
+      "us_pea_us_tech": 0.09969114838243127
+    },
+    "weights": {
+      "em_asia": 1.0
+    },
+    "turnover": 2.0,
+    "cost": 0.0022500000000000003,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2009-06-07",
+    "signal_date": "2009-06-05",
+    "fill_date": "2009-06-08",
+    "scores": {
+      "em_asia": 0.21154010924170744,
+      "topix_hedged": 0.06412369119999539,
+      "us_pea_us_tech": 0.06457739203996848
+    },
+    "weights": {
+      "em_asia": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2009-07-05",
+    "signal_date": "2009-07-03",
+    "fill_date": "2009-07-06",
+    "scores": {
+      "em_asia": 0.23314227861023076,
+      "topix_hedged": 0.13232396242309089,
+      "us_pea_us_tech": 0.04491829025429842
+    },
+    "weights": {
+      "em_asia": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2009-08-02",
+    "signal_date": "2009-07-31",
+    "fill_date": "2009-08-03",
+    "scores": {
+      "em_asia": 0.327870691953493,
+      "topix_hedged": 0.12867221351652378,
+      "us_pea_us_tech": 0.17303609019254806
+    },
+    "weights": {
+      "em_asia": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2009-10-04",
+    "signal_date": "2009-10-02",
+    "fill_date": "2009-10-05",
+    "scores": {
+      "em_asia": 0.18911477281531186,
+      "topix_hedged": -0.004283707109498769,
+      "us_pea_us_tech": 0.10225970386726109
+    },
+    "weights": {
+      "em_asia": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2009-11-01",
+    "signal_date": "2009-10-30",
+    "fill_date": "2009-11-02",
+    "scores": {
+      "em_asia": 0.24964497578367614,
+      "topix_hedged": 0.04698313092125576,
+      "us_pea_us_tech": 0.12634044918006415
+    },
+    "weights": {
+      "em_asia": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2009-12-06",
+    "signal_date": "2009-12-04",
+    "fill_date": "2009-12-07",
+    "scores": {
+      "em_asia": 0.177786106433118,
+      "topix_hedged": 0.02857781425338553,
+      "us_pea_us_tech": 0.11176206484085342
+    },
+    "weights": {
+      "em_asia": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2010-01-03",
+    "signal_date": "2010-01-01",
+    "fill_date": "2010-01-04",
+    "scores": {
+      "em_asia": 0.17816236987127695,
+      "topix_hedged": 0.030074812307020877,
+      "us_pea_us_tech": 0.17082140420159822
+    },
+    "weights": {
+      "em_asia": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2010-02-07",
+    "signal_date": "2010-02-05",
+    "fill_date": "2010-02-08",
+    "scores": {
+      "em_asia": 0.056887680891258695,
+      "topix_hedged": -0.01021458163783003,
+      "us_pea_us_tech": 0.12312989787043686
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 2.0,
+    "cost": 0.0022500000000000003,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2010-03-07",
+    "signal_date": "2010-03-05",
+    "fill_date": "2010-03-08",
+    "scores": {
+      "em_asia": 0.15603981890293875,
+      "topix_hedged": 0.02846892009285366,
+      "us_pea_us_tech": 0.2118009662024778
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2010-04-04",
+    "signal_date": "2010-04-02",
+    "fill_date": "2010-04-05",
+    "scores": {
+      "em_asia": 0.1833957667261051,
+      "topix_hedged": 0.13265347716156958,
+      "us_pea_us_tech": 0.22472615931060655
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2010-05-02",
+    "signal_date": "2010-04-30",
+    "fill_date": "2010-05-03",
+    "scores": {
+      "em_asia": 0.14972128166182283,
+      "topix_hedged": 0.06410688210549087,
+      "us_pea_us_tech": 0.19343374060627783
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2010-06-06",
+    "signal_date": "2010-06-04",
+    "fill_date": "2010-06-07",
+    "scores": {
+      "em_asia": 0.10047330569449187,
+      "topix_hedged": -0.0674373349099114,
+      "us_pea_us_tech": 0.18435391874413667
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2010-08-01",
+    "signal_date": "2010-07-30",
+    "fill_date": "2010-08-02",
+    "scores": {
+      "em_asia": 0.09292553593756063,
+      "topix_hedged": -0.0489340738496283,
+      "us_pea_us_tech": 0.05039000573052225
+    },
+    "weights": {
+      "em_asia": 1.0
+    },
+    "turnover": 2.0,
+    "cost": 0.0022500000000000003,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2010-10-03",
+    "signal_date": "2010-10-01",
+    "fill_date": "2010-10-04",
+    "scores": {
+      "em_asia": 0.0863488713703416,
+      "topix_hedged": -0.049627248208652754,
+      "us_pea_us_tech": 0.03687428713548524
+    },
+    "weights": {
+      "em_asia": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2010-11-07",
+    "signal_date": "2010-11-05",
+    "fill_date": "2010-11-08",
+    "scores": {
+      "em_asia": 0.08591983469855509,
+      "topix_hedged": -0.01254994586625143,
+      "us_pea_us_tech": 0.07929871054422644
+    },
+    "weights": {
+      "em_asia": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2010-12-05",
+    "signal_date": "2010-12-03",
+    "fill_date": "2010-12-06",
+    "scores": {
+      "em_asia": 0.09267620945157029,
+      "topix_hedged": 9.941240485877856e-05,
+      "us_pea_us_tech": 0.13289466671832328
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 2.0,
+    "cost": 0.0022500000000000003,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2011-01-02",
+    "signal_date": "2010-12-31",
+    "fill_date": "2011-01-03",
+    "scores": {
+      "em_asia": 0.10381777390030189,
+      "topix_hedged": 0.06077122995718409,
+      "us_pea_us_tech": 0.12341114887744416
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2011-02-06",
+    "signal_date": "2011-02-04",
+    "fill_date": "2011-02-07",
+    "scores": {
+      "em_asia": 0.02719880595973097,
+      "topix_hedged": 0.09534696680989851,
+      "us_pea_us_tech": 0.1247471995048594
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2011-03-06",
+    "signal_date": "2011-03-04",
+    "fill_date": "2011-03-07",
+    "scores": {
+      "em_asia": -0.014456919354854972,
+      "topix_hedged": 0.10646670347667449,
+      "us_pea_us_tech": 0.11314480436940877
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2011-04-03",
+    "signal_date": "2011-04-01",
+    "fill_date": "2011-04-04",
+    "scores": {
+      "em_asia": 0.005805471614370061,
+      "topix_hedged": -0.0019232804926351637,
+      "us_pea_us_tech": 0.049690920371500434
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2011-05-01",
+    "signal_date": "2011-04-29",
+    "fill_date": "2011-05-02",
+    "scores": {
+      "em_asia": -0.021047402188732467,
+      "topix_hedged": -0.030073465169773533,
+      "us_pea_us_tech": 0.029129768484796092
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2011-06-05",
+    "signal_date": "2011-06-03",
+    "fill_date": "2011-06-06",
+    "scores": {
+      "em_asia": -0.04024822813062723,
+      "topix_hedged": -0.05234549907570415,
+      "us_pea_us_tech": 0.0047303980655579725
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2011-07-03",
+    "signal_date": "2011-07-01",
+    "fill_date": "2011-07-04",
+    "scores": {
+      "em_asia": -0.008536578389146602,
+      "topix_hedged": -0.008970536774084473,
+      "us_pea_us_tech": 0.011449602279839155
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2011-08-07",
+    "signal_date": "2011-08-05",
+    "fill_date": "2011-08-08",
+    "scores": {
+      "em_asia": -0.09355399853406247,
+      "topix_hedged": -0.061132760172710965,
+      "us_pea_us_tech": -0.03467501062748483
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2011-09-04",
+    "signal_date": "2011-09-02",
+    "fill_date": "2011-09-05",
+    "scores": {
+      "em_asia": -0.13555056480882977,
+      "topix_hedged": -0.13208353266187556,
+      "us_pea_us_tech": -0.0734597943648655
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2011-10-02",
+    "signal_date": "2011-09-30",
+    "fill_date": "2011-10-03",
+    "scores": {
+      "em_asia": -0.21065355624384507,
+      "topix_hedged": -0.12008184150582672,
+      "us_pea_us_tech": -0.03010572758233347
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2011-11-06",
+    "signal_date": "2011-11-04",
+    "fill_date": "2011-11-07",
+    "scores": {
+      "em_asia": -0.07528822779949085,
+      "topix_hedged": -0.11832807739914035,
+      "us_pea_us_tech": 0.041659671684181866
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2011-12-04",
+    "signal_date": "2011-12-02",
+    "fill_date": "2011-12-05",
+    "scores": {
+      "em_asia": -0.029204730203464296,
+      "topix_hedged": -0.054595807787308916,
+      "us_pea_us_tech": 0.06825425517524579
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2012-02-05",
+    "signal_date": "2012-02-03",
+    "fill_date": "2012-02-06",
+    "scores": {
+      "em_asia": 0.14139649679237398,
+      "topix_hedged": 0.003038528256127604,
+      "us_pea_us_tech": 0.18865352135745175
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2012-03-04",
+    "signal_date": "2012-03-02",
+    "fill_date": "2012-03-05",
+    "scores": {
+      "em_asia": 0.10783602334057574,
+      "topix_hedged": 0.07167154064247776,
+      "us_pea_us_tech": 0.18757552841524028
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2012-04-01",
+    "signal_date": "2012-03-30",
+    "fill_date": "2012-04-02",
+    "scores": {
+      "em_asia": 0.03649963994934524,
+      "topix_hedged": 0.11226438255001232,
+      "us_pea_us_tech": 0.20740335559672554
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2012-05-06",
+    "signal_date": "2012-05-04",
+    "fill_date": "2012-05-07",
+    "scores": {
+      "em_asia": 0.056744341709984845,
+      "topix_hedged": 0.006819575727615231,
+      "us_pea_us_tech": 0.15580124632249456
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2012-06-03",
+    "signal_date": "2012-06-01",
+    "fill_date": "2012-06-04",
+    "scores": {
+      "em_asia": 0.026542572441197176,
+      "topix_hedged": -0.12331435383344169,
+      "us_pea_us_tech": 0.0950822772308975
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2012-07-01",
+    "signal_date": "2012-06-29",
+    "fill_date": "2012-07-02",
+    "scores": {
+      "em_asia": 0.007569320057834912,
+      "topix_hedged": -0.04019016820271434,
+      "us_pea_us_tech": 0.09746777227169479
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2012-08-05",
+    "signal_date": "2012-08-03",
+    "fill_date": "2012-08-06",
+    "scores": {
+      "em_asia": 0.0797720990514373,
+      "topix_hedged": -0.09069080467460293,
+      "us_pea_us_tech": 0.14296397029107122
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2012-09-02",
+    "signal_date": "2012-08-31",
+    "fill_date": "2012-09-03",
+    "scores": {
+      "em_asia": -0.003507579763097383,
+      "topix_hedged": -0.04707575920808049,
+      "us_pea_us_tech": 0.11998432369446325
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2012-10-07",
+    "signal_date": "2012-10-05",
+    "fill_date": "2012-10-08",
+    "scores": {
+      "em_asia": 0.03769087380225825,
+      "topix_hedged": -0.0019419848234106807,
+      "us_pea_us_tech": 0.06625298262905521
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2012-11-04",
+    "signal_date": "2012-11-02",
+    "fill_date": "2012-11-05",
+    "scores": {
+      "em_asia": 0.043902821006841876,
+      "topix_hedged": -0.02284002027380309,
+      "us_pea_us_tech": -0.007281557780409953
+    },
+    "weights": {
+      "em_asia": 1.0
+    },
+    "turnover": 2.0,
+    "cost": 0.0022500000000000003,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2012-12-02",
+    "signal_date": "2012-11-30",
+    "fill_date": "2012-12-03",
+    "scores": {
+      "em_asia": 0.04142882469539474,
+      "topix_hedged": 0.016356319790196288,
+      "us_pea_us_tech": -0.02474771943219582
+    },
+    "weights": {
+      "em_asia": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2013-01-06",
+    "signal_date": "2013-01-04",
+    "fill_date": "2013-01-07",
+    "scores": {
+      "em_asia": 0.11325541391805327,
+      "topix_hedged": 0.18592598603657487,
+      "us_pea_us_tech": -0.0018672516793129719
+    },
+    "weights": {
+      "topix_hedged": 1.0
+    },
+    "turnover": 2.0,
+    "cost": 0.00375,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2013-02-03",
+    "signal_date": "2013-02-01",
+    "fill_date": "2013-02-04",
+    "scores": {
+      "em_asia": 0.037202149481929014,
+      "topix_hedged": 0.22253351637127175,
+      "us_pea_us_tech": -0.024612946973801526
+    },
+    "weights": {
+      "topix_hedged": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2013-03-03",
+    "signal_date": "2013-03-01",
+    "fill_date": "2013-03-04",
+    "scores": {
+      "em_asia": 0.06802756501303671,
+      "topix_hedged": 0.22716696834219077,
+      "us_pea_us_tech": 0.04915681501098305
+    },
+    "weights": {
+      "topix_hedged": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2013-04-07",
+    "signal_date": "2013-04-05",
+    "fill_date": "2013-04-08",
+    "scores": {
+      "em_asia": 0.0002595639979873961,
+      "topix_hedged": 0.342801445591556,
+      "us_pea_us_tech": 0.043470578341593256
+    },
+    "weights": {
+      "topix_hedged": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2013-05-05",
+    "signal_date": "2013-05-03",
+    "fill_date": "2013-05-06",
+    "scores": {
+      "em_asia": 0.02262530750642718,
+      "topix_hedged": 0.3933782260484287,
+      "us_pea_us_tech": 0.051145226629552676
+    },
+    "weights": {
+      "topix_hedged": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2013-06-02",
+    "signal_date": "2013-05-31",
+    "fill_date": "2013-06-03",
+    "scores": {
+      "em_asia": 0.01737298519610701,
+      "topix_hedged": 0.2823166409767994,
+      "us_pea_us_tech": 0.08570469358705173
+    },
+    "weights": {
+      "topix_hedged": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2013-07-07",
+    "signal_date": "2013-07-05",
+    "fill_date": "2013-07-08",
+    "scores": {
+      "em_asia": -0.08564452890554035,
+      "topix_hedged": 0.25579467338308287,
+      "us_pea_us_tech": 0.07432245221029847
+    },
+    "weights": {
+      "topix_hedged": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2013-08-04",
+    "signal_date": "2013-08-02",
+    "fill_date": "2013-08-05",
+    "scores": {
+      "em_asia": -0.03685957057920216,
+      "topix_hedged": 0.22707714659238007,
+      "us_pea_us_tech": 0.10252188280125425
+    },
+    "weights": {
+      "topix_hedged": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2013-09-01",
+    "signal_date": "2013-08-30",
+    "fill_date": "2013-09-02",
+    "scores": {
+      "em_asia": -0.06330363985754876,
+      "topix_hedged": 0.04894130826907228,
+      "us_pea_us_tech": 0.08492448428709849
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 2.0,
+    "cost": 0.0025,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2013-10-06",
+    "signal_date": "2013-10-04",
+    "fill_date": "2013-10-07",
+    "scores": {
+      "em_asia": 0.019608803355777155,
+      "topix_hedged": 0.09245325318853874,
+      "us_pea_us_tech": 0.08775633282667994
+    },
+    "weights": {
+      "topix_hedged": 1.0
+    },
+    "turnover": 2.0,
+    "cost": 0.0025,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2013-11-03",
+    "signal_date": "2013-11-01",
+    "fill_date": "2013-11-04",
+    "scores": {
+      "em_asia": 0.04996535596786145,
+      "topix_hedged": 0.07263757343470727,
+      "us_pea_us_tech": 0.10807869147944389
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 2.0,
+    "cost": 0.0025,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2013-12-01",
+    "signal_date": "2013-11-29",
+    "fill_date": "2013-12-02",
+    "scores": {
+      "em_asia": 0.04331641669794769,
+      "topix_hedged": 0.10945899079969701,
+      "us_pea_us_tech": 0.11742806338172358
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2014-01-05",
+    "signal_date": "2014-01-03",
+    "fill_date": "2014-01-06",
+    "scores": {
+      "em_asia": -0.019275228218123257,
+      "topix_hedged": 0.09736703111667248,
+      "us_pea_us_tech": 0.09956696107024195
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2014-02-02",
+    "signal_date": "2014-01-31",
+    "fill_date": "2014-02-03",
+    "scores": {
+      "em_asia": -0.0527429290827354,
+      "topix_hedged": 0.02173872718503611,
+      "us_pea_us_tech": 0.08262232389327277
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2014-03-02",
+    "signal_date": "2014-02-28",
+    "fill_date": "2014-03-03",
+    "scores": {
+      "em_asia": -0.00255925366156573,
+      "topix_hedged": -0.007702221734887105,
+      "us_pea_us_tech": 0.11483660659512777
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2014-04-06",
+    "signal_date": "2014-04-04",
+    "fill_date": "2014-04-07",
+    "scores": {
+      "em_asia": 0.03232431796046057,
+      "topix_hedged": 0.026416359398777883,
+      "us_pea_us_tech": 0.04033973315165847
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2014-05-04",
+    "signal_date": "2014-05-02",
+    "fill_date": "2014-05-05",
+    "scores": {
+      "em_asia": 0.020536734772317544,
+      "topix_hedged": -0.022124928898691776,
+      "us_pea_us_tech": 0.025299926816085727
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2014-06-01",
+    "signal_date": "2014-05-30",
+    "fill_date": "2014-06-02",
+    "scores": {
+      "em_asia": 0.07602789966517598,
+      "topix_hedged": 0.007440442935840119,
+      "us_pea_us_tech": 0.09914793923889231
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2014-07-06",
+    "signal_date": "2014-07-04",
+    "fill_date": "2014-07-07",
+    "scores": {
+      "em_asia": 0.09746681699502731,
+      "topix_hedged": 0.07990955305208251,
+      "us_pea_us_tech": 0.11396985475575942
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2014-08-03",
+    "signal_date": "2014-08-01",
+    "fill_date": "2014-08-04",
+    "scores": {
+      "em_asia": 0.08836821367326768,
+      "topix_hedged": 0.029712693579350875,
+      "us_pea_us_tech": 0.09648737610053337
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2014-09-07",
+    "signal_date": "2014-09-05",
+    "fill_date": "2014-09-08",
+    "scores": {
+      "em_asia": 0.177413629928482,
+      "topix_hedged": 0.03680979147902056,
+      "us_pea_us_tech": 0.19451980097242783
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2014-10-05",
+    "signal_date": "2014-10-03",
+    "fill_date": "2014-10-06",
+    "scores": {
+      "em_asia": 0.0928851608608973,
+      "topix_hedged": 0.07170890751849528,
+      "us_pea_us_tech": 0.16880374445784896
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2014-11-02",
+    "signal_date": "2014-10-31",
+    "fill_date": "2014-11-03",
+    "scores": {
+      "em_asia": 0.08817302032115719,
+      "topix_hedged": 0.10401388460082643,
+      "us_pea_us_tech": 0.15335572973941725
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2014-12-07",
+    "signal_date": "2014-12-05",
+    "fill_date": "2014-12-08",
+    "scores": {
+      "em_asia": 0.09180369208510153,
+      "topix_hedged": 0.20231016847218405,
+      "us_pea_us_tech": 0.2306758791364044
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2015-01-04",
+    "signal_date": "2015-01-02",
+    "fill_date": "2015-01-05",
+    "scores": {
+      "em_asia": 0.07095757991452567,
+      "topix_hedged": 0.09650846538995321,
+      "us_pea_us_tech": 0.1856130940292934
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2015-02-01",
+    "signal_date": "2015-01-30",
+    "fill_date": "2015-02-02",
+    "scores": {
+      "em_asia": 0.14532447970572596,
+      "topix_hedged": 0.061444861495565495,
+      "us_pea_us_tech": 0.1821499954648227
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2015-03-01",
+    "signal_date": "2015-02-27",
+    "fill_date": "2015-03-02",
+    "scores": {
+      "em_asia": 0.20518160840892627,
+      "topix_hedged": 0.1586808378355228,
+      "us_pea_us_tech": 0.2583887181331536
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2015-04-05",
+    "signal_date": "2015-04-03",
+    "fill_date": "2015-04-06",
+    "scores": {
+      "em_asia": 0.20145125167794267,
+      "topix_hedged": 0.14706275080449313,
+      "us_pea_us_tech": 0.20853579268384284
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2015-05-03",
+    "signal_date": "2015-05-01",
+    "fill_date": "2015-05-04",
+    "scores": {
+      "em_asia": 0.18015048432336198,
+      "topix_hedged": 0.14412736271791768,
+      "us_pea_us_tech": 0.14392847229157427
+    },
+    "weights": {
+      "em_asia": 1.0
+    },
+    "turnover": 2.0,
+    "cost": 0.0022500000000000003,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2015-06-07",
+    "signal_date": "2015-06-05",
+    "fill_date": "2015-06-08",
+    "scores": {
+      "em_asia": 0.06677571236065578,
+      "topix_hedged": 0.18524861642299215,
+      "us_pea_us_tech": 0.11506365949836043
+    },
+    "weights": {
+      "topix_hedged": 1.0
+    },
+    "turnover": 2.0,
+    "cost": 0.00375,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2015-07-05",
+    "signal_date": "2015-07-03",
+    "fill_date": "2015-07-06",
+    "scores": {
+      "em_asia": 0.04535593113187689,
+      "topix_hedged": 0.09693324280541378,
+      "us_pea_us_tech": 0.08080914645576247
+    },
+    "weights": {
+      "topix_hedged": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2015-08-02",
+    "signal_date": "2015-07-31",
+    "fill_date": "2015-08-03",
+    "scores": {
+      "em_asia": -0.04218281267896536,
+      "topix_hedged": 0.07549651078493376,
+      "us_pea_us_tech": 0.09490441512921222
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 2.0,
+    "cost": 0.0025,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2015-09-06",
+    "signal_date": "2015-09-04",
+    "fill_date": "2015-09-07",
+    "scores": {
+      "em_asia": -0.1538771995467492,
+      "topix_hedged": -0.05833489284218888,
+      "us_pea_us_tech": 0.006094712341085014
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2015-10-04",
+    "signal_date": "2015-10-02",
+    "fill_date": "2015-10-05",
+    "scores": {
+      "em_asia": -0.12053460733790462,
+      "topix_hedged": -0.09407593024444523,
+      "us_pea_us_tech": -0.025132322658929618
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2015-11-01",
+    "signal_date": "2015-10-30",
+    "fill_date": "2015-11-02",
+    "scores": {
+      "em_asia": -0.02526533565941247,
+      "topix_hedged": 0.00503975171003775,
+      "us_pea_us_tech": 0.08875299003642072
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2015-12-06",
+    "signal_date": "2015-12-04",
+    "fill_date": "2015-12-07",
+    "scores": {
+      "em_asia": -0.06563336554042302,
+      "topix_hedged": -0.009141313164098608,
+      "us_pea_us_tech": 0.08439093127094337
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2016-01-03",
+    "signal_date": "2016-01-01",
+    "fill_date": "2016-01-04",
+    "scores": {
+      "em_asia": -0.050456459847192124,
+      "topix_hedged": 0.002993962967431781,
+      "us_pea_us_tech": 0.06926665119456232
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2016-02-07",
+    "signal_date": "2016-02-05",
+    "fill_date": "2016-02-08",
+    "scores": {
+      "em_asia": -0.15229894932476273,
+      "topix_hedged": -0.14678269038267008,
+      "us_pea_us_tech": -0.10606602649520865
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2016-03-06",
+    "signal_date": "2016-03-04",
+    "fill_date": "2016-03-07",
+    "scores": {
+      "em_asia": -0.062272848220327935,
+      "topix_hedged": -0.103481874817909,
+      "us_pea_us_tech": -0.040437500222811375
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2016-04-03",
+    "signal_date": "2016-04-01",
+    "fill_date": "2016-04-04",
+    "scores": {
+      "em_asia": -0.041772468584717205,
+      "topix_hedged": -0.1669156745392356,
+      "us_pea_us_tech": -0.04529936762790121
+    },
+    "weights": {
+      "em_asia": 1.0
+    },
+    "turnover": 2.0,
+    "cost": 0.0022500000000000003,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2016-05-01",
+    "signal_date": "2016-04-29",
+    "fill_date": "2016-05-02",
+    "scores": {
+      "em_asia": -0.004018965660287736,
+      "topix_hedged": -0.1060209802828576,
+      "us_pea_us_tech": -0.051967434904711306
+    },
+    "weights": {
+      "em_asia": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2016-06-05",
+    "signal_date": "2016-06-03",
+    "fill_date": "2016-06-06",
+    "scores": {
+      "em_asia": 0.05214373692932458,
+      "topix_hedged": -0.059075061370343386,
+      "us_pea_us_tech": 0.053195731299351845
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 2.0,
+    "cost": 0.0022500000000000003,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2016-07-03",
+    "signal_date": "2016-07-01",
+    "fill_date": "2016-07-04",
+    "scores": {
+      "em_asia": 0.04558764480629115,
+      "topix_hedged": -0.10322905108674559,
+      "us_pea_us_tech": 0.008007679355566677
+    },
+    "weights": {
+      "em_asia": 1.0
+    },
+    "turnover": 2.0,
+    "cost": 0.0022500000000000003,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2016-08-07",
+    "signal_date": "2016-08-05",
+    "fill_date": "2016-08-08",
+    "scores": {
+      "em_asia": 0.0898258511972055,
+      "topix_hedged": -0.06556561362183717,
+      "us_pea_us_tech": 0.05808461581142573
+    },
+    "weights": {
+      "em_asia": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2016-09-04",
+    "signal_date": "2016-09-02",
+    "fill_date": "2016-09-05",
+    "scores": {
+      "em_asia": 0.13256895649116465,
+      "topix_hedged": 0.016587563018324796,
+      "us_pea_us_tech": 0.08222673887003389
+    },
+    "weights": {
+      "em_asia": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2016-10-02",
+    "signal_date": "2016-09-30",
+    "fill_date": "2016-10-03",
+    "scores": {
+      "em_asia": 0.14499012932988276,
+      "topix_hedged": -0.0011288103428180134,
+      "us_pea_us_tech": 0.0887762222058827
+    },
+    "weights": {
+      "em_asia": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2016-11-06",
+    "signal_date": "2016-11-04",
+    "fill_date": "2016-11-07",
+    "scores": {
+      "em_asia": 0.03240872061665053,
+      "topix_hedged": 0.03280873063448649,
+      "us_pea_us_tech": 0.03027221312387914
+    },
+    "weights": {
+      "topix_hedged": 1.0
+    },
+    "turnover": 2.0,
+    "cost": 0.00375,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2016-12-04",
+    "signal_date": "2016-12-02",
+    "fill_date": "2016-12-05",
+    "scores": {
+      "em_asia": 0.05083472581607965,
+      "topix_hedged": 0.1343779688474355,
+      "us_pea_us_tech": 0.06460612481385135
+    },
+    "weights": {
+      "topix_hedged": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2017-02-05",
+    "signal_date": "2017-02-03",
+    "fill_date": "2017-02-06",
+    "scores": {
+      "em_asia": 0.10037652016029337,
+      "topix_hedged": 0.09129874423058586,
+      "us_pea_us_tech": 0.13265053480596176
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 2.0,
+    "cost": 0.0025,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2017-03-05",
+    "signal_date": "2017-03-03",
+    "fill_date": "2017-03-06",
+    "scores": {
+      "em_asia": 0.11413376987701536,
+      "topix_hedged": 0.13951995493432992,
+      "us_pea_us_tech": 0.18390476684829707
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2017-04-02",
+    "signal_date": "2017-03-31",
+    "fill_date": "2017-04-03",
+    "scores": {
+      "em_asia": 0.11478780570587332,
+      "topix_hedged": 0.06959285920066387,
+      "us_pea_us_tech": 0.12674198025799743
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2017-05-07",
+    "signal_date": "2017-05-05",
+    "fill_date": "2017-05-08",
+    "scores": {
+      "em_asia": 0.08114523810512948,
+      "topix_hedged": 0.059218394775017336,
+      "us_pea_us_tech": 0.10638428450897774
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2017-06-04",
+    "signal_date": "2017-06-02",
+    "fill_date": "2017-06-05",
+    "scores": {
+      "em_asia": 0.09016897113797524,
+      "topix_hedged": 0.09882215897523065,
+      "us_pea_us_tech": 0.11384033794014181
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2017-07-02",
+    "signal_date": "2017-06-30",
+    "fill_date": "2017-07-03",
+    "scores": {
+      "em_asia": 0.05689539934657528,
+      "topix_hedged": 0.07423078377981167,
+      "us_pea_us_tech": 0.022837513810111527
+    },
+    "weights": {
+      "topix_hedged": 1.0
+    },
+    "turnover": 2.0,
+    "cost": 0.0025,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2017-08-06",
+    "signal_date": "2017-08-04",
+    "fill_date": "2017-08-07",
+    "scores": {
+      "em_asia": 0.06302700607297695,
+      "topix_hedged": 0.06667287218774882,
+      "us_pea_us_tech": 0.020150671472440245
+    },
+    "weights": {
+      "topix_hedged": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2017-09-03",
+    "signal_date": "2017-09-01",
+    "fill_date": "2017-09-04",
+    "scores": {
+      "em_asia": 0.07154522554505112,
+      "topix_hedged": 0.021910389333565372,
+      "us_pea_us_tech": 0.019143543725418672
+    },
+    "weights": {
+      "em_asia": 1.0
+    },
+    "turnover": 2.0,
+    "cost": 0.00375,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2017-10-01",
+    "signal_date": "2017-09-29",
+    "fill_date": "2017-10-02",
+    "scores": {
+      "em_asia": 0.05797821452937324,
+      "topix_hedged": 0.05865578857371186,
+      "us_pea_us_tech": 0.022094919292422466
+    },
+    "weights": {
+      "topix_hedged": 1.0
+    },
+    "turnover": 2.0,
+    "cost": 0.00375,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2017-11-05",
+    "signal_date": "2017-11-03",
+    "fill_date": "2017-11-06",
+    "scores": {
+      "em_asia": 0.12289544164976333,
+      "topix_hedged": 0.1362744001105208,
+      "us_pea_us_tech": 0.08130238788605822
+    },
+    "weights": {
+      "topix_hedged": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2017-12-03",
+    "signal_date": "2017-12-01",
+    "fill_date": "2017-12-04",
+    "scores": {
+      "em_asia": 0.05466009317470869,
+      "topix_hedged": 0.1002018882834564,
+      "us_pea_us_tech": 0.058216243523246204
+    },
+    "weights": {
+      "topix_hedged": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2018-01-07",
+    "signal_date": "2018-01-05",
+    "fill_date": "2018-01-08",
+    "scores": {
+      "em_asia": 0.09988239121998466,
+      "topix_hedged": 0.13524477546833724,
+      "us_pea_us_tech": 0.06954414360368706
+    },
+    "weights": {
+      "topix_hedged": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2018-02-04",
+    "signal_date": "2018-02-02",
+    "fill_date": "2018-02-05",
+    "scores": {
+      "em_asia": 0.038384531797435985,
+      "topix_hedged": 0.10507649353408133,
+      "us_pea_us_tech": 0.04012161895257682
+    },
+    "weights": {
+      "topix_hedged": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2018-03-04",
+    "signal_date": "2018-03-02",
+    "fill_date": "2018-03-05",
+    "scores": {
+      "em_asia": 0.018224757860546448,
+      "topix_hedged": -0.04164795392282372,
+      "us_pea_us_tech": 0.06521266019529286
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 2.0,
+    "cost": 0.0025,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2018-04-01",
+    "signal_date": "2018-03-30",
+    "fill_date": "2018-04-02",
+    "scores": {
+      "em_asia": -0.0023255821280171083,
+      "topix_hedged": -0.014194676450084912,
+      "us_pea_us_tech": 0.0038668008393855833
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2018-05-06",
+    "signal_date": "2018-05-04",
+    "fill_date": "2018-05-07",
+    "scores": {
+      "em_asia": 0.01063808261580601,
+      "topix_hedged": 0.034043188690909575,
+      "us_pea_us_tech": 0.061280358407608336
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2018-06-03",
+    "signal_date": "2018-06-01",
+    "fill_date": "2018-06-04",
+    "scores": {
+      "em_asia": 0.04550229152755222,
+      "topix_hedged": 0.00634604477141254,
+      "us_pea_us_tech": 0.15165438550938423
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2018-07-01",
+    "signal_date": "2018-06-29",
+    "fill_date": "2018-07-02",
+    "scores": {
+      "em_asia": -0.025698184790357275,
+      "topix_hedged": -0.027752430162170105,
+      "us_pea_us_tech": 0.1083149124068316
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2018-08-05",
+    "signal_date": "2018-08-03",
+    "fill_date": "2018-08-06",
+    "scores": {
+      "em_asia": -0.02927817256887366,
+      "topix_hedged": -0.011373332917501052,
+      "us_pea_us_tech": 0.14364753769341662
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2018-09-02",
+    "signal_date": "2018-08-31",
+    "fill_date": "2018-09-03",
+    "scores": {
+      "em_asia": -0.013620560144368929,
+      "topix_hedged": -0.01641485112930367,
+      "us_pea_us_tech": 0.16937246776746898
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2018-10-07",
+    "signal_date": "2018-10-05",
+    "fill_date": "2018-10-08",
+    "scores": {
+      "em_asia": -0.09656485127198093,
+      "topix_hedged": 0.02363121115464062,
+      "us_pea_us_tech": 0.087840998015757
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2018-11-04",
+    "signal_date": "2018-11-02",
+    "fill_date": "2018-11-05",
+    "scores": {
+      "em_asia": -0.05687592515457803,
+      "topix_hedged": -0.024344971877308774,
+      "us_pea_us_tech": 0.0090458249332274
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2018-12-02",
+    "signal_date": "2018-11-30",
+    "fill_date": "2018-12-03",
+    "scores": {
+      "em_asia": -0.043889633763981806,
+      "topix_hedged": -0.05532920421826237,
+      "us_pea_us_tech": 0.014519624868755946
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2019-01-06",
+    "signal_date": "2019-01-04",
+    "fill_date": "2019-01-07",
+    "scores": {
+      "em_asia": -0.0638479994598287,
+      "topix_hedged": -0.11509979571678619,
+      "us_pea_us_tech": -0.07749064491656417
+    },
+    "weights": {
+      "em_asia": 1.0
+    },
+    "turnover": 2.0,
+    "cost": 0.0022500000000000003,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2019-02-03",
+    "signal_date": "2019-02-01",
+    "fill_date": "2019-02-04",
+    "scores": {
+      "em_asia": -0.015801261624604008,
+      "topix_hedged": -0.09717721647294013,
+      "us_pea_us_tech": -0.034387037587495804
+    },
+    "weights": {
+      "em_asia": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2019-03-03",
+    "signal_date": "2019-03-01",
+    "fill_date": "2019-03-04",
+    "scores": {
+      "em_asia": 0.07580277932571589,
+      "topix_hedged": 0.012035217270248366,
+      "us_pea_us_tech": 0.07814612152941303
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 2.0,
+    "cost": 0.0022500000000000003,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2019-04-07",
+    "signal_date": "2019-04-05",
+    "fill_date": "2019-04-08",
+    "scores": {
+      "em_asia": 0.07391838417306817,
+      "topix_hedged": -0.0010115609652915358,
+      "us_pea_us_tech": 0.08357418274223272
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2019-05-05",
+    "signal_date": "2019-05-03",
+    "fill_date": "2019-05-06",
+    "scores": {
+      "em_asia": 0.0887738355227153,
+      "topix_hedged": 0.017545854906101794,
+      "us_pea_us_tech": 0.15472397435432197
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2019-06-02",
+    "signal_date": "2019-05-31",
+    "fill_date": "2019-06-03",
+    "scores": {
+      "em_asia": -0.033236855930118346,
+      "topix_hedged": -0.0926153976253938,
+      "us_pea_us_tech": 0.01775101892266273
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2019-07-07",
+    "signal_date": "2019-07-05",
+    "fill_date": "2019-07-08",
+    "scores": {
+      "em_asia": 0.03714326168377968,
+      "topix_hedged": -0.010250640561241217,
+      "us_pea_us_tech": 0.09279832936041695
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2019-08-04",
+    "signal_date": "2019-08-02",
+    "fill_date": "2019-08-05",
+    "scores": {
+      "em_asia": -0.018452681311317016,
+      "topix_hedged": -0.06252211514604289,
+      "us_pea_us_tech": 0.0826099935680739
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2019-09-01",
+    "signal_date": "2019-08-30",
+    "fill_date": "2019-09-02",
+    "scores": {
+      "em_asia": -0.00659384719055663,
+      "topix_hedged": -0.027908681914601868,
+      "us_pea_us_tech": 0.0894781322626419
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2019-10-06",
+    "signal_date": "2019-10-04",
+    "fill_date": "2019-10-07",
+    "scores": {
+      "em_asia": 0.03694255156932513,
+      "topix_hedged": 0.036797153816539696,
+      "us_pea_us_tech": 0.09245087901792859
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2019-11-03",
+    "signal_date": "2019-11-01",
+    "fill_date": "2019-11-04",
+    "scores": {
+      "em_asia": 0.0454451841628718,
+      "topix_hedged": 0.07795286596716149,
+      "us_pea_us_tech": 0.08829865645951784
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2019-12-01",
+    "signal_date": "2019-11-29",
+    "fill_date": "2019-12-02",
+    "scores": {
+      "em_asia": 0.059599143297332215,
+      "topix_hedged": 0.09599626629287483,
+      "us_pea_us_tech": 0.1312845712003939
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2020-01-05",
+    "signal_date": "2020-01-03",
+    "fill_date": "2020-01-06",
+    "scores": {
+      "em_asia": 0.09642132229174279,
+      "topix_hedged": 0.07230203127767809,
+      "us_pea_us_tech": 0.1182067690838154
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2020-02-02",
+    "signal_date": "2020-01-31",
+    "fill_date": "2020-02-03",
+    "scores": {
+      "em_asia": 0.05029872083451462,
+      "topix_hedged": 0.039239633471875646,
+      "us_pea_us_tech": 0.17761845145827873
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2020-03-01",
+    "signal_date": "2020-02-28",
+    "fill_date": "2020-03-02",
+    "scores": {
+      "em_asia": -0.014248058293447996,
+      "topix_hedged": -0.10195767899143826,
+      "us_pea_us_tech": 0.04809332886765971
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2020-04-05",
+    "signal_date": "2020-04-03",
+    "fill_date": "2020-04-06",
+    "scores": {
+      "em_asia": -0.10524927806110611,
+      "topix_hedged": -0.1879005874389212,
+      "us_pea_us_tech": -0.06673808460506399
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2020-05-03",
+    "signal_date": "2020-05-01",
+    "fill_date": "2020-05-04",
+    "scores": {
+      "em_asia": -0.024782103054859245,
+      "topix_hedged": -0.05979230041294725,
+      "us_pea_us_tech": 0.10192703747218183
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2020-06-07",
+    "signal_date": "2020-06-05",
+    "fill_date": "2020-06-08",
+    "scores": {
+      "em_asia": 0.05831854736771547,
+      "topix_hedged": 0.08066156565823313,
+      "us_pea_us_tech": 0.16938896894621128
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2020-07-05",
+    "signal_date": "2020-07-03",
+    "fill_date": "2020-07-06",
+    "scores": {
+      "em_asia": 0.06326677042500191,
+      "topix_hedged": 0.009676788864048658,
+      "us_pea_us_tech": 0.1715603029791045
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2020-08-02",
+    "signal_date": "2020-07-31",
+    "fill_date": "2020-08-03",
+    "scores": {
+      "em_asia": 0.10998841274521953,
+      "topix_hedged": -0.014307676143712422,
+      "us_pea_us_tech": 0.20746955808141995
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2020-09-06",
+    "signal_date": "2020-09-04",
+    "fill_date": "2020-09-07",
+    "scores": {
+      "em_asia": 0.028849221100401667,
+      "topix_hedged": 0.010782274615541265,
+      "us_pea_us_tech": 0.11812616242642182
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2020-10-04",
+    "signal_date": "2020-10-02",
+    "fill_date": "2020-10-05",
+    "scores": {
+      "em_asia": 0.046217062827390944,
+      "topix_hedged": -0.0014978875963826594,
+      "us_pea_us_tech": 0.09693171081341918
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2020-11-01",
+    "signal_date": "2020-10-30",
+    "fill_date": "2020-11-02",
+    "scores": {
+      "em_asia": 0.06036211916793288,
+      "topix_hedged": 0.02802069599157475,
+      "us_pea_us_tech": 0.04833983931113661
+    },
+    "weights": {
+      "em_asia": 1.0
+    },
+    "turnover": 2.0,
+    "cost": 0.0022500000000000003,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2020-12-06",
+    "signal_date": "2020-12-04",
+    "fill_date": "2020-12-07",
+    "scores": {
+      "em_asia": 0.1727114714136797,
+      "topix_hedged": 0.16107075974209187,
+      "us_pea_us_tech": 0.1791313369180795
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 2.0,
+    "cost": 0.0022500000000000003,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2021-01-03",
+    "signal_date": "2021-01-01",
+    "fill_date": "2021-01-04",
+    "scores": {
+      "em_asia": 0.16671306903181482,
+      "topix_hedged": 0.1640074496674008,
+      "us_pea_us_tech": 0.13004665117398387
+    },
+    "weights": {
+      "em_asia": 1.0
+    },
+    "turnover": 2.0,
+    "cost": 0.0022500000000000003,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2021-02-07",
+    "signal_date": "2021-02-05",
+    "fill_date": "2021-02-08",
+    "scores": {
+      "em_asia": 0.2615491278435594,
+      "topix_hedged": 0.1448741443338392,
+      "us_pea_us_tech": 0.18636830969056994
+    },
+    "weights": {
+      "em_asia": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2021-03-07",
+    "signal_date": "2021-03-05",
+    "fill_date": "2021-03-08",
+    "scores": {
+      "em_asia": 0.11480030023551935,
+      "topix_hedged": 0.1302904308046661,
+      "us_pea_us_tech": 0.028473847798531238
+    },
+    "weights": {
+      "topix_hedged": 1.0
+    },
+    "turnover": 2.0,
+    "cost": 0.00375,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2021-05-02",
+    "signal_date": "2021-04-30",
+    "fill_date": "2021-05-03",
+    "scores": {
+      "em_asia": 0.066759589136633,
+      "topix_hedged": 0.07831486226703281,
+      "us_pea_us_tech": 0.09184430619056923
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 2.0,
+    "cost": 0.0025,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2021-06-06",
+    "signal_date": "2021-06-04",
+    "fill_date": "2021-06-07",
+    "scores": {
+      "em_asia": 0.04284215128736435,
+      "topix_hedged": 0.07852258328949806,
+      "us_pea_us_tech": 0.05379132600382689
+    },
+    "weights": {
+      "topix_hedged": 1.0
+    },
+    "turnover": 2.0,
+    "cost": 0.0025,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2021-07-04",
+    "signal_date": "2021-07-02",
+    "fill_date": "2021-07-05",
+    "scores": {
+      "em_asia": 0.04722117338674403,
+      "topix_hedged": 0.07667944500170898,
+      "us_pea_us_tech": 0.16516178346671007
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 2.0,
+    "cost": 0.0025,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2021-08-01",
+    "signal_date": "2021-07-30",
+    "fill_date": "2021-08-02",
+    "scores": {
+      "em_asia": -0.03126307403672268,
+      "topix_hedged": 0.008925810260894229,
+      "us_pea_us_tech": 0.15613999867294512
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2021-09-05",
+    "signal_date": "2021-09-03",
+    "fill_date": "2021-09-06",
+    "scores": {
+      "em_asia": -0.012983679980574814,
+      "topix_hedged": 0.05728062079074858,
+      "us_pea_us_tech": 0.1617299430299679
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2021-10-03",
+    "signal_date": "2021-10-01",
+    "fill_date": "2021-10-04",
+    "scores": {
+      "em_asia": -0.06956434652642929,
+      "topix_hedged": 0.03896623080411684,
+      "us_pea_us_tech": 0.08328761646893153
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2021-11-07",
+    "signal_date": "2021-11-05",
+    "fill_date": "2021-11-08",
+    "scores": {
+      "em_asia": -0.03031619658172724,
+      "topix_hedged": 0.033592398367810916,
+      "us_pea_us_tech": 0.1807212689039821
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2021-12-05",
+    "signal_date": "2021-12-03",
+    "fill_date": "2021-12-06",
+    "scores": {
+      "em_asia": -0.01037905863143577,
+      "topix_hedged": -0.001720067194993069,
+      "us_pea_us_tech": 0.1271197335844383
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2022-01-02",
+    "signal_date": "2021-12-31",
+    "fill_date": "2022-01-03",
+    "scores": {
+      "em_asia": -0.0019129170916435771,
+      "topix_hedged": -0.005376573224465202,
+      "us_pea_us_tech": 0.1580572915920974
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2022-02-06",
+    "signal_date": "2022-02-04",
+    "fill_date": "2022-02-07",
+    "scores": {
+      "em_asia": -0.04629506454553393,
+      "topix_hedged": -0.042841523538980665,
+      "us_pea_us_tech": -0.005900974062885589
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2022-03-06",
+    "signal_date": "2022-03-04",
+    "fill_date": "2022-03-07",
+    "scores": {
+      "em_asia": -0.07391542173290462,
+      "topix_hedged": -0.09728122249216627,
+      "us_pea_us_tech": -0.0740317173783392
+    },
+    "weights": {
+      "em_asia": 1.0
+    },
+    "turnover": 2.0,
+    "cost": 0.0022500000000000003,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2022-04-03",
+    "signal_date": "2022-04-01",
+    "fill_date": "2022-04-04",
+    "scores": {
+      "em_asia": -0.05803738133477846,
+      "topix_hedged": 0.010091501842808714,
+      "us_pea_us_tech": 0.0068349784937091025
+    },
+    "weights": {
+      "topix_hedged": 1.0
+    },
+    "turnover": 2.0,
+    "cost": 0.00375,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2022-05-01",
+    "signal_date": "2022-04-29",
+    "fill_date": "2022-05-02",
+    "scores": {
+      "em_asia": -0.06332657908375905,
+      "topix_hedged": -0.02202927750070523,
+      "us_pea_us_tech": -0.06625297971892352
+    },
+    "weights": {
+      "topix_hedged": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2022-06-05",
+    "signal_date": "2022-06-03",
+    "fill_date": "2022-06-06",
+    "scores": {
+      "em_asia": -0.07399514816720791,
+      "topix_hedged": -0.01599578971867403,
+      "us_pea_us_tech": -0.10681368121082131
+    },
+    "weights": {
+      "topix_hedged": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2022-07-03",
+    "signal_date": "2022-07-01",
+    "fill_date": "2022-07-04",
+    "scores": {
+      "em_asia": -0.0564331404577522,
+      "topix_hedged": -0.037906116225362996,
+      "us_pea_us_tech": -0.1515481333775562
+    },
+    "weights": {
+      "topix_hedged": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2022-08-07",
+    "signal_date": "2022-08-05",
+    "fill_date": "2022-08-08",
+    "scores": {
+      "em_asia": -0.04078977018579433,
+      "topix_hedged": -0.003220654709624552,
+      "us_pea_us_tech": -0.011277294084121148
+    },
+    "weights": {
+      "topix_hedged": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2022-09-04",
+    "signal_date": "2022-09-02",
+    "fill_date": "2022-09-05",
+    "scores": {
+      "em_asia": -0.011565179783267729,
+      "topix_hedged": 0.022927585451051374,
+      "us_pea_us_tech": 0.012090229963700017
+    },
+    "weights": {
+      "topix_hedged": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2022-10-02",
+    "signal_date": "2022-09-30",
+    "fill_date": "2022-10-03",
+    "scores": {
+      "em_asia": -0.11701456958061422,
+      "topix_hedged": -0.027003202689144506,
+      "us_pea_us_tech": -0.07695864862935613
+    },
+    "weights": {
+      "topix_hedged": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2022-11-06",
+    "signal_date": "2022-11-04",
+    "fill_date": "2022-11-07",
+    "scores": {
+      "em_asia": -0.09932795150709599,
+      "topix_hedged": 0.03750878574063132,
+      "us_pea_us_tech": -0.1018668044057921
+    },
+    "weights": {
+      "topix_hedged": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2022-12-04",
+    "signal_date": "2022-12-02",
+    "fill_date": "2022-12-05",
+    "scores": {
+      "em_asia": -0.030337944289637025,
+      "topix_hedged": 0.015406848009665778,
+      "us_pea_us_tech": -0.09354486507931366
+    },
+    "weights": {
+      "topix_hedged": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2023-01-01",
+    "signal_date": "2022-12-30",
+    "fill_date": "2023-01-02",
+    "scores": {
+      "em_asia": -0.013182350507360682,
+      "topix_hedged": -0.0034145886174750117,
+      "us_pea_us_tech": -0.14025846430745306
+    },
+    "weights": {
+      "topix_hedged": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2023-02-05",
+    "signal_date": "2023-02-03",
+    "fill_date": "2023-02-06",
+    "scores": {
+      "em_asia": 0.05837335077409792,
+      "topix_hedged": 0.04788561469875926,
+      "us_pea_us_tech": 0.06633012135036938
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 2.0,
+    "cost": 0.0025,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2023-03-05",
+    "signal_date": "2023-03-03",
+    "fill_date": "2023-03-06",
+    "scores": {
+      "em_asia": 0.01718275824942354,
+      "topix_hedged": 0.07532760392808584,
+      "us_pea_us_tech": 0.05120446293337163
+    },
+    "weights": {
+      "topix_hedged": 1.0
+    },
+    "turnover": 2.0,
+    "cost": 0.0025,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2023-04-02",
+    "signal_date": "2023-03-31",
+    "fill_date": "2023-04-03",
+    "scores": {
+      "em_asia": -0.0356988155808838,
+      "topix_hedged": 0.051366939436736946,
+      "us_pea_us_tech": 0.027722235044401782
+    },
+    "weights": {
+      "topix_hedged": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2023-05-07",
+    "signal_date": "2023-05-05",
+    "fill_date": "2023-05-08",
+    "scores": {
+      "em_asia": -0.05187622071758646,
+      "topix_hedged": 0.08993745441565133,
+      "us_pea_us_tech": 0.06379475347182499
+    },
+    "weights": {
+      "topix_hedged": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2023-06-04",
+    "signal_date": "2023-06-02",
+    "fill_date": "2023-06-05",
+    "scores": {
+      "em_asia": -0.00024717450866891993,
+      "topix_hedged": 0.14627528576480753,
+      "us_pea_us_tech": 0.17946489884961525
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 2.0,
+    "cost": 0.0025,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2023-07-02",
+    "signal_date": "2023-06-30",
+    "fill_date": "2023-07-03",
+    "scores": {
+      "em_asia": 0.03746143880627184,
+      "topix_hedged": 0.17611938497692625,
+      "us_pea_us_tech": 0.21517863584677918
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2023-08-06",
+    "signal_date": "2023-08-04",
+    "fill_date": "2023-08-07",
+    "scores": {
+      "em_asia": 0.016291398379461957,
+      "topix_hedged": 0.13772331263510185,
+      "us_pea_us_tech": 0.16739867974686296
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2023-09-03",
+    "signal_date": "2023-09-01",
+    "fill_date": "2023-09-04",
+    "scores": {
+      "em_asia": 0.004409677915111561,
+      "topix_hedged": 0.1563997468483674,
+      "us_pea_us_tech": 0.20790268533395326
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2023-10-01",
+    "signal_date": "2023-09-29",
+    "fill_date": "2023-10-02",
+    "scores": {
+      "em_asia": -0.035116841056672086,
+      "topix_hedged": 0.11338801787420816,
+      "us_pea_us_tech": 0.07235469900918039
+    },
+    "weights": {
+      "topix_hedged": 1.0
+    },
+    "turnover": 2.0,
+    "cost": 0.0025,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2023-11-05",
+    "signal_date": "2023-11-03",
+    "fill_date": "2023-11-06",
+    "scores": {
+      "em_asia": -0.010645395592757715,
+      "topix_hedged": 0.10088115907503951,
+      "us_pea_us_tech": 0.06945722033629025
+    },
+    "weights": {
+      "topix_hedged": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2023-12-03",
+    "signal_date": "2023-12-01",
+    "fill_date": "2023-12-04",
+    "scores": {
+      "em_asia": -0.02141220420601538,
+      "topix_hedged": 0.12836778505628912,
+      "us_pea_us_tech": 0.1030569725504152
+    },
+    "weights": {
+      "topix_hedged": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2024-01-07",
+    "signal_date": "2024-01-05",
+    "fill_date": "2024-01-08",
+    "scores": {
+      "em_asia": -0.015213784021675466,
+      "topix_hedged": 0.08023268110864157,
+      "us_pea_us_tech": 0.09089893567534513
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 2.0,
+    "cost": 0.0025,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2024-02-04",
+    "signal_date": "2024-02-02",
+    "fill_date": "2024-02-05",
+    "scores": {
+      "em_asia": -0.04034362619350614,
+      "topix_hedged": 0.14426138905658617,
+      "us_pea_us_tech": 0.15387753412505445
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2024-03-03",
+    "signal_date": "2024-03-01",
+    "fill_date": "2024-03-04",
+    "scores": {
+      "em_asia": 0.028245372690968534,
+      "topix_hedged": 0.1908066693481306,
+      "us_pea_us_tech": 0.17840935018450418
+    },
+    "weights": {
+      "topix_hedged": 1.0
+    },
+    "turnover": 2.0,
+    "cost": 0.0025,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2024-04-07",
+    "signal_date": "2024-04-05",
+    "fill_date": "2024-04-08",
+    "scores": {
+      "em_asia": 0.014420654728669454,
+      "topix_hedged": 0.16399087177011892,
+      "us_pea_us_tech": 0.13099585075943457
+    },
+    "weights": {
+      "topix_hedged": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2024-05-05",
+    "signal_date": "2024-05-03",
+    "fill_date": "2024-05-06",
+    "scores": {
+      "em_asia": 0.049992689584884197,
+      "topix_hedged": 0.11806378346319035,
+      "us_pea_us_tech": 0.12279186847854932
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 2.0,
+    "cost": 0.0025,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2024-06-02",
+    "signal_date": "2024-05-31",
+    "fill_date": "2024-06-03",
+    "scores": {
+      "em_asia": 0.03865680694328607,
+      "topix_hedged": 0.12497365940410073,
+      "us_pea_us_tech": 0.14612235701904255
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2024-07-07",
+    "signal_date": "2024-07-05",
+    "fill_date": "2024-07-08",
+    "scores": {
+      "em_asia": 0.052183859066178874,
+      "topix_hedged": 0.13049150960836822,
+      "us_pea_us_tech": 0.2654441800914973
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2024-08-04",
+    "signal_date": "2024-08-02",
+    "fill_date": "2024-08-05",
+    "scores": {
+      "em_asia": 0.01971831630421983,
+      "topix_hedged": -0.04827009465583221,
+      "us_pea_us_tech": 0.09161199360452688
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2024-09-01",
+    "signal_date": "2024-08-30",
+    "fill_date": "2024-09-02",
+    "scores": {
+      "em_asia": 0.021983080599123867,
+      "topix_hedged": 0.03439150336898448,
+      "us_pea_us_tech": 0.08335251772580983
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2024-10-06",
+    "signal_date": "2024-10-04",
+    "fill_date": "2024-10-07",
+    "scores": {
+      "em_asia": 0.1832182469950657,
+      "topix_hedged": 0.07407546469411119,
+      "us_pea_us_tech": 0.06609732635304477
+    },
+    "weights": {
+      "em_asia": 1.0
+    },
+    "turnover": 2.0,
+    "cost": 0.0022500000000000003,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2024-11-03",
+    "signal_date": "2024-11-01",
+    "fill_date": "2024-11-04",
+    "scores": {
+      "em_asia": 0.10774428010156689,
+      "topix_hedged": -0.001565147856375108,
+      "us_pea_us_tech": 0.06927293454486246
+    },
+    "weights": {
+      "em_asia": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2024-12-01",
+    "signal_date": "2024-11-29",
+    "fill_date": "2024-12-02",
+    "scores": {
+      "em_asia": 0.08519040553146096,
+      "topix_hedged": 0.061855715023477975,
+      "us_pea_us_tech": 0.16372979851804156
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 2.0,
+    "cost": 0.0022500000000000003,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2025-01-05",
+    "signal_date": "2025-01-03",
+    "fill_date": "2025-01-06",
+    "scores": {
+      "em_asia": 0.07802330418038328,
+      "topix_hedged": 0.046060344273861555,
+      "us_pea_us_tech": 0.16195495939349236
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2025-02-02",
+    "signal_date": "2025-01-31",
+    "fill_date": "2025-02-03",
+    "scores": {
+      "em_asia": 0.05286566396611784,
+      "topix_hedged": 0.04257486041768358,
+      "us_pea_us_tech": 0.09212922485006965
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2025-03-02",
+    "signal_date": "2025-02-28",
+    "fill_date": "2025-03-03",
+    "scores": {
+      "em_asia": 0.07097363867459161,
+      "topix_hedged": -0.017014992331342738,
+      "us_pea_us_tech": -0.017740488758014223
+    },
+    "weights": {
+      "em_asia": 1.0
+    },
+    "turnover": 2.0,
+    "cost": 0.0022500000000000003,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2025-04-06",
+    "signal_date": "2025-04-04",
+    "fill_date": "2025-04-07",
+    "scores": {
+      "em_asia": -0.035212846894390824,
+      "topix_hedged": -0.08589177549631181,
+      "us_pea_us_tech": -0.17501294678581927
+    },
+    "weights": {
+      "em_asia": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2025-05-04",
+    "signal_date": "2025-05-02",
+    "fill_date": "2025-05-05",
+    "scores": {
+      "em_asia": 0.011825410024936497,
+      "topix_hedged": 0.010226758692636525,
+      "us_pea_us_tech": -0.1265718926251673
+    },
+    "weights": {
+      "em_asia": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2025-06-01",
+    "signal_date": "2025-05-30",
+    "fill_date": "2025-06-02",
+    "scores": {
+      "em_asia": -0.004835769438854627,
+      "topix_hedged": 0.03996826323566031,
+      "us_pea_us_tech": -0.049884403975436954
+    },
+    "weights": {
+      "topix_hedged": 1.0
+    },
+    "turnover": 2.0,
+    "cost": 0.00375,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2025-07-06",
+    "signal_date": "2025-07-04",
+    "fill_date": "2025-07-07",
+    "scores": {
+      "em_asia": 0.03545898713519698,
+      "topix_hedged": 0.06326709499919951,
+      "us_pea_us_tech": 0.03524671546300558
+    },
+    "weights": {
+      "topix_hedged": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2025-08-03",
+    "signal_date": "2025-08-01",
+    "fill_date": "2025-08-04",
+    "scores": {
+      "em_asia": 0.051575212254683235,
+      "topix_hedged": 0.07637003772348742,
+      "us_pea_us_tech": 0.036167363879140546
+    },
+    "weights": {
+      "topix_hedged": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2025-09-07",
+    "signal_date": "2025-09-05",
+    "fill_date": "2025-09-08",
+    "scores": {
+      "em_asia": 0.07096287732765671,
+      "topix_hedged": 0.11759143181377829,
+      "us_pea_us_tech": 0.05522775578139486
+    },
+    "weights": {
+      "topix_hedged": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2025-10-05",
+    "signal_date": "2025-10-03",
+    "fill_date": "2025-10-06",
+    "scores": {
+      "em_asia": 0.1479079844566178,
+      "topix_hedged": 0.1286993248423506,
+      "us_pea_us_tech": 0.11436831021656291
+    },
+    "weights": {
+      "em_asia": 1.0
+    },
+    "turnover": 2.0,
+    "cost": 0.00375,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2025-11-02",
+    "signal_date": "2025-10-31",
+    "fill_date": "2025-11-03",
+    "scores": {
+      "em_asia": 0.18666065319321942,
+      "topix_hedged": 0.1740183370368067,
+      "us_pea_us_tech": 0.21254579891804415
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 2.0,
+    "cost": 0.0022500000000000003,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2025-12-07",
+    "signal_date": "2025-12-05",
+    "fill_date": "2025-12-08",
+    "scores": {
+      "em_asia": 0.15637591659284764,
+      "topix_hedged": 0.18682796097260854,
+      "us_pea_us_tech": 0.21638376270199688
+    },
+    "weights": {
+      "us_pea_us_tech": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2026-01-04",
+    "signal_date": "2026-01-02",
+    "fill_date": "2026-01-05",
+    "scores": {
+      "em_asia": 0.14511411762740822,
+      "topix_hedged": 0.14998290639532538,
+      "us_pea_us_tech": 0.1422055054939931
+    },
+    "weights": {
+      "topix_hedged": 1.0
+    },
+    "turnover": 2.0,
+    "cost": 0.0025,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2026-02-01",
+    "signal_date": "2026-01-30",
+    "fill_date": "2026-02-02",
+    "scores": {
+      "em_asia": 0.15863724282002356,
+      "topix_hedged": 0.17468635720476025,
+      "us_pea_us_tech": 0.0932468881687994
+    },
+    "weights": {
+      "topix_hedged": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2026-03-01",
+    "signal_date": "2026-02-27",
+    "fill_date": "2026-03-02",
+    "scores": {
+      "em_asia": 0.19312264014671499,
+      "topix_hedged": 0.24445965808625703,
+      "us_pea_us_tech": 0.019893344206507235
+    },
+    "weights": {
+      "topix_hedged": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  }
+]

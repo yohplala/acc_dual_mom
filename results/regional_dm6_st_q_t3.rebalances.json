@@ -1,0 +1,1280 @@
+[
+  {
+    "rebalance_date": "2008-08-17",
+    "signal_date": "2008-08-15",
+    "fill_date": "2008-08-18",
+    "scores": {
+      "us_pea_nasdaq": 0.09655812697088928,
+      "sec_healthcare_acc": 0.016616518919528644,
+      "topix_hedged": -0.014384322086203105
+    },
+    "weights": {
+      "us_pea_nasdaq": 0.6,
+      "sec_healthcare_acc": 0.1,
+      "topix_hedged": 0.3
+    },
+    "turnover": 2.0,
+    "cost": 0.00145,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2008-10-05",
+    "signal_date": "2008-10-03",
+    "fill_date": "2008-10-06",
+    "scores": {
+      "russell2000": 0.007070041525079063,
+      "sec_healthcare_acc": 0.06096497382164867,
+      "topix": -0.12498639886950114
+    },
+    "weights": {
+      "russell2000": 0.6,
+      "sec_healthcare_acc": 0.1,
+      "topix": 0.3
+    },
+    "turnover": 1.8,
+    "cost": 0.0026999999999999997,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2009-01-04",
+    "signal_date": "2009-01-02",
+    "fill_date": "2009-01-05",
+    "scores": {
+      "sp500_screened": -0.11091623070612255,
+      "sec_healthcare_acc": -0.08197642726076859,
+      "topix": -0.0948997557464829
+    },
+    "weights": {
+      "sp500_screened": 0.6,
+      "sec_healthcare_acc": 0.1,
+      "topix": 0.3
+    },
+    "turnover": 1.2,
+    "cost": 0.0014999999999999998,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2009-04-05",
+    "signal_date": "2009-04-03",
+    "fill_date": "2009-04-06",
+    "scores": {
+      "us_pea_nasdaq": -0.08555222390794526,
+      "sec_healthcare_acc": -0.1940130644539464,
+      "cn_pea_china": -0.013399339343929673
+    },
+    "weights": {
+      "us_pea_nasdaq": 0.6,
+      "sec_healthcare_acc": 0.1,
+      "cn_pea_china": 0.3
+    },
+    "turnover": 1.8,
+    "cost": 0.0013499999999999999,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2009-07-05",
+    "signal_date": "2009-07-03",
+    "fill_date": "2009-07-06",
+    "scores": {
+      "us_pea_nasdaq": 0.18921562426166716,
+      "gr_msci_greece": 0.1887161809213853,
+      "in_pea_india": 0.5294254151442155
+    },
+    "weights": {
+      "us_pea_nasdaq": 0.6,
+      "gr_msci_greece": 0.1,
+      "in_pea_india": 0.3
+    },
+    "turnover": 0.7999999999999999,
+    "cost": 0.00039999999999999996,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2009-10-04",
+    "signal_date": "2009-10-02",
+    "fill_date": "2009-10-05",
+    "scores": {
+      "sp500_scr_hed": 0.27940498775922107,
+      "eu_banks": 0.6177969835386248,
+      "in_pea_india": 0.5671608431835902
+    },
+    "weights": {
+      "sp500_scr_hed": 0.6,
+      "eu_banks": 0.1,
+      "in_pea_india": 0.3
+    },
+    "turnover": 1.4,
+    "cost": 0.0008,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2010-01-03",
+    "signal_date": "2010-01-01",
+    "fill_date": "2010-01-04",
+    "scores": {
+      "us_industrials": 0.2838008597949082,
+      "emu_high_div": 0.30783248221294124,
+      "in_pea_india": 0.278864009398494
+    },
+    "weights": {
+      "us_industrials": 0.6,
+      "emu_high_div": 0.1,
+      "in_pea_india": 0.3
+    },
+    "turnover": 1.4,
+    "cost": 0.0007999999999999999,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2010-04-04",
+    "signal_date": "2010-04-02",
+    "fill_date": "2010-04-05",
+    "scores": {
+      "us_industrials": 0.3106653636426733,
+      "emu_esg_select_acc": 0.1504492072067083,
+      "in_pea_india": 0.24886369618727766
+    },
+    "weights": {
+      "us_industrials": 0.6,
+      "emu_esg_select_acc": 0.1,
+      "in_pea_india": 0.3
+    },
+    "turnover": 0.2,
+    "cost": 0.0001,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2010-07-04",
+    "signal_date": "2010-07-02",
+    "fill_date": "2010-07-05",
+    "scores": {
+      "us_industrials": 0.12517914604109603,
+      "sec_healthcare_acc": 0.018574247644955744,
+      "in_pea_india": 0.13283789065491036
+    },
+    "weights": {
+      "us_industrials": 0.6,
+      "sec_healthcare_acc": 0.1,
+      "in_pea_india": 0.3
+    },
+    "turnover": 0.2,
+    "cost": 0.0001,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2010-10-03",
+    "signal_date": "2010-10-01",
+    "fill_date": "2010-10-04",
+    "scores": {
+      "us_pea_us_tech": -0.004572826967079058,
+      "emu_small": 0.016710450540432076,
+      "in_pea_india": 0.09935977051592815
+    },
+    "weights": {
+      "us_pea_us_tech": 0.6,
+      "emu_small": 0.1,
+      "in_pea_india": 0.3
+    },
+    "turnover": 1.4,
+    "cost": 0.0008500000000000001,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2011-01-02",
+    "signal_date": "2010-12-31",
+    "fill_date": "2011-01-03",
+    "scores": {
+      "sp500_hedged": 0.2396562050841078,
+      "de_dax_dr": 0.16097651024861825,
+      "em_pea_emerging": 0.1950333823272865
+    },
+    "weights": {
+      "sp500_hedged": 0.6,
+      "de_dax_dr": 0.1,
+      "em_pea_emerging": 0.3
+    },
+    "turnover": 2.0,
+    "cost": 0.0011499999999999998,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2011-04-03",
+    "signal_date": "2011-04-01",
+    "fill_date": "2011-04-04",
+    "scores": {
+      "russell2000": 0.21725092553542247,
+      "emu_small": 0.1965283197522143,
+      "topix_hedged": 0.08474572930142399
+    },
+    "weights": {
+      "russell2000": 0.6,
+      "emu_small": 0.1,
+      "topix_hedged": 0.3
+    },
+    "turnover": 2.0,
+    "cost": 0.0024999999999999996,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2011-07-03",
+    "signal_date": "2011-07-01",
+    "fill_date": "2011-07-04",
+    "scores": {
+      "sp500_hedged": 0.06675158265185588,
+      "es_ibex_acc": 0.09702983490119799,
+      "topix_hedged": -0.029797603718157428
+    },
+    "weights": {
+      "sp500_hedged": 0.6,
+      "es_ibex_acc": 0.1,
+      "topix_hedged": 0.3
+    },
+    "turnover": 1.4,
+    "cost": 0.0017499999999999998,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2011-10-02",
+    "signal_date": "2011-09-30",
+    "fill_date": "2011-10-03",
+    "scores": {
+      "us_pea_nasdaq": -0.03940925766525427,
+      "sec_healthcare_acc": 0.02817936778632113,
+      "topix": -0.029770994332603995
+    },
+    "weights": {
+      "us_pea_nasdaq": 0.6,
+      "sec_healthcare_acc": 0.1,
+      "topix": 0.3
+    },
+    "turnover": 2.0,
+    "cost": 0.0018999999999999998,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2012-01-01",
+    "signal_date": "2011-12-30",
+    "fill_date": "2012-01-02",
+    "scores": {
+      "us_pea_us_tech": 0.08563877980521495,
+      "sec_healthcare_acc": 0.06821000996959903,
+      "topix": -0.018699202426438077
+    },
+    "weights": {
+      "us_pea_us_tech": 0.6,
+      "sec_healthcare_acc": 0.1,
+      "topix": 0.3
+    },
+    "turnover": 1.2,
+    "cost": 0.0006,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2012-04-01",
+    "signal_date": "2012-03-30",
+    "fill_date": "2012-04-02",
+    "scores": {
+      "us_pea_us_tech": 0.28509292129031416,
+      "de_dax_dr": 0.27590280107563725,
+      "em_pea_emerging": 0.19627956469216956
+    },
+    "weights": {
+      "us_pea_us_tech": 0.6,
+      "de_dax_dr": 0.1,
+      "em_pea_emerging": 0.3
+    },
+    "turnover": 0.7999999999999999,
+    "cost": 0.00085,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2012-07-01",
+    "signal_date": "2012-06-29",
+    "fill_date": "2012-07-02",
+    "scores": {
+      "us_pea_nasdaq": 0.1778255556864028,
+      "emu_esg_select_acc": 0.10348402540885915,
+      "in_pea_india": 0.10842397547077853
+    },
+    "weights": {
+      "us_pea_nasdaq": 0.6,
+      "emu_esg_select_acc": 0.1,
+      "in_pea_india": 0.3
+    },
+    "turnover": 2.0,
+    "cost": 0.0009999999999999998,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2012-10-07",
+    "signal_date": "2012-10-05",
+    "fill_date": "2012-10-08",
+    "scores": {
+      "us_value": 0.0887041235256949,
+      "eu_banks": 0.12248046123802148,
+      "in_pea_india": 0.09064215640848028
+    },
+    "weights": {
+      "us_value": 0.6,
+      "eu_banks": 0.1,
+      "in_pea_india": 0.3
+    },
+    "turnover": 1.4,
+    "cost": 0.0007999999999999999,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2013-01-06",
+    "signal_date": "2013-01-04",
+    "fill_date": "2013-01-07",
+    "scores": {
+      "sp500_hedged": 0.087197556901766,
+      "gr_msci_greece": 0.41304362683814344,
+      "cn_pea_china": 0.1786651998128146
+    },
+    "weights": {
+      "sp500_hedged": 0.6,
+      "gr_msci_greece": 0.1,
+      "cn_pea_china": 0.3
+    },
+    "turnover": 2.0,
+    "cost": 0.0010999999999999998,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2013-04-07",
+    "signal_date": "2013-04-05",
+    "fill_date": "2013-04-08",
+    "scores": {
+      "us_industrials": 0.12357220596621388,
+      "sec_healthcare_acc": 0.11263886941367374,
+      "topix_hedged": 0.47283112465551236
+    },
+    "weights": {
+      "us_industrials": 0.6,
+      "sec_healthcare_acc": 0.1,
+      "topix_hedged": 0.3
+    },
+    "turnover": 2.0,
+    "cost": 0.00145,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2013-07-07",
+    "signal_date": "2013-07-05",
+    "fill_date": "2013-07-08",
+    "scores": {
+      "sp500_screened": 0.18404543440678056,
+      "sec_healthcare_acc": 0.13367650001605802,
+      "topix_hedged": 0.3268357382265801
+    },
+    "weights": {
+      "sp500_screened": 0.6,
+      "sec_healthcare_acc": 0.1,
+      "topix_hedged": 0.3
+    },
+    "turnover": 1.2,
+    "cost": 0.0006,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2013-10-06",
+    "signal_date": "2013-10-04",
+    "fill_date": "2013-10-07",
+    "scores": {
+      "us_pea_us_tech": 0.12196263612488423,
+      "eu_banks": 0.32509248435040683,
+      "cn_pea_china": 0.049635055722117905
+    },
+    "weights": {
+      "us_pea_us_tech": 0.6,
+      "eu_banks": 0.1,
+      "cn_pea_china": 0.3
+    },
+    "turnover": 2.0,
+    "cost": 0.00155,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2014-01-05",
+    "signal_date": "2014-01-03",
+    "fill_date": "2014-01-06",
+    "scores": {
+      "us_industrials": 0.13853557986456844,
+      "eu_banks": 0.40659569047010913,
+      "cn_pea_china": 0.08507824554803545
+    },
+    "weights": {
+      "us_industrials": 0.6,
+      "eu_banks": 0.1,
+      "cn_pea_china": 0.3
+    },
+    "turnover": 1.2,
+    "cost": 0.0006,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2014-04-06",
+    "signal_date": "2014-04-04",
+    "fill_date": "2014-04-07",
+    "scores": {
+      "us_industrials": 0.1448181016196295,
+      "eu_banks": 0.258302111121818,
+      "in_pea_india": 0.13718937644360318
+    },
+    "weights": {
+      "us_industrials": 0.6,
+      "eu_banks": 0.1,
+      "in_pea_india": 0.3
+    },
+    "turnover": 0.6,
+    "cost": 0.0003,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2014-07-06",
+    "signal_date": "2014-07-04",
+    "fill_date": "2014-07-07",
+    "scores": {
+      "us_pea_nasdaq": 0.11583745006451718,
+      "es_ibex_acc": 0.17194977709775205,
+      "in_pea_india": 0.29363126086690605
+    },
+    "weights": {
+      "us_pea_nasdaq": 0.6,
+      "es_ibex_acc": 0.1,
+      "in_pea_india": 0.3
+    },
+    "turnover": 1.4,
+    "cost": 0.0008,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2014-10-05",
+    "signal_date": "2014-10-03",
+    "fill_date": "2014-10-06",
+    "scores": {
+      "us_pea_nasdaq": 0.257162068070937,
+      "sec_healthcare_acc": 0.14134470992698156,
+      "in_pea_india": 0.2318965622399427
+    },
+    "weights": {
+      "us_pea_nasdaq": 0.6,
+      "sec_healthcare_acc": 0.1,
+      "in_pea_india": 0.3
+    },
+    "turnover": 0.2,
+    "cost": 0.0001,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2015-01-04",
+    "signal_date": "2015-01-02",
+    "fill_date": "2015-01-05",
+    "scores": {
+      "us_pea_us_tech": 0.2262809625533997,
+      "emu_esg_broad_acc": 0.10798437842559605,
+      "cn_pea_china": 0.30580759941664915
+    },
+    "weights": {
+      "us_pea_us_tech": 0.6,
+      "emu_esg_broad_acc": 0.1,
+      "cn_pea_china": 0.3
+    },
+    "turnover": 1.9999999999999998,
+    "cost": 0.001,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2015-04-05",
+    "signal_date": "2015-04-03",
+    "fill_date": "2015-04-06",
+    "scores": {
+      "russell2000": 0.33935563367702826,
+      "emu_esg_select_acc": 0.3896832594865898,
+      "cn_pea_china": 0.42141027116111673
+    },
+    "weights": {
+      "russell2000": 0.6,
+      "emu_esg_select_acc": 0.1,
+      "cn_pea_china": 0.3
+    },
+    "turnover": 1.4,
+    "cost": 0.0015999999999999999,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2015-07-05",
+    "signal_date": "2015-07-03",
+    "fill_date": "2015-07-06",
+    "scores": {
+      "russell2000": 0.15322329747794994,
+      "it_mib_esg": 0.2592574392781737,
+      "topix": 0.26557431329427494
+    },
+    "weights": {
+      "russell2000": 0.6,
+      "it_mib_esg": 0.1,
+      "topix": 0.3
+    },
+    "turnover": 0.7999999999999999,
+    "cost": 0.00085,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2015-10-04",
+    "signal_date": "2015-10-02",
+    "fill_date": "2015-10-05",
+    "scores": {
+      "us_pea_us_tech": -0.043096000947242974,
+      "emu_small": -0.0721649713368121,
+      "topix_hedged": -0.09414701393986302
+    },
+    "weights": {
+      "us_pea_us_tech": 0.6,
+      "emu_small": 0.1,
+      "topix_hedged": 0.3
+    },
+    "turnover": 2.0,
+    "cost": 0.00295,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2016-01-03",
+    "signal_date": "2016-01-01",
+    "fill_date": "2016-01-04",
+    "scores": {
+      "us_pea_nasdaq": 0.07325048321473937,
+      "emu_high_div": 0.04787640667222304,
+      "topix": -0.03802164490404214
+    },
+    "weights": {
+      "us_pea_nasdaq": 0.6,
+      "emu_high_div": 0.1,
+      "topix": 0.3
+    },
+    "turnover": 2.0,
+    "cost": 0.0020499999999999997,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2016-04-03",
+    "signal_date": "2016-04-01",
+    "fill_date": "2016-04-04",
+    "scores": {
+      "us_industrials": 0.08918249003504819,
+      "emu_small": 0.030039125959469226,
+      "em_pea_emerging": 0.03683508024393256
+    },
+    "weights": {
+      "us_industrials": 0.6,
+      "emu_small": 0.1,
+      "em_pea_emerging": 0.3
+    },
+    "turnover": 2.0,
+    "cost": 0.0015999999999999996,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2016-07-03",
+    "signal_date": "2016-07-01",
+    "fill_date": "2016-07-04",
+    "scores": {
+      "us_value": 0.04181174044940961,
+      "sec_healthcare_acc": -0.00924691846091208,
+      "em_pea_emerging": 0.06194117644909891
+    },
+    "weights": {
+      "us_value": 0.6,
+      "sec_healthcare_acc": 0.1,
+      "em_pea_emerging": 0.3
+    },
+    "turnover": 1.4,
+    "cost": 0.0008500000000000001,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2016-10-02",
+    "signal_date": "2016-09-30",
+    "fill_date": "2016-10-03",
+    "scores": {
+      "russell2000": 0.17330898062506495,
+      "de_dax_dr": 0.10016871345839751,
+      "cn_pea_china": 0.18709674300455736
+    },
+    "weights": {
+      "russell2000": 0.6,
+      "de_dax_dr": 0.1,
+      "cn_pea_china": 0.3
+    },
+    "turnover": 2.0,
+    "cost": 0.0018999999999999996,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2017-01-01",
+    "signal_date": "2016-12-30",
+    "fill_date": "2017-01-02",
+    "scores": {
+      "russell2000": 0.25192451690459294,
+      "eu_banks": 0.4732269880816946,
+      "topix_hedged": 0.21166364125973036
+    },
+    "weights": {
+      "russell2000": 0.6,
+      "eu_banks": 0.1,
+      "topix_hedged": 0.3
+    },
+    "turnover": 0.8,
+    "cost": 0.00095,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2017-04-02",
+    "signal_date": "2017-03-31",
+    "fill_date": "2017-04-03",
+    "scores": {
+      "us_industrials": 0.1938261878276928,
+      "eu_banks": 0.35147729176070985,
+      "topix_hedged": 0.137913067784877
+    },
+    "weights": {
+      "us_industrials": 0.6,
+      "eu_banks": 0.1,
+      "topix_hedged": 0.3
+    },
+    "turnover": 1.2,
+    "cost": 0.0014999999999999998,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2017-07-02",
+    "signal_date": "2017-06-30",
+    "fill_date": "2017-07-03",
+    "scores": {
+      "sp500_hedged": 0.07414986664727907,
+      "gr_msci_greece": 0.2409635906662455,
+      "em_asia": 0.13426676996143172
+    },
+    "weights": {
+      "sp500_hedged": 0.6,
+      "gr_msci_greece": 0.1,
+      "em_asia": 0.3
+    },
+    "turnover": 2.0,
+    "cost": 0.001925,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2017-10-01",
+    "signal_date": "2017-09-29",
+    "fill_date": "2017-10-02",
+    "scores": {
+      "sp500_scr_hed": 0.05816968166499459,
+      "gr_msci_greece": 0.15430936746973267,
+      "topix_hedged": 0.08455010016656872
+    },
+    "weights": {
+      "sp500_scr_hed": 0.6,
+      "gr_msci_greece": 0.1,
+      "topix_hedged": 0.3
+    },
+    "turnover": 1.8,
+    "cost": 0.001725,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2018-01-07",
+    "signal_date": "2018-01-05",
+    "fill_date": "2018-01-08",
+    "scores": {
+      "sp500_hedged": 0.12464816647608767,
+      "emu_small": 0.11064060259698305,
+      "topix_hedged": 0.16507902634123295
+    },
+    "weights": {
+      "sp500_hedged": 0.6,
+      "emu_small": 0.1,
+      "topix_hedged": 0.3
+    },
+    "turnover": 1.4,
+    "cost": 0.00085,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2018-04-01",
+    "signal_date": "2018-03-30",
+    "fill_date": "2018-04-02",
+    "scores": {
+      "us_pea_us_tech": 0.06021894243758896,
+      "gr_msci_greece": 0.008936305935391298,
+      "em_pea_emerging": 0.053563357212701446
+    },
+    "weights": {
+      "us_pea_us_tech": 0.6,
+      "gr_msci_greece": 0.1,
+      "em_pea_emerging": 0.3
+    },
+    "turnover": 2.0,
+    "cost": 0.0015999999999999999,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2018-07-01",
+    "signal_date": "2018-06-29",
+    "fill_date": "2018-07-02",
+    "scores": {
+      "us_pea_nasdaq": 0.13975901776049504,
+      "fr_cac40_acc": 0.02905918125860074,
+      "topix": -0.0013388681751684839
+    },
+    "weights": {
+      "us_pea_nasdaq": 0.6,
+      "fr_cac40_acc": 0.1,
+      "topix": 0.3
+    },
+    "turnover": 2.0,
+    "cost": 0.0014499999999999997,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2018-10-07",
+    "signal_date": "2018-10-05",
+    "fill_date": "2018-10-08",
+    "scores": {
+      "us_pea_us_tech": 0.22617159137001575,
+      "emu_esg_broad_acc": 0.11160348174753643,
+      "topix": 0.06007597556692157
+    },
+    "weights": {
+      "us_pea_us_tech": 0.6,
+      "emu_esg_broad_acc": 0.1,
+      "topix": 0.3
+    },
+    "turnover": 1.4,
+    "cost": 0.0007,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2019-01-06",
+    "signal_date": "2019-01-04",
+    "fill_date": "2019-01-07",
+    "scores": {
+      "us_industrials": -0.02130876715027774,
+      "sec_healthcare_acc": -0.0022951478953442406,
+      "in_pea_india": 0.007840906511344059
+    },
+    "weights": {
+      "us_industrials": 0.6,
+      "sec_healthcare_acc": 0.1,
+      "in_pea_india": 0.3
+    },
+    "turnover": 2.0,
+    "cost": 0.0014499999999999997,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2019-04-07",
+    "signal_date": "2019-04-05",
+    "fill_date": "2019-04-08",
+    "scores": {
+      "us_pea_nasdaq": 0.061572395853257245,
+      "gr_msci_greece": 0.16422627456076255,
+      "in_pea_india": 0.230142721220703
+    },
+    "weights": {
+      "us_pea_nasdaq": 0.6,
+      "gr_msci_greece": 0.1,
+      "in_pea_india": 0.3
+    },
+    "turnover": 1.4,
+    "cost": 0.0007,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2019-07-07",
+    "signal_date": "2019-07-05",
+    "fill_date": "2019-07-08",
+    "scores": {
+      "us_pea_us_tech": 0.24455629700921588,
+      "gr_msci_greece": 0.42585154980241335,
+      "ap_asia_pacific": 0.13903170994544078
+    },
+    "weights": {
+      "us_pea_us_tech": 0.6,
+      "gr_msci_greece": 0.1,
+      "ap_asia_pacific": 0.3
+    },
+    "turnover": 1.7999999999999998,
+    "cost": 0.0009,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2019-10-06",
+    "signal_date": "2019-10-04",
+    "fill_date": "2019-10-07",
+    "scores": {
+      "sp500_screened": 0.06231507983041151,
+      "gr_msci_greece": 0.08974850683868851,
+      "topix": 0.05347943613541717
+    },
+    "weights": {
+      "sp500_screened": 0.6,
+      "gr_msci_greece": 0.1,
+      "topix": 0.3
+    },
+    "turnover": 1.8,
+    "cost": 0.00135,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2020-01-05",
+    "signal_date": "2020-01-03",
+    "fill_date": "2020-01-06",
+    "scores": {
+      "us_pea_nasdaq": 0.1364219131967428,
+      "sec_healthcare_acc": 0.11027212798188302,
+      "em_asia": 0.11272191913054241
+    },
+    "weights": {
+      "us_pea_nasdaq": 0.6,
+      "sec_healthcare_acc": 0.1,
+      "em_asia": 0.3
+    },
+    "turnover": 2.0,
+    "cost": 0.001825,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2020-04-05",
+    "signal_date": "2020-04-03",
+    "fill_date": "2020-04-06",
+    "scores": {
+      "us_pea_nasdaq": 0.007300560403317613,
+      "sec_healthcare_acc": 0.03522731925130551,
+      "cn_pea_china": -0.039823024312036104
+    },
+    "weights": {
+      "us_pea_nasdaq": 0.6,
+      "sec_healthcare_acc": 0.1,
+      "cn_pea_china": 0.3
+    },
+    "turnover": 0.6,
+    "cost": 0.0006749999999999999,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2020-07-05",
+    "signal_date": "2020-07-03",
+    "fill_date": "2020-07-06",
+    "scores": {
+      "us_pea_nasdaq": 0.17211932717469258,
+      "sec_healthcare_acc": 0.029962152107648077,
+      "em_asia": 0.0015724310778764128
+    },
+    "weights": {
+      "us_pea_nasdaq": 0.6,
+      "sec_healthcare_acc": 0.1,
+      "em_asia": 0.3
+    },
+    "turnover": 0.6,
+    "cost": 0.0006749999999999999,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2020-10-04",
+    "signal_date": "2020-10-02",
+    "fill_date": "2020-10-05",
+    "scores": {
+      "us_pea_nasdaq": 0.3331594576005772,
+      "emu_small": 0.2917705081402904,
+      "in_pea_india": 0.315453651938588
+    },
+    "weights": {
+      "us_pea_nasdaq": 0.6,
+      "emu_small": 0.1,
+      "in_pea_india": 0.3
+    },
+    "turnover": 0.8,
+    "cost": 0.000925,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2021-01-03",
+    "signal_date": "2021-01-01",
+    "fill_date": "2021-01-04",
+    "scores": {
+      "russell2000": 0.26679669820868845,
+      "gr_msci_greece": 0.23093079243096803,
+      "in_pea_india": 0.19762957537615744
+    },
+    "weights": {
+      "russell2000": 0.6,
+      "gr_msci_greece": 0.1,
+      "in_pea_india": 0.3
+    },
+    "turnover": 1.4,
+    "cost": 0.0017499999999999998,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2021-04-04",
+    "signal_date": "2021-04-02",
+    "fill_date": "2021-04-05",
+    "scores": {
+      "russell2000": 0.43634563752342514,
+      "eu_banks": 0.6316193186316008,
+      "in_pea_india": 0.24151356919435685
+    },
+    "weights": {
+      "russell2000": 0.6,
+      "eu_banks": 0.1,
+      "in_pea_india": 0.3
+    },
+    "turnover": 0.2,
+    "cost": 0.0002,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2021-07-04",
+    "signal_date": "2021-07-02",
+    "fill_date": "2021-07-05",
+    "scores": {
+      "sp500_screened": 0.22713214063776532,
+      "eu_banks": 0.28733547909653256,
+      "in_pea_india": 0.12958804254511103
+    },
+    "weights": {
+      "sp500_screened": 0.6,
+      "eu_banks": 0.1,
+      "in_pea_india": 0.3
+    },
+    "turnover": 1.2,
+    "cost": 0.0014999999999999998,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2021-10-03",
+    "signal_date": "2021-10-01",
+    "fill_date": "2021-10-04",
+    "scores": {
+      "us_pea_us_tech": 0.10011725799958793,
+      "eu_banks": 0.1372856326131593,
+      "in_pea_india": 0.2179194170784171
+    },
+    "weights": {
+      "us_pea_us_tech": 0.6,
+      "eu_banks": 0.1,
+      "in_pea_india": 0.3
+    },
+    "turnover": 1.2,
+    "cost": 0.0006,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2022-01-02",
+    "signal_date": "2021-12-31",
+    "fill_date": "2022-01-03",
+    "scores": {
+      "us_pea_nasdaq": 0.17425017767803475,
+      "emu_esg_broad_acc": 0.1420094118072721,
+      "in_pea_india": 0.17189612412794442
+    },
+    "weights": {
+      "us_pea_nasdaq": 0.6,
+      "emu_esg_broad_acc": 0.1,
+      "in_pea_india": 0.3
+    },
+    "turnover": 1.4,
+    "cost": 0.0007999999999999999,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2022-04-03",
+    "signal_date": "2022-04-01",
+    "fill_date": "2022-04-04",
+    "scores": {
+      "us_value": 0.12392505943388343,
+      "sec_healthcare_acc": 0.08990239474648143,
+      "in_pea_india": 0.013434053687972236
+    },
+    "weights": {
+      "us_value": 0.6,
+      "sec_healthcare_acc": 0.1,
+      "in_pea_india": 0.3
+    },
+    "turnover": 1.4,
+    "cost": 0.0006999999999999999,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2022-07-03",
+    "signal_date": "2022-07-01",
+    "fill_date": "2022-07-04",
+    "scores": {
+      "us_value": -0.02770700851376351,
+      "es_ibex_acc": -0.0074426949711017265,
+      "cn_pea_china": -0.009608523472861119
+    },
+    "weights": {
+      "us_value": 0.6,
+      "es_ibex_acc": 0.1,
+      "cn_pea_china": 0.3
+    },
+    "turnover": 0.7999999999999999,
+    "cost": 0.00039999999999999996,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2022-10-02",
+    "signal_date": "2022-09-30",
+    "fill_date": "2022-10-03",
+    "scores": {
+      "us_value": -0.04950108302098899,
+      "emu_esg_broad_acc": -0.04750688293108152,
+      "in_pea_india": -0.01317944075401134
+    },
+    "weights": {
+      "us_value": 0.6,
+      "emu_esg_broad_acc": 0.1,
+      "in_pea_india": 0.3
+    },
+    "turnover": 0.7999999999999999,
+    "cost": 0.00039999999999999996,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2023-01-01",
+    "signal_date": "2022-12-30",
+    "fill_date": "2023-01-02",
+    "scores": {
+      "us_value": 0.0337784687422551,
+      "eu_banks": 0.2728435106921845,
+      "topix_hedged": 0.027613323465662587
+    },
+    "weights": {
+      "us_value": 0.6,
+      "eu_banks": 0.1,
+      "topix_hedged": 0.3
+    },
+    "turnover": 0.8,
+    "cost": 0.00095,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2023-04-02",
+    "signal_date": "2023-03-31",
+    "fill_date": "2023-04-03",
+    "scores": {
+      "sp500_hedged": 0.07942629575012283,
+      "it_ftse_mib_acc": 0.31131553683790414,
+      "topix_hedged": 0.07762081456001257
+    },
+    "weights": {
+      "sp500_hedged": 0.6,
+      "it_ftse_mib_acc": 0.1,
+      "topix_hedged": 0.3
+    },
+    "turnover": 1.4,
+    "cost": 0.0007999999999999999,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2023-07-02",
+    "signal_date": "2023-06-30",
+    "fill_date": "2023-07-03",
+    "scores": {
+      "us_pea_nasdaq": 0.3302124948075058,
+      "gr_msci_greece": 0.3903614955059944,
+      "topix_hedged": 0.24248771146621806
+    },
+    "weights": {
+      "us_pea_nasdaq": 0.6,
+      "gr_msci_greece": 0.1,
+      "topix_hedged": 0.3
+    },
+    "turnover": 1.4,
+    "cost": 0.0007,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2023-10-01",
+    "signal_date": "2023-09-29",
+    "fill_date": "2023-10-02",
+    "scores": {
+      "us_pea_nasdaq": 0.1684782890381118,
+      "gr_msci_greece": 0.13298164450583272,
+      "topix_hedged": 0.17989397878468605
+    },
+    "weights": {
+      "us_pea_nasdaq": 0.6,
+      "gr_msci_greece": 0.1,
+      "topix_hedged": 0.3
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2024-01-07",
+    "signal_date": "2024-01-05",
+    "fill_date": "2024-01-08",
+    "scores": {
+      "us_pea_nasdaq": 0.09302321845047712,
+      "eu_banks": 0.166041026609292,
+      "in_pea_india": 0.14531312433121735
+    },
+    "weights": {
+      "us_pea_nasdaq": 0.6,
+      "eu_banks": 0.1,
+      "in_pea_india": 0.3
+    },
+    "turnover": 0.8,
+    "cost": 0.00095,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2024-04-07",
+    "signal_date": "2024-04-05",
+    "fill_date": "2024-04-08",
+    "scores": {
+      "us_industrials": 0.23464061037724804,
+      "eu_banks": 0.308828499038603,
+      "topix_hedged": 0.23248801570719668
+    },
+    "weights": {
+      "us_industrials": 0.6,
+      "eu_banks": 0.1,
+      "topix_hedged": 0.3
+    },
+    "turnover": 1.8,
+    "cost": 0.00135,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2024-07-07",
+    "signal_date": "2024-07-05",
+    "fill_date": "2024-07-08",
+    "scores": {
+      "us_pea_us_tech": 0.3453139367306213,
+      "eu_banks": 0.233433372946094,
+      "topix_hedged": 0.22640262520165977
+    },
+    "weights": {
+      "us_pea_us_tech": 0.6,
+      "eu_banks": 0.1,
+      "topix_hedged": 0.3
+    },
+    "turnover": 1.2,
+    "cost": 0.0006,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2024-10-06",
+    "signal_date": "2024-10-04",
+    "fill_date": "2024-10-07",
+    "scores": {
+      "us_pea_us_tech": 0.11421467036055377,
+      "es_ibex_acc": 0.10315749506401062,
+      "cn_pea_china": 0.2828592929090359
+    },
+    "weights": {
+      "us_pea_us_tech": 0.6,
+      "es_ibex_acc": 0.1,
+      "cn_pea_china": 0.3
+    },
+    "turnover": 0.8,
+    "cost": 0.00095,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2025-01-05",
+    "signal_date": "2025-01-03",
+    "fill_date": "2025-01-06",
+    "scores": {
+      "russell2000": 0.1657695750798438,
+      "de_dax_dr": 0.07642156848227821,
+      "cn_pea_china": 0.18606756204317176
+    },
+    "weights": {
+      "russell2000": 0.6,
+      "de_dax_dr": 0.1,
+      "cn_pea_china": 0.3
+    },
+    "turnover": 1.4000000000000001,
+    "cost": 0.0015999999999999996,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2025-04-06",
+    "signal_date": "2025-04-04",
+    "fill_date": "2025-04-07",
+    "scores": {
+      "us_value": -0.0870724554372273,
+      "eu_banks": 0.1419193102855194,
+      "cn_pea_china": -0.09901176164497649
+    },
+    "weights": {
+      "us_value": 0.6,
+      "eu_banks": 0.1,
+      "cn_pea_china": 0.3
+    },
+    "turnover": 1.4,
+    "cost": 0.0016999999999999997,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2025-07-06",
+    "signal_date": "2025-07-04",
+    "fill_date": "2025-07-07",
+    "scores": {
+      "sp500_hedged": 0.03160880815050393,
+      "gr_msci_greece": 0.36435411729118616,
+      "em_pea_emerging": 0.05670428321509835
+    },
+    "weights": {
+      "sp500_hedged": 0.6,
+      "gr_msci_greece": 0.1,
+      "em_pea_emerging": 0.3
+    },
+    "turnover": 2.0,
+    "cost": 0.0010999999999999998,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2025-10-05",
+    "signal_date": "2025-10-03",
+    "fill_date": "2025-10-06",
+    "scores": {
+      "us_pea_us_tech": 0.4029652766205509,
+      "eu_banks": 0.4805970909252635,
+      "cn_pea_china": 0.3498969182256504
+    },
+    "weights": {
+      "us_pea_us_tech": 0.6,
+      "eu_banks": 0.1,
+      "cn_pea_china": 0.3
+    },
+    "turnover": 2.0,
+    "cost": 0.0010999999999999998,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2026-01-04",
+    "signal_date": "2026-01-02",
+    "fill_date": "2026-01-05",
+    "scores": {
+      "us_pea_us_tech": 0.214412111234759,
+      "eu_banks": 0.3350780658017223,
+      "topix_hedged": 0.2312029190525
+    },
+    "weights": {
+      "us_pea_us_tech": 0.6,
+      "eu_banks": 0.1,
+      "topix_hedged": 0.3
+    },
+    "turnover": 0.6,
+    "cost": 0.0007499999999999999,
+    "swaps_rejected": 0
+  }
+]

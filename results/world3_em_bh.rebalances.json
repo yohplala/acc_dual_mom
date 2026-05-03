@@ -1,0 +1,16 @@
+[
+  {
+    "rebalance_date": "2008-08-18",
+    "signal_date": "2008-08-18",
+    "fill_date": "2008-08-18",
+    "scores": {},
+    "weights": {
+      "em_asia": 0.3,
+      "sp500": 0.5,
+      "eurostoxx50": 0.2
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  }
+]

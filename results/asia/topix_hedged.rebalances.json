@@ -1,0 +1,14 @@
+[
+  {
+    "rebalance_date": "2008-08-26",
+    "signal_date": "2008-08-26",
+    "fill_date": "2008-08-26",
+    "scores": {},
+    "weights": {
+      "topix_hedged": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  }
+]

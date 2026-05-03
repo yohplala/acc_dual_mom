@@ -1,0 +1,648 @@
+[
+  {
+    "rebalance_date": "2008-08-17",
+    "signal_date": "2008-08-15",
+    "fill_date": "2008-08-18",
+    "scores": {
+      "cash_estr": 0.014369115251334996,
+      "eurostoxx50": -0.06722009403524998,
+      "sp500": -0.03079863035711894,
+      "topix": -0.0931053312849307
+    },
+    "weights": {
+      "cash_estr": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2009-01-04",
+    "signal_date": "2009-01-02",
+    "fill_date": "2009-01-05",
+    "scores": {
+      "cash_estr": 0.013037481610935764,
+      "eurostoxx50": -0.2511778271277104,
+      "sp500": -0.14510613725832266,
+      "topix": -0.0948997557464829
+    },
+    "weights": {
+      "cash_estr": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2009-07-05",
+    "signal_date": "2009-07-03",
+    "fill_date": "2009-07-06",
+    "scores": {
+      "cash_estr": 0.0036453997539249716,
+      "em_asia": 0.29643667303005583,
+      "eurostoxx50": -0.041990666894975104,
+      "sp500": -0.0014505555438020235,
+      "topix": -0.030014782361854286
+    },
+    "weights": {
+      "em_asia": 1.0
+    },
+    "turnover": 2.0,
+    "cost": 0.0022500000000000003,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2010-01-03",
+    "signal_date": "2010-01-01",
+    "fill_date": "2010-01-04",
+    "scores": {
+      "cash_estr": 0.0012500242990172161,
+      "em_asia": 0.2555048457274205,
+      "eurostoxx50": 0.23544091646670195,
+      "sp500": 0.22240157030383845,
+      "topix": 0.02726071502567029
+    },
+    "weights": {
+      "em_asia": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2010-07-04",
+    "signal_date": "2010-07-02",
+    "fill_date": "2010-07-05",
+    "scores": {
+      "cash_estr": 0.0012235194901364377,
+      "em_asia": 0.08275768301157904,
+      "eurostoxx50": -0.13735539459985147,
+      "sp500": 0.043297884674251996,
+      "topix": 0.10054909283763913
+    },
+    "weights": {
+      "topix": 1.0
+    },
+    "turnover": 2.0,
+    "cost": 0.00375,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2011-01-02",
+    "signal_date": "2010-12-31",
+    "fill_date": "2011-01-03",
+    "scores": {
+      "cash_estr": 0.001851447075274848,
+      "em_asia": 0.15721320218069157,
+      "eurostoxx50": 0.04951236693095318,
+      "sp500": 0.12365862382053194,
+      "topix": 0.11278876265909332
+    },
+    "weights": {
+      "em_asia": 1.0
+    },
+    "turnover": 2.0,
+    "cost": 0.00375,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2011-07-03",
+    "signal_date": "2011-07-01",
+    "fill_date": "2011-07-04",
+    "scores": {
+      "cash_estr": 0.0030327428720058336,
+      "em_asia": -0.08222888071988632,
+      "eurostoxx50": 0.04128762450405099,
+      "sp500": -0.019812809280248755,
+      "topix": -0.10293368499046973
+    },
+    "weights": {
+      "eurostoxx50": 1.0
+    },
+    "turnover": 2.0,
+    "cost": 0.0025,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2012-01-01",
+    "signal_date": "2011-12-30",
+    "fill_date": "2012-01-02",
+    "scores": {
+      "cash_estr": 0.003112320518047218,
+      "em_asia": -0.10162050592876037,
+      "eurostoxx50": -0.18120802746528186,
+      "sp500": 0.06143330097960242,
+      "topix": -0.018699202426438077
+    },
+    "weights": {
+      "sp500": 1.0
+    },
+    "turnover": 2.0,
+    "cost": 0.0015,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2012-07-01",
+    "signal_date": "2012-06-29",
+    "fill_date": "2012-07-02",
+    "scores": {
+      "cash_estr": 0.001235228424943946,
+      "em_asia": 0.08006588513768986,
+      "eurostoxx50": -0.009719055173754598,
+      "sp500": 0.10659267288062724,
+      "topix": 0.07591931641815175
+    },
+    "weights": {
+      "sp500": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2013-01-06",
+    "signal_date": "2013-01-04",
+    "fill_date": "2013-01-07",
+    "scores": {
+      "cash_estr": 0.0003333050585880848,
+      "em_asia": 0.11840909541374978,
+      "eurostoxx50": 0.14741965737433937,
+      "sp500": 0.04305250858683807,
+      "topix": 0.013839114866901925
+    },
+    "weights": {
+      "eurostoxx50": 1.0
+    },
+    "turnover": 2.0,
+    "cost": 0.0015,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2013-07-07",
+    "signal_date": "2013-07-05",
+    "fill_date": "2013-07-08",
+    "scores": {
+      "cash_estr": 0.0002646736196512123,
+      "em_asia": -0.12728007879273973,
+      "eurostoxx50": -0.010748666163790332,
+      "sp500": 0.14324259088243552,
+      "topix": 0.19679092570940604
+    },
+    "weights": {
+      "topix": 1.0
+    },
+    "turnover": 2.0,
+    "cost": 0.00275,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2014-01-05",
+    "signal_date": "2014-01-03",
+    "fill_date": "2014-01-06",
+    "scores": {
+      "cash_estr": 0.0003632319858128952,
+      "em_asia": 0.057530346220806106,
+      "eurostoxx50": 0.12892562643528427,
+      "sp500": 0.05522105906358199,
+      "topix": -0.014289833477736047
+    },
+    "weights": {
+      "eurostoxx50": 1.0
+    },
+    "turnover": 2.0,
+    "cost": 0.00275,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2014-07-06",
+    "signal_date": "2014-07-04",
+    "fill_date": "2014-07-07",
+    "scores": {
+      "cash_estr": 0.0006420927602093229,
+      "em_asia": 0.10518678904287282,
+      "eurostoxx50": 0.07964954869606578,
+      "sp500": 0.09162715380604336,
+      "topix": 0.027969992541310384
+    },
+    "weights": {
+      "em_asia": 1.0
+    },
+    "turnover": 2.0,
+    "cost": 0.0025,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2015-01-04",
+    "signal_date": "2015-01-02",
+    "fill_date": "2015-01-05",
+    "scores": {
+      "cash_estr": 9.111062877042997e-06,
+      "em_asia": 0.08559862436669619,
+      "eurostoxx50": -0.020528497177980554,
+      "sp500": 0.18497655752035347,
+      "topix": 0.05375604685317814
+    },
+    "weights": {
+      "sp500": 1.0
+    },
+    "turnover": 2.0,
+    "cost": 0.0025,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2015-07-05",
+    "signal_date": "2015-07-03",
+    "fill_date": "2015-07-06",
+    "scores": {
+      "cash_estr": -0.00025857801333040165,
+      "em_asia": 0.1519312375024644,
+      "eurostoxx50": 0.16810005551236706,
+      "sp500": 0.10301110955020198,
+      "topix": 0.26557431329427494
+    },
+    "weights": {
+      "topix": 1.0
+    },
+    "turnover": 2.0,
+    "cost": 0.00275,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2016-01-03",
+    "signal_date": "2016-01-01",
+    "fill_date": "2016-01-04",
+    "scores": {
+      "cash_estr": -0.0004970441368546963,
+      "em_asia": -0.14206182849543547,
+      "eurostoxx50": -0.01810813507028275,
+      "sp500": 0.02439025558267205,
+      "topix": -0.03802164490404214
+    },
+    "weights": {
+      "sp500": 1.0
+    },
+    "turnover": 2.0,
+    "cost": 0.00275,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2016-07-03",
+    "signal_date": "2016-07-01",
+    "fill_date": "2016-07-04",
+    "scores": {
+      "cash_estr": -0.0010422109485824782,
+      "em_asia": 0.023095506516516817,
+      "eurostoxx50": -0.06594930296978929,
+      "sp500": 0.0148619983330609,
+      "topix": -0.06660553174162409
+    },
+    "weights": {
+      "em_asia": 1.0
+    },
+    "turnover": 2.0,
+    "cost": 0.0025,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2017-01-01",
+    "signal_date": "2016-12-30",
+    "fill_date": "2017-01-02",
+    "scores": {
+      "cash_estr": -0.001201172638561232,
+      "em_asia": 0.067215960022603,
+      "eurostoxx50": 0.19747193281934927,
+      "sp500": 0.14185881715198212,
+      "topix": 0.13708518067151654
+    },
+    "weights": {
+      "eurostoxx50": 1.0
+    },
+    "turnover": 2.0,
+    "cost": 0.0025,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2017-07-02",
+    "signal_date": "2017-06-30",
+    "fill_date": "2017-07-03",
+    "scores": {
+      "cash_estr": -0.0012429829958036098,
+      "em_asia": 0.13426676996143172,
+      "eurostoxx50": 0.06644038734378976,
+      "sp500": 0.014805779890308068,
+      "topix": 0.011824783036215258
+    },
+    "weights": {
+      "em_asia": 1.0
+    },
+    "turnover": 2.0,
+    "cost": 0.0025,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2018-01-07",
+    "signal_date": "2018-01-05",
+    "fill_date": "2018-01-08",
+    "scores": {
+      "cash_estr": -0.0012389046989543795,
+      "em_asia": 0.1504251013207516,
+      "eurostoxx50": 0.04003454300994602,
+      "sp500": 0.0756658574674891,
+      "topix": 0.11681900101816578
+    },
+    "weights": {
+      "em_asia": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2018-07-01",
+    "signal_date": "2018-06-29",
+    "fill_date": "2018-07-02",
+    "scores": {
+      "cash_estr": -0.0012712532497254347,
+      "em_asia": -0.029967044829103284,
+      "eurostoxx50": -0.005274347729473661,
+      "sp500": 0.05878651789419531,
+      "topix": -0.0013388681751684839
+    },
+    "weights": {
+      "sp500": 1.0
+    },
+    "turnover": 2.0,
+    "cost": 0.0025,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2019-01-06",
+    "signal_date": "2019-01-04",
+    "fill_date": "2019-01-07",
+    "scores": {
+      "cash_estr": -0.0012674524871664206,
+      "em_asia": -0.057549568200753076,
+      "eurostoxx50": -0.11802751269407052,
+      "sp500": -0.05860592141253029,
+      "topix": -0.04457915855981931
+    },
+    "weights": {
+      "cash_estr": 1.0
+    },
+    "turnover": 2.0,
+    "cost": 0.00125,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2019-07-07",
+    "signal_date": "2019-07-05",
+    "fill_date": "2019-07-08",
+    "scores": {
+      "cash_estr": -0.0012810463959754825,
+      "em_asia": 0.10949797356592073,
+      "eurostoxx50": 0.1964805549669577,
+      "sp500": 0.2059570980790899,
+      "topix": 0.07243669584808088
+    },
+    "weights": {
+      "sp500": 1.0
+    },
+    "turnover": 2.0,
+    "cost": 0.00125,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2020-01-05",
+    "signal_date": "2020-01-03",
+    "fill_date": "2020-01-06",
+    "scores": {
+      "cash_estr": -0.0016197531181687541,
+      "em_asia": 0.11272191913054241,
+      "eurostoxx50": 0.07821726547843055,
+      "sp500": 0.10257607958828263,
+      "topix": 0.10567378250717785
+    },
+    "weights": {
+      "em_asia": 1.0
+    },
+    "turnover": 2.0,
+    "cost": 0.0025,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2020-07-05",
+    "signal_date": "2020-07-03",
+    "fill_date": "2020-07-06",
+    "scores": {
+      "cash_estr": -0.0018854843722618808,
+      "em_asia": 0.0015724310778764128,
+      "eurostoxx50": -0.10797227883180949,
+      "sp500": -0.029558494140709546,
+      "topix": -0.07984192348507158
+    },
+    "weights": {
+      "em_asia": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2021-01-03",
+    "signal_date": "2021-01-01",
+    "fill_date": "2021-01-04",
+    "scores": {
+      "cash_estr": -0.0019381065988725021,
+      "em_asia": 0.14069824648770557,
+      "eurostoxx50": 0.07081177187146404,
+      "sp500": 0.08980815324889657,
+      "topix": 0.11349856857205376
+    },
+    "weights": {
+      "em_asia": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2021-07-04",
+    "signal_date": "2021-07-02",
+    "fill_date": "2021-07-05",
+    "scores": {
+      "cash_estr": -0.0019735931640740834,
+      "em_asia": 0.04499467595202833,
+      "eurostoxx50": 0.16988373433281367,
+      "sp500": 0.21907321172870353,
+      "topix": 0.04841377117500878
+    },
+    "weights": {
+      "sp500": 1.0
+    },
+    "turnover": 2.0,
+    "cost": 0.0025,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2022-01-02",
+    "signal_date": "2021-12-31",
+    "fill_date": "2022-01-03",
+    "scores": {
+      "cash_estr": -0.0019970191567336704,
+      "em_asia": -0.011457158324654215,
+      "eurostoxx50": 0.08542380633350266,
+      "sp500": 0.1647292191757066,
+      "topix": 0.05473712504616546
+    },
+    "weights": {
+      "sp500": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2022-07-03",
+    "signal_date": "2022-07-01",
+    "fill_date": "2022-07-04",
+    "scores": {
+      "cash_estr": -0.002030230456711135,
+      "em_asia": -0.10416994899340293,
+      "eurostoxx50": -0.19213413607095609,
+      "sp500": -0.13833478453198034,
+      "topix": -0.14055835180154985
+    },
+    "weights": {
+      "cash_estr": 1.0
+    },
+    "turnover": 2.0,
+    "cost": 0.00125,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2023-01-01",
+    "signal_date": "2022-12-30",
+    "fill_date": "2023-01-02",
+    "scores": {
+      "cash_estr": 0.002065168805065909,
+      "em_asia": -0.07606968836635386,
+      "eurostoxx50": 0.1114502574082521,
+      "sp500": -0.039946770428560985,
+      "topix": -0.001102239719926179
+    },
+    "weights": {
+      "eurostoxx50": 1.0
+    },
+    "turnover": 2.0,
+    "cost": 0.00125,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2023-07-02",
+    "signal_date": "2023-06-30",
+    "fill_date": "2023-07-03",
+    "scores": {
+      "cash_estr": 0.009370243750142615,
+      "em_asia": 0.00980897591749863,
+      "eurostoxx50": 0.16788786303132608,
+      "sp500": 0.11383055620953342,
+      "topix": 0.08755679931161509
+    },
+    "weights": {
+      "eurostoxx50": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2024-01-07",
+    "signal_date": "2024-01-05",
+    "fill_date": "2024-01-08",
+    "scores": {
+      "cash_estr": 0.013277515039014753,
+      "em_asia": -0.011476836515006528,
+      "eurostoxx50": 0.05394589936034366,
+      "sp500": 0.07858446163524513,
+      "topix": 0.06042074037512579
+    },
+    "weights": {
+      "sp500": 1.0
+    },
+    "turnover": 2.0,
+    "cost": 0.0015,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2024-07-07",
+    "signal_date": "2024-07-05",
+    "fill_date": "2024-07-08",
+    "scores": {
+      "cash_estr": 0.013643364763513466,
+      "em_asia": 0.0966197160754092,
+      "eurostoxx50": 0.1365844915290655,
+      "sp500": 0.19700864092445003,
+      "topix": 0.09621832903498562
+    },
+    "weights": {
+      "sp500": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2025-01-05",
+    "signal_date": "2025-01-03",
+    "fill_date": "2025-01-06",
+    "scores": {
+      "cash_estr": 0.011955955244000505,
+      "em_asia": 0.08741966832552883,
+      "eurostoxx50": -0.014582374091258288,
+      "sp500": 0.12360962045077573,
+      "topix": 0.039754863945103525
+    },
+    "weights": {
+      "sp500": 1.0
+    },
+    "turnover": 0.0,
+    "cost": 0.0,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2025-07-06",
+    "signal_date": "2025-07-04",
+    "fill_date": "2025-07-07",
+    "scores": {
+      "cash_estr": 0.008478900390839428,
+      "em_asia": 0.03925460334758424,
+      "eurostoxx50": 0.08469515149814977,
+      "sp500": -0.08034026256734084,
+      "topix": -0.014948141127260062
+    },
+    "weights": {
+      "eurostoxx50": 1.0
+    },
+    "turnover": 2.0,
+    "cost": 0.0015,
+    "swaps_rejected": 0
+  },
+  {
+    "rebalance_date": "2026-01-04",
+    "signal_date": "2026-01-02",
+    "fill_date": "2026-01-05",
+    "scores": {
+      "cash_estr": 0.0067643172125659845,
+      "em_asia": 0.2177198678192902,
+      "eurostoxx50": 0.10269644158567082,
+      "sp500": 0.10023520027427679,
+      "topix": 0.14223907813081582
+    },
+    "weights": {
+      "em_asia": 1.0
+    },
+    "turnover": 2.0,
+    "cost": 0.0025,
+    "swaps_rejected": 0
+  }
+]
