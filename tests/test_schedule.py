@@ -93,6 +93,41 @@ class TestMonthlyFirstSunday:
         assert not is_rebalance_day(s, day)
 
 
+class TestQuarterlyFirstSunday:
+    @pytest.mark.parametrize(
+        "day",
+        [
+            date(2026, 1, 4),  # Q1
+            date(2026, 4, 5),  # Q2
+            date(2026, 7, 5),  # Q3
+            date(2026, 10, 4),  # Q4
+            date(2024, 1, 7),
+            date(2024, 4, 7),
+            date(2024, 7, 7),
+            date(2024, 10, 6),
+        ],
+    )
+    def test_first_sundays_of_each_quarter_match(self, day: date) -> None:
+        s = _strategy("quarterly_first_sunday")
+        assert is_rebalance_day(s, day)
+
+    @pytest.mark.parametrize(
+        "day",
+        [
+            date(2026, 2, 1),  # Feb (not a quarter-start month)
+            date(2026, 5, 3),  # May
+            date(2026, 8, 2),  # Aug
+            date(2026, 11, 1),  # Nov
+            date(2026, 1, 11),  # second Sunday of January
+            date(2026, 4, 12),  # second Sunday of April
+            date(2026, 12, 6),  # December
+        ],
+    )
+    def test_other_sundays_reject(self, day: date) -> None:
+        s = _strategy("quarterly_first_sunday")
+        assert not is_rebalance_day(s, day)
+
+
 class TestSemiannualFirstSunday:
     @pytest.mark.parametrize(
         "day",
@@ -144,6 +179,23 @@ class TestRebalanceDates:
     def test_empty_when_start_after_end(self) -> None:
         s = _strategy("weekly_sunday")
         assert rebalance_dates(s, date(2026, 5, 1), date(2026, 4, 1)) == []
+
+    def test_quarterly_yields_four_sundays_per_year(self) -> None:
+        s = _strategy("quarterly_first_sunday")
+        dates = rebalance_dates(s, date(2024, 1, 1), date(2024, 12, 31))
+        assert dates == [
+            date(2024, 1, 7),
+            date(2024, 4, 7),
+            date(2024, 7, 7),
+            date(2024, 10, 6),
+        ]
+
+    def test_quarterly_starting_mid_quarter_skips_to_next(self) -> None:
+        # Backtest starting mid-Q1 (Feb): first quarterly rebalance is the
+        # next 1st-Sunday-of-quarter, i.e. the Q2 boundary.
+        s = _strategy("quarterly_first_sunday")
+        dates = rebalance_dates(s, date(2024, 2, 1), date(2024, 12, 31))
+        assert dates == [date(2024, 4, 7), date(2024, 7, 7), date(2024, 10, 6)]
 
     def test_semiannual_yields_two_sundays_per_year(self) -> None:
         s = _strategy("semiannual_first_sunday")

@@ -321,3 +321,20 @@ strategies:
     rebalance: monthly_first_sunday
     top_n: 3
     lookbacks_days: [252]
+
+  # ── 3-region quarterly trend-capture (no EU) ──────────────────────────
+  # 3 disjoint risky sleeves (US / EM Asia / Japan unhedged), single
+  # 6-month lookback, top-1 100%-weight, rebalanced quarterly (1st Sunday
+  # of Jan/Apr/Jul/Oct). Rotation analog of wld3_noeu_uh_bh: same universe
+  # with the same DM6 signal that world4_dm6_s_t1 uses, but quarterly
+  # cadence (4× per year vs 2×) and a simpler 3-region mix that drops
+  # eurostoxx50. Spans GFC fully via the EWJ-stitched topix proxy.
+  # No cash sleeve here — all-negative-momentum case falls through to the
+  # 0%-return CASH placeholder; add cash_estr to assets for €STR yield
+  # during crashes.
+  - name: geo3_dm6_q_t1
+    description: 3-region rotation (US/EM-Asia/JP), DM 6m, quarterly top-1
+    assets: [sp500, em_asia, topix]
+    rebalance: quarterly_first_sunday
+    top_n: 1
+    lookbacks_days: [126]

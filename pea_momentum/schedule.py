@@ -14,6 +14,7 @@ from .universe import Strategy
 WEEKLY_SUNDAY = "weekly_sunday"
 BIWEEKLY_SUNDAY = "biweekly_sunday"
 MONTHLY_FIRST_SUNDAY = "monthly_first_sunday"
+QUARTERLY_FIRST_SUNDAY = "quarterly_first_sunday"
 SEMIANNUAL_FIRST_SUNDAY = "semiannual_first_sunday"
 
 _SUNDAY = 6  # python weekday()
@@ -40,6 +41,13 @@ def is_rebalance_day(strategy: Strategy, day: date) -> bool:
 
     if strategy.rebalance == MONTHLY_FIRST_SUNDAY:
         return day.day <= 7
+
+    if strategy.rebalance == QUARTERLY_FIRST_SUNDAY:
+        # First Sunday of each calendar quarter (Jan/Apr/Jul/Oct).
+        # Anchored to calendar quarters; if a backtest starts mid-quarter
+        # the first rebalance is naturally the next quarter boundary that
+        # falls within the data range.
+        return day.month in (1, 4, 7, 10) and day.day <= 7
 
     if strategy.rebalance == SEMIANNUAL_FIRST_SUNDAY:
         # First Sunday of January (start of H1) and first Sunday of July

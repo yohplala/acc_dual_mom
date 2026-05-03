@@ -115,6 +115,7 @@ _CADENCE_LABELS: dict[str, str] = {
     "weekly_sunday": "weekly",
     "biweekly_sunday": "biweekly",
     "monthly_first_sunday": "monthly",
+    "quarterly_first_sunday": "quarterly",
     "semiannual_first_sunday": "semiannual",
 }
 

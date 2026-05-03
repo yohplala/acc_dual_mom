@@ -10,7 +10,7 @@ The framework is **rank-only momentum rotation with a positive-momentum floor**.
 
 Two execution modes coexist:
 
-- **`rotation`** — the default. At each rebalance, score every listed asset, drop those with score ≤ 0, pick the top-N, and weight them. The cadence (`weekly_sunday`, `biweekly_sunday`, `monthly_first_sunday`, `semiannual_first_sunday`) drives when this fires.
+- **`rotation`** — the default. At each rebalance, score every listed asset, drop those with score ≤ 0, pick the top-N, and weight them. The cadence (`weekly_sunday`, `biweekly_sunday`, `monthly_first_sunday`, `quarterly_first_sunday`, `semiannual_first_sunday`) drives when this fires.
 - **`buy_and_hold`** — equal-weight (or explicit `static_weights`) on `assets`, allocated on day one and never rebalanced. No transaction cost. Used as zero-cost reference benchmarks (`world_bh`, `sp500_bh`, `wld3_noeu_uh_bh`, `world_60_40_bh`). Buy-and-hold ignores the cadence field.
 
 ### Rotation pipeline (per rebalance day)
@@ -182,7 +182,7 @@ For future readers: the canonical vocabulary used across YAML, code, and dashboa
 | Score aggregation across lookbacks | `aggregation: mean` | `Scoring.aggregation` | (folded into Scoring label) | `mean` / `median` / `min` |
 | Allocation weighting rule | `rule: equal_weight` (shared) or `allocation_rule: score_proportional` (per strategy) | `Allocation.rule`, `Strategy.allocation_rule` | `Allocation` (e.g. `top-3 equal`, `top-1 score-prop`) | `equal_weight` is canonical; `score_proportional` is the opt-in sensitivity exhibit. |
 | Number of selected sleeves | `top_n: 3` | `Strategy.top_n` | (folded into Allocation label) | |
-| Rebalance cadence | `rebalance: monthly_first_sunday` | `Strategy.rebalance` | `Cadence` (e.g. `monthly`, `weekly`, `biweekly`, `semiannual`) | Sunday-anchored only. |
+| Rebalance cadence | `rebalance: monthly_first_sunday` | `Strategy.rebalance` | `Cadence` (e.g. `monthly`, `weekly`, `biweekly`, `quarterly`, `semiannual`) | Sunday-anchored only. |
 | Strategy mode | `mode: rotation` (default) or `mode: buy_and_hold` | `Strategy.mode` | Reflected in `Scoring` label (`Buy & Hold`) | |
 | Static buy-and-hold weights | `static_weights: {world: 0.6, safe: 0.4}` | `Strategy.static_weights` | (folded into `B&H static` label) | Optional; absent ⇒ equal-weight. |
 | Pre-selection filter | `filter: { type: positive_momentum }` | `Filter.type` | (implicit) | `score > 0` floor. The historical `absolute_momentum` (vs safe-score) is gone. |
