@@ -111,14 +111,18 @@ def _run_backtests(
         rebal_path.parent.mkdir(parents=True, exist_ok=True)
         rebal_path.write_text(backtest.rebalances_to_json(result.rebalances))
         last_w = result.rebalances[-1].weights if result.rebalances else {}
+        n_real = sum(1 for r in result.rebalances if r.turnover > 0)
+        n_swaps_rejected = sum(r.swaps_rejected for r in result.rebalances)
         click.echo(
-            f"  {strategy.name}: {len(result.rebalances)} rebalances, "
+            f"  {strategy.name}: {n_real}/{len(result.rebalances)} rebalances traded "
+            f"({n_swaps_rejected} swap-rejections), "
             f"{result.n_fill_skips} fill-skips, {result.n_signal_skips} signal-skips"
         )
         summary.append(
             {
                 "strategy": strategy.name,
-                "n_rebalances": len(result.rebalances),
+                "n_rebalances": n_real,
+                "n_swaps_rejected": n_swaps_rejected,
                 "n_fill_skips": result.n_fill_skips,
                 "n_signal_skips": result.n_signal_skips,
                 "final_equity": float(result.equity.get_column("equity")[-1])

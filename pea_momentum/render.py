@@ -283,6 +283,14 @@ def _signal_row(
 ) -> dict[str, object]:
     strategy = strategy_by_name[result.strategy_name]
 
+    # Walk back past zero-turnover entries to the most recent allocation
+    # change — both natural no-ops (allocate emitted prev weights) and
+    # band-rejected entries carry turnover=0 with weights==prev, so they
+    # would make the "Previous allocation" chips identical to current and
+    # lie about the last regime change. `last` keeps tracking the most
+    # recent *assessment* so the rebalance-date column reflects when the
+    # strategy was last evaluated.
+    real = [r for r in result.rebalances if r.turnover > 0]
     last = result.rebalances[-1] if result.rebalances else None
     if strategy.mode == "buy_and_hold":
         # Buy-and-hold never rebalances after the initial allocation. The
@@ -291,15 +299,18 @@ def _signal_row(
         # current, and forever) allocation. Mirror current onto previous.
         prev = last
     else:
-        prev = result.rebalances[-2] if len(result.rebalances) >= 2 else None
+        # `real[-1]` is the most recent allocation change; its weights are
+        # the current live portfolio (equal to `last.weights`). The chip
+        # we want is the one before that — `real[-2]`.
+        prev = real[-2] if len(real) >= 2 else None
 
     alloc_top, alloc_weight = _allocation_label(strategy, config.shared.allocation.rule)
     current_chips = _alloc_chips(last.weights if last else {}, asset_meta)
     universe_buckets = _universe_buckets(strategy, config, asset_meta)
-    trailing_12m = _trailing_12m_return(result.equity)
+    trailing_6m = _trailing_6m_return(result.equity)
     return {
         "name": strategy.label,
-        "trailing_12m": trailing_12m,
+        "trailing_6m": trailing_6m,
         "cadence": _CADENCE_LABELS.get(strategy.rebalance, strategy.rebalance),
         "scoring": _scoring_label(strategy, config.shared.scoring.lookbacks_days),
         "allocation_top": alloc_top,
@@ -452,12 +463,17 @@ def _metrics_row(
     prices_long: pl.DataFrame | None,
 ) -> dict[str, object]:
     m = compute(result.equity)
-    # Sum of per-rebalance cost values (each = turnover_l1 * per_trade_pct).
-    # In the same dimensionless unit as the equity multiple: `Final` plus
-    # `total_cost` is roughly the no-cost final equity.
-    total_cost = sum(r.cost for r in result.rebalances)
-    turnovers = [r.turnover for r in result.rebalances]
-    fill_dates = [r.fill_date for r in result.rebalances]
+    # Filter to rebalances that actually traded — both natural no-ops and
+    # band-rejected entries carry turnover=0 and would inflate
+    # `rebalance_hit_rate`'s interval count with non-events. Realloc %
+    # uses the unfiltered list to expose the assessed-vs-traded ratio.
+    real = [r for r in result.rebalances if r.turnover > 0]
+    total_cost = sum(r.cost for r in real)
+    turnovers = [r.turnover for r in real]
+    fill_dates = [r.fill_date for r in real]
+    realloc_pct: float | None = None
+    if result.rebalances:
+        realloc_pct = len(real) / len(result.rebalances)
     # Average pairwise correlation of the strategy's risky universe (excludes
     # safe asset — its return profile is qualitatively different and would
     # depress the average without telling us about equity diversification).
@@ -476,6 +492,7 @@ def _metrics_row(
         "turnover_per_year": turnover_per_year(result.equity, turnovers),
         "rebalance_hit_rate": rebalance_hit_rate(result.equity, fill_dates),
         "trailing_12m": _trailing_12m_return(result.equity),
+        "realloc_pct": realloc_pct,
     }
 
 
@@ -488,14 +505,28 @@ def _trailing_12m_return(equity: pl.DataFrame) -> float | None:
     metrics table doubles as a live "current momentum" leaderboard.
     Returns None when the curve has fewer than 252 rows of history.
     """
+    return _trailing_return(equity, lookback_days=252)
+
+
+def _trailing_6m_return(equity: pl.DataFrame) -> float | None:
+    """Trailing 6-month return on the equity curve — equity[end] /
+    equity[end - 126_trading_days] - 1.
+
+    Mirrors the DM6 single-6m signal. Used in the strategies table for a
+    faster pulse than the 12m metric in the performance table.
+    """
+    return _trailing_return(equity, lookback_days=126)
+
+
+def _trailing_return(equity: pl.DataFrame, lookback_days: int) -> float | None:
     if equity.is_empty():
         return None
     n = equity.height
-    if n < 253:  # need 252 prior rows + the current row to form the ratio
+    if n < lookback_days + 1:
         return None
     closes = equity.get_column("equity")
     end = float(closes[-1])
-    start = float(closes[-253])
+    start = float(closes[-(lookback_days + 1)])
     if start <= 0:
         return None
     return end / start - 1.0

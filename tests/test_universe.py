@@ -387,3 +387,86 @@ class TestAutoBHStrategies:
         ]
         out = auto_bh_strategies(catalog)
         assert [s.name for s in out] == ["us/sp500"]
+
+
+def test_momentum_delta_threshold_shared_default_parses(tmp_path: Path) -> None:
+    """Shared scoring default propagates to strategies that don't override."""
+    universe = tmp_path / "universe.yaml"
+    _write_yaml(universe, _MINIMAL_UNIVERSE_YAML)
+    strategies = tmp_path / "strategies.yaml"
+    _write_yaml(
+        strategies,
+        """\
+shared:
+  scoring: { lookbacks_days: [21], aggregation: mean, momentum_delta_threshold_pct: 2.5 }
+  allocation: { rule: equal_weight, granularity_pct: 10, rounding: largest_remainder }
+  costs: { per_trade_pct: 0.0 }
+strategies:
+  - name: defaulted
+    assets: [a]
+    rebalance: monthly_first_sunday
+    top_n: 1
+""",
+    )
+    cfg = load_config(strategies, universe)
+    assert cfg.shared.scoring.momentum_delta_threshold_pct == 2.5
+    s = next(s for s in cfg.strategies if s.name == "defaulted")
+    assert s.momentum_delta_threshold_pct is None
+    assert s.effective_threshold_pct(cfg.shared.scoring) == 2.5
+
+
+def test_momentum_delta_threshold_per_strategy_override(tmp_path: Path) -> None:
+    """Per-strategy override wins; explicit 0 disables on that strategy."""
+    universe = tmp_path / "universe.yaml"
+    _write_yaml(universe, _MINIMAL_UNIVERSE_YAML)
+    strategies = tmp_path / "strategies.yaml"
+    _write_yaml(
+        strategies,
+        """\
+shared:
+  scoring: { lookbacks_days: [21], aggregation: mean, momentum_delta_threshold_pct: 2.0 }
+  allocation: { rule: equal_weight, granularity_pct: 10, rounding: largest_remainder }
+  costs: { per_trade_pct: 0.0 }
+strategies:
+  - name: tighter
+    assets: [a]
+    rebalance: monthly_first_sunday
+    top_n: 1
+    momentum_delta_threshold_pct: 5.0
+  - name: disabled
+    assets: [a]
+    rebalance: monthly_first_sunday
+    top_n: 1
+    momentum_delta_threshold_pct: 0
+""",
+    )
+    cfg = load_config(strategies, universe)
+    by_name = {s.name: s for s in cfg.strategies}
+    assert by_name["tighter"].effective_threshold_pct(cfg.shared.scoring) == 5.0
+    assert by_name["disabled"].effective_threshold_pct(cfg.shared.scoring) == 0.0
+
+
+def test_momentum_delta_threshold_negative_rejected(tmp_path: Path) -> None:
+    """Negative thresholds are nonsensical (would invert the gate)."""
+    import pytest
+
+    universe = tmp_path / "universe.yaml"
+    _write_yaml(universe, _MINIMAL_UNIVERSE_YAML)
+    strategies = tmp_path / "strategies.yaml"
+    _write_yaml(
+        strategies,
+        """\
+shared:
+  scoring: { lookbacks_days: [21], aggregation: mean }
+  allocation: { rule: equal_weight, granularity_pct: 10, rounding: largest_remainder }
+  costs: { per_trade_pct: 0.0 }
+strategies:
+  - name: bad
+    assets: [a]
+    rebalance: monthly_first_sunday
+    top_n: 1
+    momentum_delta_threshold_pct: -1.0
+""",
+    )
+    with pytest.raises(ValueError, match="momentum_delta_threshold_pct must be"):
+        load_config(strategies, universe)

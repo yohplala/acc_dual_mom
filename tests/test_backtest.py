@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import date, timedelta
 
 import polars as pl
+import pytest
 
 from pea_momentum.backtest import run
 from pea_momentum.universe import (
@@ -329,3 +330,271 @@ def test_regional_weights_renormalise_when_region_missing() -> None:
     final = result.rebalances[-1].weights
     assert final.get("up", 0.0) == 0.7
     assert final.get("as", 0.0) == 0.3
+
+
+# ── Score-band hysteresis filter (whipsaw suppression) ──────────────────
+
+
+def _flipping_prices(start: date, days: int) -> pl.DataFrame:
+    """Two near-identical assets that swap trivially around day ~150 and
+    then swap back around ~250 — a synthetic whipsaw scenario where the
+    ranks flip but the score gap is small (sub-1%). The band filter
+    should suppress the whipsaws when the threshold exceeds the gap.
+    """
+    rows: list[dict[str, object]] = []
+    for i in range(days):
+        d = start + timedelta(days=i)
+        # Two slow-grinding equities with cross-overs at days ~150 / ~250.
+        # Both grow ~equally (~5bp/day) with a tiny phase shift so the
+        # rank flips but the magnitude difference stays below ~1%.
+        a = 100.0 * (1.0006**i) * (1 + 0.005 * (1 if 100 <= i <= 200 else 0))
+        b = 100.0 * (1.0006**i) * (1 + 0.005 * (1 if 200 < i <= 300 else 0))
+        rows.append({"date": d, "asset_id": "ax", "close": a})
+        rows.append({"date": d, "asset_id": "bx", "close": b})
+        rows.append({"date": d, "asset_id": "safe", "close": 100.0 * (1.0001**i)})
+    return pl.DataFrame(rows).cast({"date": pl.Date, "asset_id": pl.Utf8, "close": pl.Float64})
+
+
+def _band_config() -> Config:
+    return Config(
+        shared=Shared(
+            scoring=Scoring(lookbacks_days=(21, 63), aggregation="mean"),
+            allocation=Allocation(
+                rule="equal_weight",
+                granularity_pct=10,
+                rounding="largest_remainder",
+            ),
+            costs=Costs(per_trade_pct=0.10),
+        ),
+        assets=(
+            Asset(id="ax", isin="x", yahoo="x"),
+            Asset(id="bx", isin="x", yahoo="x"),
+            Asset(id="safe", isin="x", yahoo="", synth_proxy="estr"),
+        ),
+        strategies=(),
+    )
+
+
+def _band_strategy(threshold_pct: float | None) -> Strategy:
+    return Strategy(
+        name="band",
+        asset_ids=("ax", "bx"),
+        rebalance="weekly_sunday",
+        top_n=1,
+        reference_date=None,
+        momentum_delta_threshold_pct=threshold_pct,
+    )
+
+
+def test_band_filter_disabled_matches_baseline() -> None:
+    """threshold=0 must be byte-identical to the prior behaviour: no
+    swaps_rejected counts ever non-zero."""
+    prices = _flipping_prices(date(2023, 1, 1), days=400)
+    result = run(prices, _band_strategy(threshold_pct=0.0), _band_config())
+    assert all(r.swaps_rejected == 0 for r in result.rebalances)
+
+
+def test_band_filter_suppresses_tight_swaps() -> None:
+    """A high threshold (10%) on noise-grade rotations must trigger
+    swap rejections and reduce the count of actual reallocations."""
+    prices = _flipping_prices(date(2023, 1, 1), days=400)
+    off = run(prices, _band_strategy(threshold_pct=0.0), _band_config())
+    on = run(prices, _band_strategy(threshold_pct=10.0), _band_config())
+    n_swaps_off = sum(1 for r in off.rebalances if r.turnover > 0)
+    n_swaps_on = sum(1 for r in on.rebalances if r.turnover > 0)
+    assert n_swaps_on < n_swaps_off
+    assert any(r.swaps_rejected > 0 for r in on.rebalances)
+    # Top-1 strategy: when the only swap is rejected, the rolled-back
+    # weights equal prev, so turnover and cost are zero.
+    for r in on.rebalances:
+        if r.swaps_rejected > 0:
+            assert r.turnover == 0.0
+            assert r.cost == 0.0
+
+
+def test_band_filter_does_not_block_first_rebalance() -> None:
+    """Initial state is `{residual_holder: 1.0}` — the first transition
+    out of cash is never an oscillation and must not see any swap
+    rejection even with a very large threshold."""
+    prices = _flipping_prices(date(2023, 1, 1), days=400)
+    result = run(prices, _band_strategy(threshold_pct=1000.0), _band_config())
+    assert result.rebalances, "expected at least one rebalance"
+    assert result.rebalances[0].swaps_rejected == 0
+
+
+def test_band_filter_per_strategy_override_zero_disables() -> None:
+    """An explicit 0 on the strategy must disable the band even if the
+    shared scoring has a non-zero default."""
+    cfg = _band_config()
+    shared_with_default = Shared(
+        scoring=Scoring(
+            lookbacks_days=(21, 63),
+            aggregation="mean",
+            momentum_delta_threshold_pct=10.0,
+        ),
+        allocation=cfg.shared.allocation,
+        costs=cfg.shared.costs,
+    )
+    cfg = Config(shared=shared_with_default, assets=cfg.assets, strategies=())
+    prices = _flipping_prices(date(2023, 1, 1), days=400)
+    result = run(prices, _band_strategy(threshold_pct=0.0), cfg)
+    assert all(r.swaps_rejected == 0 for r in result.rebalances)
+
+
+def test_rebalances_json_round_trip_preserves_swaps_rejected() -> None:
+    from pea_momentum.backtest import rebalances_from_json, rebalances_to_json
+
+    prices = _flipping_prices(date(2023, 1, 1), days=400)
+    on = run(prices, _band_strategy(threshold_pct=10.0), _band_config())
+    text = rebalances_to_json(on.rebalances)
+    parsed = rebalances_from_json(text)
+    assert len(parsed) == len(on.rebalances)
+    for orig, got in zip(on.rebalances, parsed, strict=True):
+        assert orig.swaps_rejected == got.swaps_rejected
+        assert orig.turnover == got.turnover
+
+
+def test_rebalances_from_json_backward_compat_band_skipped_bool() -> None:
+    """Artifacts written under the brief band_skipped:bool schema must
+    deserialise: True → swaps_rejected=1, False → 0."""
+    import json
+
+    from pea_momentum.backtest import rebalances_from_json
+
+    text = json.dumps(
+        [
+            {
+                "rebalance_date": "2023-01-01",
+                "signal_date": "2022-12-30",
+                "fill_date": "2023-01-02",
+                "scores": {"a": 0.05},
+                "weights": {"a": 1.0},
+                "turnover": 0.0,
+                "cost": 0.0,
+                "band_skipped": True,
+            },
+            {
+                "rebalance_date": "2023-02-01",
+                "signal_date": "2023-01-30",
+                "fill_date": "2023-02-02",
+                "scores": {"a": 0.06},
+                "weights": {"a": 1.0},
+                "turnover": 0.0,
+                "cost": 0.0,
+                "band_skipped": False,
+            },
+        ]
+    )
+    parsed = rebalances_from_json(text)
+    assert parsed[0].swaps_rejected == 1
+    assert parsed[1].swaps_rejected == 0
+
+
+# ── Per-swap surgical gate ──────────────────────────────────────────────
+
+
+def test_per_swap_partial_acceptance_top3_score_prop() -> None:
+    """Top-3 score-prop with 2 simultaneous swaps where only one is below
+    the band: the strong swap goes through, the weak swap is rolled back.
+
+    Universe: A B C D E. Prev held = {A B C}.
+    New scores craft: D enters cleanly (beats C by margin), E is marginal
+    (gap < threshold against B).
+    Expected: held set becomes {A D B} (E rejected, B retained); D's
+    allocate-time weight goes to D, E's allocate-time weight goes to B.
+    """
+    cfg = Config(
+        shared=Shared(
+            scoring=Scoring(lookbacks_days=(21,), aggregation="mean"),
+            allocation=Allocation(
+                rule="score_proportional",
+                granularity_pct=10,
+                rounding="largest_remainder",
+            ),
+            costs=Costs(per_trade_pct=0.0),
+        ),
+        assets=tuple(Asset(id=x, isin="x", yahoo="x") for x in "abcde"),
+        strategies=(),
+    )
+    rows: list[dict[str, object]] = []
+    days = 400
+    for i in range(days):
+        d = date(2023, 1, 1) + timedelta(days=i)
+        # Phase 1 (i < 220): A best, then B, then C; D and E weak.
+        # Phase 2 (i ≥ 220): D climbs strongly past C; E creeps to just
+        # under B (gap < band threshold). A stays leader.
+        if i < 220:
+            mults = {"a": 1.0010, "b": 1.0008, "c": 1.0005, "d": 1.0001, "e": 1.0001}
+        else:
+            mults = {"a": 1.0010, "b": 1.0008, "c": 1.0005, "d": 1.0015, "e": 1.00079}
+        for k, m in mults.items():
+            rows.append({"date": d, "asset_id": k, "close": 100.0 * (m**i)})
+    prices = pl.DataFrame(rows).cast({"date": pl.Date, "asset_id": pl.Utf8, "close": pl.Float64})
+    s = Strategy(
+        name="surg",
+        asset_ids=("a", "b", "c", "d", "e"),
+        rebalance="weekly_sunday",
+        top_n=3,
+        reference_date=None,
+        momentum_delta_threshold_pct=2.0,
+    )
+    result = run(prices, s, cfg)
+    # Find a rebalance where multiple membership changes are proposed.
+    # Iterate post-warmup (after a few rebalances) and find one with
+    # swaps_rejected > 0.
+    rejs = [r for r in result.rebalances if r.swaps_rejected > 0]
+    assert rejs, "expected at least one rebalance with a rejected swap"
+    # On rejected rebalances, the rejected entrants should be absent from
+    # the final weights and the saved exit should be present.
+    for r in rejs:
+        assert sum(r.weights.values()) == pytest.approx(1.0, rel=1e-6)
+
+
+def test_per_swap_within_set_reweight_passes_through() -> None:
+    """Score-proportional top-3 where the held set doesn't change but
+    scores diverge: turnover should be > 0 (within-set reweight) and
+    swaps_rejected == 0 (no membership swap to evaluate)."""
+    cfg = Config(
+        shared=Shared(
+            scoring=Scoring(lookbacks_days=(21,), aggregation="mean"),
+            allocation=Allocation(
+                rule="score_proportional",
+                granularity_pct=1,  # fine granularity so reweights register
+                rounding="largest_remainder",
+            ),
+            costs=Costs(per_trade_pct=0.0),
+        ),
+        assets=tuple(Asset(id=x, isin="x", yahoo="x") for x in "abc"),
+        strategies=(),
+    )
+    # Time-varying growth so the score *ratios* drift over the backtest:
+    # A and B exchange leadership every ~80 days; C grinds steadily. The
+    # held set stays {a, b, c} (top-3 of 3) but the score-prop weights
+    # shift across rebalance dates.
+    import math
+
+    rows: list[dict[str, object]] = []
+    for i in range(400):
+        d = date(2023, 1, 1) + timedelta(days=i)
+        a_rate = 1.0008 + 0.001 * math.sin(i / 40)
+        b_rate = 1.0008 - 0.001 * math.sin(i / 40)
+        c_rate = 1.0006
+        rows.append({"date": d, "asset_id": "a", "close": 100.0 * (a_rate**i)})
+        rows.append({"date": d, "asset_id": "b", "close": 100.0 * (b_rate**i)})
+        rows.append({"date": d, "asset_id": "c", "close": 100.0 * (c_rate**i)})
+    prices = pl.DataFrame(rows).cast({"date": pl.Date, "asset_id": pl.Utf8, "close": pl.Float64})
+    s = Strategy(
+        name="reweight",
+        asset_ids=("a", "b", "c"),
+        rebalance="weekly_sunday",
+        top_n=3,
+        reference_date=None,
+        momentum_delta_threshold_pct=10.0,  # high threshold; held set is fixed anyway
+    )
+    result = run(prices, s, cfg)
+    # Top-3 of 3 assets => held set is always {a, b, c} → no entrants /
+    # exits ever → swaps_rejected always 0; within-set reweight produces
+    # at least one turnover > 0 rebalance.
+    assert all(r.swaps_rejected == 0 for r in result.rebalances)
+    assert any(r.turnover > 0 for r in result.rebalances[1:]), \
+        "expected at least one within-set reweight after the first rebalance"

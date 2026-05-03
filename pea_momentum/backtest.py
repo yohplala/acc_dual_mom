@@ -43,6 +43,15 @@ class Rebalance:
     weights: dict[str, float]
     turnover: float
     cost: float
+    # Number of (entrant, exit) swap proposals the score-band filter
+    # rejected at this rebalance. The rejected entrants are rolled back to
+    # their paired exits — the unchanged held assets keep their rule-driven
+    # weights (so within-set score-prop reweighting still applies). For
+    # top-1 strategies, swaps_rejected > 0 implies turnover == 0 (the only
+    # swap was undone). For top-N score-prop strategies, swaps_rejected > 0
+    # is consistent with turnover > 0 (the within-set reweight produced
+    # non-zero L1).
+    swaps_rejected: int = 0
 
 
 @dataclass(frozen=True, slots=True)
@@ -144,6 +153,9 @@ def run(
     prev_weights: dict[str, float] = {residual_holder: 1.0}
     n_fill_skips = 0
     n_signal_skips = 0
+    threshold_frac = strategy.effective_threshold_pct(config.shared.scoring) / 100.0
+    had_real_rebalance = False
+    last_real_scores: dict[str, float] = {}
 
     asset_by_id = {a.id: a for a in config.assets}
     for r_day in rebalance_dates(strategy, dates[0], dates[-1]):
@@ -158,7 +170,7 @@ def run(
         if not scores:
             n_signal_skips += 1
             continue
-        new_w = allocate(
+        new_w_proposed = allocate(
             scores=scores,
             top_n=strategy.top_n,
             alloc=config.shared.allocation,
@@ -166,6 +178,17 @@ def run(
             residual_holder=residual_holder,
             regional_weights=strategy.regional_weights,
             asset_by_id=asset_by_id,
+        )
+        new_w, n_rejected = _apply_band(
+            had_real_rebalance=had_real_rebalance,
+            threshold_frac=threshold_frac,
+            prev_weights=prev_weights,
+            new_w=new_w_proposed,
+            scores=scores,
+            last_real_scores=last_real_scores,
+            residual_holder=residual_holder,
+            r_day=r_day,
+            strategy_name=strategy.name,
         )
         turnover = _turnover(prev_weights, new_w)
         cost = _transition_cost(prev_weights, new_w, cost_pct, half_spread_by_id)
@@ -178,10 +201,20 @@ def run(
                 weights=new_w,
                 turnover=turnover,
                 cost=cost,
+                swaps_rejected=n_rejected,
             )
         )
-        fills.append((f_day, new_w, cost))
+        # A rebalance with zero turnover doesn't enter the fills list (no
+        # transition for the compounding kernel). Per-swap rejection can
+        # still produce non-zero turnover (within-set reweight in score-
+        # prop), in which case it's a real fill. `had_real_rebalance` flips
+        # on the first iteration unconditionally so the gate is active
+        # from the second onwards.
+        if turnover > 0:
+            fills.append((f_day, new_w, cost))
         prev_weights = new_w
+        last_real_scores = scores
+        had_real_rebalance = True
 
     # Compounding kernel needs every asset id that may appear in weights —
     # listed assets + the residual holder (CASH if safe wasn't listed). The
@@ -231,6 +264,82 @@ def _turnover(prev: dict[str, float], new: dict[str, float]) -> float:
     """L1 distance between two weight dicts. Safe-asset rebalancing also counts."""
     keys = set(prev) | set(new)
     return sum(abs(new.get(k, 0.0) - prev.get(k, 0.0)) for k in keys)
+
+
+def _apply_band(
+    *,
+    had_real_rebalance: bool,
+    threshold_frac: float,
+    prev_weights: dict[str, float],
+    new_w: dict[str, float],
+    scores: dict[str, float],
+    last_real_scores: dict[str, float],
+    residual_holder: str,
+    r_day: date,
+    strategy_name: str,
+) -> tuple[dict[str, float], int]:
+    """Per-swap score-band gate.
+
+    Identifies (entrant, exit) pairs in the proposed rebalance, pairs them
+    by score (weakest entrant ↔ strongest exit), and rejects any pair whose
+    score gap is below `threshold_frac`. Rejected entrants have their
+    allocate-time weight transferred back to the exit they would have
+    displaced — the unchanged held assets keep their rule-driven weights,
+    so score-proportional within-set reweighting still happens even when
+    some swaps are rejected.
+
+    Returns `(adjusted_weights, n_rejected)`. The first transition out of
+    the initial cash state is never gated.
+
+    Pairing strategy — entrants asc by score, exits desc by score, then
+    zip — pairs the marginal entrant (most likely noise) with the
+    strongest exit (highest "should I keep this?" pull). This is the
+    optimal assignment for "maximize swaps whose gap clears the band".
+    """
+    if threshold_frac <= 0.0 or not had_real_rebalance:
+        return new_w, 0
+    held_prev = {k for k, v in prev_weights.items() if v > 0}
+    held_new = {k for k, v in new_w.items() if v > 0}
+    entrants = held_new - held_prev
+    exits = held_prev - held_new
+    if not entrants or not exits:
+        return new_w, 0
+
+    def _score_for(aid: str) -> float:
+        if aid in scores:
+            return scores[aid]
+        if aid in last_real_scores:
+            return last_real_scores[aid]
+        if aid == residual_holder or aid == CASH_KEY:
+            return 0.0
+        return float("-inf")
+
+    sorted_entrants = sorted(entrants, key=_score_for)  # asc — weakest first
+    sorted_exits = sorted(exits, key=_score_for, reverse=True)  # desc — strongest first
+
+    adjusted = dict(new_w)
+    n_rejected = 0
+    # zip stops at the shorter of the two — unpaired entrants (no exit to
+    # displace) and unpaired exits (just dropped, no displacement) are
+    # outside the gate's purview.
+    for entrant, exit_ in zip(sorted_entrants, sorted_exits, strict=False):
+        gap = _score_for(entrant) - _score_for(exit_)
+        if gap < threshold_frac:
+            w = adjusted.pop(entrant, 0.0)
+            adjusted[exit_] = adjusted.get(exit_, 0.0) + w
+            n_rejected += 1
+            log.info(
+                "%s swap-reject @ %s: %s(%.4f) ↛ %s(%.4f) gap=%.4f < %.4f",
+                strategy_name,
+                r_day,
+                exit_,
+                _score_for(exit_),
+                entrant,
+                _score_for(entrant),
+                gap,
+                threshold_frac,
+            )
+    return adjusted, n_rejected
 
 
 def _transition_cost(
@@ -421,6 +530,7 @@ def rebalances_to_json(rebalances: list[Rebalance]) -> str:
                 "weights": r.weights,
                 "turnover": r.turnover,
                 "cost": r.cost,
+                "swaps_rejected": r.swaps_rejected,
             }
             for r in rebalances
         ],
@@ -430,9 +540,24 @@ def rebalances_to_json(rebalances: list[Rebalance]) -> str:
 
 
 def rebalances_from_json(text: str) -> list[Rebalance]:
-    """Strict deserializer mirroring `rebalances_to_json`. Missing keys raise
-    KeyError — they would indicate a corrupted artifact, not a legacy schema."""
+    """Deserialise the artifact written by `rebalances_to_json`.
+
+    Required keys raise KeyError if missing (corrupted artifact).
+    Backward-compat for two earlier schemas:
+    - Pre-band artifacts (no rejection field) → swaps_rejected = 0.
+    - All-or-nothing band schema (`band_skipped: bool`) → swaps_rejected
+      = 1 if True else 0. The exact rejection count was never recorded
+      in that schema; 1 is the closest faithful approximation (≥ 1).
+    """
     raw = json.loads(text)
+
+    def _swaps_rejected(r: dict[str, object]) -> int:
+        if "swaps_rejected" in r:
+            return int(r["swaps_rejected"])  # type: ignore[arg-type]
+        if r.get("band_skipped"):
+            return 1
+        return 0
+
     return [
         Rebalance(
             rebalance_date=date.fromisoformat(r["rebalance_date"]),
@@ -442,6 +567,7 @@ def rebalances_from_json(text: str) -> list[Rebalance]:
             weights=r["weights"],
             turnover=float(r["turnover"]),
             cost=float(r["cost"]),
+            swaps_rejected=_swaps_rejected(r),
         )
         for r in raw
     ]

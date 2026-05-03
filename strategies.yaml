@@ -18,6 +18,14 @@ shared:
     # 21 ≈ 1 month, 63 ≈ 3 months, 126 ≈ 6 months.
     lookbacks_days: [21, 63, 126]
     aggregation: mean
+    # Score-band hysteresis (whipsaw filter). At each rebalance, suppress
+    # the swap when the weakest entrant doesn't beat the strongest exit by
+    # at least this margin (in score units = pct points of mean ROC). A
+    # 2% default cancels rotations driven by sub-2% momentum reorderings —
+    # noise more often than regime change. Per-strategy override via
+    # `momentum_delta_threshold_pct:` on a strategy entry; explicit 0
+    # disables the band on that strategy.
+    momentum_delta_threshold_pct: 2.0
 
   allocation:
     # Default weighting rule across selected top-N. Canonical Antonacci ADM
@@ -70,20 +78,26 @@ strategies:
     top_n: 1
 
   # Single 6-month lookback (Antonacci's "moderate" dual-momentum variant).
+  # Band off (set explicitly): empirically the 2% band hurt CAGR by 0.55pp
+  # on this strategy — the 6m signal already damps whipsaws on its own.
   - name: core_dm6_m_t1
     description: 6-asset core, monthly, single 6-month lookback, top-1
     assets: [sp500, russell2000, eurostoxx50, em_asia, topix, cash_estr]
     rebalance: monthly_first_sunday
     top_n: 1
     lookbacks_days: [126]
+    momentum_delta_threshold_pct: 0
 
   # Single 12-month lookback (Antonacci's classic dual-momentum variant).
+  # Band off: 12m signal is the slowest in the lineup, so the band cancels
+  # genuine regime changes more often than noise (CAGR -0.84pp at 2%).
   - name: core_dm12_m_t1
     description: 6-asset core, monthly, single 12-month lookback, top-1
     assets: [sp500, russell2000, eurostoxx50, em_asia, topix, cash_estr]
     rebalance: monthly_first_sunday
     top_n: 1
     lookbacks_days: [252]
+    momentum_delta_threshold_pct: 0
 
   # ── SENSITIVITY EXHIBITS on the same core universe ────────────────────
   # Score-proportional weighting (vs the equal_weight default).
@@ -136,11 +150,14 @@ strategies:
   # have post-2010 history (no usable proxy pre-2010), so the active lineup
   # standardised on unhedged `topix` (EWJ-stitched back to 1996) for
   # full GFC-spanning backtests across all Japan-bearing strategies.
+  # Band off: 2-asset rotation, the band cancels lead changes between
+  # topix and safe that empirically helped CAGR (-0.92pp at 2%).
   - name: jp_adm_m_t1
     description: Japan ADM rotation (topix vs safe), monthly top-1
     assets: [topix, cash_estr]
     rebalance: monthly_first_sunday
     top_n: 1
+    momentum_delta_threshold_pct: 0
 
   # ── METHODOLOGICAL BASELINES ──────────────────────────────────────────
   # Antonacci-style "Absolute Momentum": single risky asset gated by the
@@ -296,12 +313,15 @@ strategies:
   # so the lineup uses unhedged for GFC-spanning backtests. All-negative-
   # momentum case falls through to the 0%-return CASH placeholder — to
   # opt-in to €STR yield during crashes, add cash_estr to `assets:`.
+  # Band off: semiannual cadence already minimises whipsaw; the band cancels
+  # rare-but-correct regime changes (CAGR -0.25pp at 2%).
   - name: world4_dm6_s_t1
     description: 4-region rotation (US/EU/EM-Asia/JP), DM 6m, semiannual top-1
     assets: [sp500, eurostoxx50, em_asia, topix]
     rebalance: semiannual_first_sunday
     top_n: 1
     lookbacks_days: [126]
+    momentum_delta_threshold_pct: 0
 
   # Same setup as world4_dm6_s_t1 but with cash_estr in the universe so the
   # strategy can rotate to the safe sleeve in deep crashes (rank-only
@@ -312,12 +332,14 @@ strategies:
   # crash protection. Drawback at top-1 over 4 risky: cash needs to beat
   # ALL 4 risky scores simultaneously to enter, so the defensive trigger
   # is rare — meaningful only in synchronised global selloffs.
+  # Band off: same reasoning as world4_dm6_s_t1 (CAGR -0.99pp at 2%).
   - name: world4safe_dm6_s_t1
     description: 4 regions + cash, DM 6m, semiannual top-1
     assets: [sp500, eurostoxx50, em_asia, topix, cash_estr]
     rebalance: semiannual_first_sunday
     top_n: 1
     lookbacks_days: [126]
+    momentum_delta_threshold_pct: 0
 
   # ── EXPERT PROPOSAL: 4 disjoint regions + cash, single 12m DM, top-3 ─────
   # Rationale: clean geographic universe (no US double-counting like the
@@ -331,12 +353,15 @@ strategies:
   # absolute-momentum equivalent: when all equity scores collapse below
   # zero in a crash, €STR's small positive score wins the rank → defensive
   # tilt automatic. The reason to do momentum rotation in the first place.
+  # Band off: marginally negative on CAGR (-0.05pp at 2%); the 12m signal
+  # already provides natural hysteresis that the explicit band duplicates.
   - name: geo4safe_dm12_m_t3
     description: 4 disjoint regions + cash, single 12m DM, monthly top-3 equal-weight
     assets: [sp500, eurostoxx50, em_asia, topix, cash_estr]
     rebalance: monthly_first_sunday
     top_n: 3
     lookbacks_days: [252]
+    momentum_delta_threshold_pct: 0
 
   # ── 3-region quarterly trend-capture (no EU) + cash ───────────────────
   # 3 disjoint risky sleeves (US / EM Asia / Japan unhedged) + cash_estr,
@@ -349,12 +374,15 @@ strategies:
   # equivalent: when all 3 risky scores collapse below zero in a crash,
   # €STR's small positive score wins top-1 and the strategy goes 100%
   # cash with €STR yield (vs falling through to a 0%-return placeholder).
+  # Band off: quarterly cadence + DM6 already low-frequency; the band cancels
+  # rare regime changes (CAGR -1.03pp at 2%).
   - name: geo3_dm6_q_t1
     description: 3 regions + cash, DM 6m, quarterly top-1
     assets: [sp500, em_asia, topix, cash_estr]
     rebalance: quarterly_first_sunday
     top_n: 1
     lookbacks_days: [126]
+    momentum_delta_threshold_pct: 0
 
   # ── REGIONAL WINNERS: best DM-X per region, score-proportional ───────
   # `selection_rule: top_1_per_region` reuses the standard DM/ADM
@@ -418,6 +446,8 @@ strategies:
     allocation_rule: score_proportional
     selection_rule: top_1_per_region
 
+  # Band off: quarterly cadence + DM6 already low-frequency; band cancels
+  # genuine quarterly regime changes (CAGR -1.53pp at 2%).
   - name: regional_dm6_sp_q_t3
     description: Best DM 6m per region (US/EU/Asia), score-proportional, quarterly top-3
     assets: [
@@ -433,7 +463,10 @@ strategies:
     lookbacks_days: [126]
     allocation_rule: score_proportional
     selection_rule: top_1_per_region
+    momentum_delta_threshold_pct: 0
 
+  # Band off: same reasoning as the quarterly variant — semiannual cadence
+  # is already minimal-turnover (CAGR -1.92pp at 2%).
   - name: regional_dm6_sp_s_t3
     description: Best DM 6m per region (US/EU/Asia), score-proportional, semiannual top-3
     assets: [
@@ -449,6 +482,7 @@ strategies:
     lookbacks_days: [126]
     allocation_rule: score_proportional
     selection_rule: top_1_per_region
+    momentum_delta_threshold_pct: 0
 
   # ── Static-weight regional family (US 60% / Asia 30% / EU 10%) ──
   # Same DM-6m-per-region scoring + selection as the `_sp_` family above,
@@ -457,6 +491,8 @@ strategies:
   # weights only decide the inter-region split. If a region has no asset
   # with enough history at a rebalance, its target weight is forfeited and
   # the remaining regions are renormalised proportionally.
+  # Band off: static-weight regional family (60/30/10 US/Asia/EU) trades
+  # mostly intra-region picks; the band cancels real changes (CAGR -1.03pp).
   - name: regional_dm6_st_m_t3
     description: Best DM 6m per region (US/EU/Asia), static 60/30/10 split, monthly top-3
     assets: [
@@ -475,7 +511,9 @@ strategies:
       us: 0.6
       asia: 0.3
       europe: 0.1
+    momentum_delta_threshold_pct: 0
 
+  # Band off: largest empirical hit in the lineup (CAGR -3.38pp at 2%).
   - name: regional_dm6_st_q_t3
     description: Best DM 6m per region (US/EU/Asia), static 60/30/10 split, quarterly top-3
     assets: [
@@ -494,7 +532,9 @@ strategies:
       us: 0.6
       asia: 0.3
       europe: 0.1
+    momentum_delta_threshold_pct: 0
 
+  # Band off (CAGR -1.81pp at 2%).
   - name: regional_dm6_st_s_t3
     description: Best DM 6m per region (US/EU/Asia), static 60/30/10 split, semiannual top-3
     assets: [
@@ -513,6 +553,7 @@ strategies:
       us: 0.6
       asia: 0.3
       europe: 0.1
+    momentum_delta_threshold_pct: 0
 
   # ── Two-asset growth pair: US tech + EM Asia (DM 6m, score-prop, qtly) ──
   # Concentrated 2-asset rotation between two of the strongest 15-year
@@ -536,9 +577,56 @@ strategies:
   # the winner regardless), so no `_sp_` / `_eq_` tag in the name. More
   # decisive than the score-proportional sister strategy, with the
   # higher turnover that comes from a monthly + binary switch.
+  # Band off: 2-asset rotation, the band cancels real lead changes between
+  # US tech and EM Asia (CAGR -1.95pp at 2%; threshold sweep showed 1% as
+  # a milder option but still negative — set to 0 to maximise realised CAGR).
   - name: pair_dm6_m_t1
     description: US tech vs EM Asia, DM 6m, monthly top-1 rotation
     assets: [us_pea_us_tech, em_asia]
     rebalance: monthly_first_sunday
     top_n: 1
     lookbacks_days: [126]
+    momentum_delta_threshold_pct: 0
+
+  # ── 3-asset US-tech / EM-Asia / Japan-hedged growth pair, ADM family ──
+  # Concentrated growth-tilted rotation across three regional leaders.
+  # Four-variant matrix on the same 3-risky universe:
+  #   {ADM 1/3/6, ADM 2/4/8} × {no safe, +€STR safe sleeve}
+  # so the lookback-responsiveness lever and the safe-sleeve crash-
+  # protection lever can be disentangled experimentally. All four use
+  # the shared 2% score-band default — comparing turnover/yr and
+  # realloc% against the existing `pair_dm6_m_t1` shows the band's
+  # impact on near-identical universes.
+  - name: tri_adm136_m_t1
+    description: US tech + EM Asia + Japan-hedged, ADM 1/3/6 mean, monthly top-1
+    assets: [us_pea_us_tech, em_asia, topix_hedged]
+    rebalance: monthly_first_sunday
+    top_n: 1
+
+  - name: trisafe_adm136_m_t1
+    description: US tech + EM Asia + Japan-hedged + €STR, ADM 1/3/6 mean, monthly top-1
+    assets: [us_pea_us_tech, em_asia, topix_hedged, cash_estr]
+    rebalance: monthly_first_sunday
+    top_n: 1
+
+  # ADM 2/4/8 (lookbacks 42/84/168d) — slower-signal sibling of the 1/3/6
+  # family. The 1m component (most reactive) is dropped; the centroid of
+  # the score is ~4.7m vs ~3.3m for ADM 1/3/6.
+  # Band off: the slower 2/4/8 signal already damps short-term reordering
+  # noise on its own; the explicit band cancels real changes (CAGR -0.79pp
+  # without safe, -0.34pp with safe at 2%).
+  - name: tri_adm248_m_t1
+    description: US tech + EM Asia + Japan-hedged, ADM 2/4/8 mean, monthly top-1
+    assets: [us_pea_us_tech, em_asia, topix_hedged]
+    rebalance: monthly_first_sunday
+    top_n: 1
+    lookbacks_days: [42, 84, 168]
+    momentum_delta_threshold_pct: 0
+
+  - name: trisafe_adm248_m_t1
+    description: US tech + EM Asia + Japan-hedged + €STR, ADM 2/4/8 mean, monthly top-1
+    assets: [us_pea_us_tech, em_asia, topix_hedged, cash_estr]
+    rebalance: monthly_first_sunday
+    top_n: 1
+    lookbacks_days: [42, 84, 168]
+    momentum_delta_threshold_pct: 0

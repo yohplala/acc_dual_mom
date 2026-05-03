@@ -87,6 +87,11 @@ class Asset:
 class Scoring:
     lookbacks_days: tuple[int, ...]
     aggregation: str
+    # Score-band hysteresis: at a rebalance, suppress the swap when the
+    # weakest entrant doesn't beat the strongest exit by at least this
+    # threshold (in score units, i.e. percentage points of mean ROC).
+    # 0 disables the filter. Per-strategy override on `Strategy`.
+    momentum_delta_threshold_pct: float = 0.0
 
 
 @dataclass(frozen=True, slots=True)
@@ -166,6 +171,10 @@ class Strategy:
     # weights are renormalised proportionally — same shrinkage rule as
     # score_proportional applies when a top-N slot is empty.
     regional_weights: tuple[tuple[str, float], ...] | None = None
+    # Per-strategy override of `shared.scoring.momentum_delta_threshold_pct`.
+    # `None` inherits the shared default; an explicit `0` disables the
+    # band on this strategy regardless of the shared default.
+    momentum_delta_threshold_pct: float | None = None
 
     def effective_scoring(self, shared_scoring: Scoring) -> Scoring:
         if self.lookbacks_days is None:
@@ -173,7 +182,18 @@ class Strategy:
         return Scoring(
             lookbacks_days=self.lookbacks_days,
             aggregation=shared_scoring.aggregation,
+            momentum_delta_threshold_pct=shared_scoring.momentum_delta_threshold_pct,
         )
+
+    def effective_threshold_pct(self, shared_scoring: Scoring) -> float:
+        """Score-band threshold in percentage points (e.g. 2.0 = 2%).
+
+        Per-strategy override wins; `None` inherits the shared default.
+        Returns 0.0 when the band is disabled (default OFF or explicit 0).
+        """
+        if self.momentum_delta_threshold_pct is not None:
+            return self.momentum_delta_threshold_pct
+        return shared_scoring.momentum_delta_threshold_pct
 
     @property
     def label(self) -> str:
@@ -290,10 +310,16 @@ def _parse(raw: dict[str, Any], catalog_by_id: dict[str, Asset]) -> Config:
     shared_raw = raw["shared"]
     execution = _parse_execution(shared_raw.get("execution"))
 
+    shared_threshold = float(shared_raw["scoring"].get("momentum_delta_threshold_pct", 0.0))
+    if shared_threshold < 0:
+        raise ValueError(
+            f"shared.scoring.momentum_delta_threshold_pct must be >= 0 (got {shared_threshold})"
+        )
     shared = Shared(
         scoring=Scoring(
             lookbacks_days=tuple(shared_raw["scoring"]["lookbacks_days"]),
             aggregation=shared_raw["scoring"]["aggregation"],
+            momentum_delta_threshold_pct=shared_threshold,
         ),
         allocation=Allocation(
             rule=shared_raw["allocation"]["rule"],
@@ -514,6 +540,15 @@ def _parse_strategy(s: dict[str, Any], catalog_by_id: dict[str, Asset]) -> Strat
                 f"strategy {s['name']!r}: regional_weights must sum to 1.0 (got {total:.6f})"
             )
         regional_weights = items
+    threshold_raw = s.get("momentum_delta_threshold_pct")
+    threshold: float | None = None
+    if threshold_raw is not None:
+        threshold = float(threshold_raw)
+        if threshold < 0:
+            raise ValueError(
+                f"strategy {s['name']!r}: momentum_delta_threshold_pct must be "
+                f">= 0 (got {threshold})"
+            )
     return Strategy(
         name=s["name"],
         asset_ids=tuple(s["assets"]),
@@ -527,6 +562,7 @@ def _parse_strategy(s: dict[str, Any], catalog_by_id: dict[str, Asset]) -> Strat
         static_weights=static_weights,
         selection_rule=selection_rule,
         regional_weights=regional_weights,
+        momentum_delta_threshold_pct=threshold,
     )
 
 

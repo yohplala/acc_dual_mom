@@ -177,7 +177,7 @@
             <th class="sortable" data-sort="text" title="Score recipe: ADM = mean of multiple lookbacks (accelerated dual-momentum); DM = single-lookback dual-momentum; Buy & Hold = no scoring.">Scoring</th>
             <th class="sortable" data-sort="text" title="Allocation recipe: top-N (number of sleeves held) + weighting rule (equal = 1/N, score-prop = score-proportional, static = fixed per-region weights). B&H = buy-and-hold static weights.">Allocation</th>
             <th class="numeric sortable sort-desc" data-sort="num" title="Compound Annual Growth Rate. Default sort key: rows are pre-sorted by CAGR desc; click any other sortable header to re-rank.">CAGR</th>
-            <th class="numeric sortable" data-sort="num" title="Trailing 12-month return: equity[t]/equity[t-252] - 1 as of the most recent equity-curve date. Sort desc to surface the current momentum leader. Empty (—) when the curve has fewer than 252 trading days.">12m</th>
+            <th class="numeric sortable" data-sort="num" title="Trailing 6-month return: equity[t]/equity[t-126] - 1 as of the most recent equity-curve date. Faster pulse than the 12m metric on the Performance table. Empty (—) when the curve has fewer than 126 trading days.">6m</th>
             <th class="sortable" data-sort="text">Last rebalance</th>
             <th class="chips" title="World + Cash sleeves with current allocation overlaid: id only when not held this period, id + pct% when held (color-coded by weight)">World<br>Cash</th>
             <th class="chips" title="US, Europe, Asia sleeves with current allocation overlaid: id only when not held this period, id + pct% when held (color-coded by weight). Order: US first, then Europe, then Asia">US<br>Europe<br>Asia</th>
@@ -192,7 +192,7 @@
             <td data-value="{{ s.scoring }}">{{ s.scoring }}</td>
             <td class="alloc" data-value="{{ s.allocation_top }} {{ s.allocation_weight }}">{{ s.allocation_top }}{% if s.allocation_weight %}<br>{{ s.allocation_weight }}{% endif %}</td>
             <td class="numeric {{ 'pos' if s.cagr >= 0 else 'neg' }}" data-value="{{ s.cagr }}">{% if s.cagr == s.cagr and s.cagr != -1e308 %}{{ "%.2f%%"|format(s.cagr * 100) }}{% else %}—{% endif %}</td>
-            <td class="numeric {% if s.trailing_12m is not none %}{{ 'pos' if s.trailing_12m >= 0 else 'neg' }}{% endif %}" data-value="{% if s.trailing_12m is not none %}{{ s.trailing_12m }}{% else %}-999{% endif %}">{% if s.trailing_12m is not none %}{{ "%.2f%%"|format(s.trailing_12m * 100) }}{% else %}—{% endif %}</td>
+            <td class="numeric {% if s.trailing_6m is not none %}{{ 'pos' if s.trailing_6m >= 0 else 'neg' }}{% endif %}" data-value="{% if s.trailing_6m is not none %}{{ s.trailing_6m }}{% else %}-999{% endif %}">{% if s.trailing_6m is not none %}{{ "%.2f%%"|format(s.trailing_6m * 100) }}{% else %}—{% endif %}</td>
             <td data-value="{{ s.last_rebalance }}">{{ s.last_rebalance }}</td>
             {# World + Cash consolidated, with current allocation overlaid. #}
             <td class="chips">
@@ -245,14 +245,15 @@
             <th class="sortable" data-sort="text">Strategy</th>
             <th class="numeric sortable sort-desc" data-sort="num" title="Default sort key: rows pre-sorted by CAGR desc; click any other sortable header to re-rank.">CAGR</th>
             <th class="numeric sortable" data-sort="num" title="Trailing 12-month return (DM12 score): equity[t]/equity[t-252] - 1, computed as of the most recent equity-curve date. Sort desc to see which strategy is currently leading on momentum. Empty (—) when the curve has fewer than 252 trading days of history.">12m return</th>
-            <th class="numeric sortable" data-sort="num">Vol (ann.)</th>
-            <th class="numeric sortable" data-sort="num">Sharpe</th>
-            <th class="numeric sortable" data-sort="num">Sortino</th>
+            <th class="numeric sortable" data-sort="num" title="Annualised volatility = stdev(daily returns) × √252. Total dispersion of daily returns; doesn't distinguish upside from downside.">Vol (ann.)</th>
+            <th class="numeric sortable" data-sort="num" title="Sharpe = mean(daily return) / stdev(daily return) × √252, rf = 0. Reward per unit of total volatility — higher is better.">Sharpe</th>
+            <th class="numeric sortable" data-sort="num" title="Sortino = mean(daily return) / downside-stdev × √252, rf = 0. Reward per unit of downside volatility — penalises losses, not upside spikes.">Sortino</th>
             <th class="numeric sortable" data-sort="num">Max DD</th>
-            <th class="numeric sortable" data-sort="num">Calmar</th>
+            <th class="numeric sortable" data-sort="num" title="Calmar = CAGR / |Max DD|. Reward per unit of worst peak-to-trough drawdown — long-horizon tail-risk-adjusted return.">Calmar</th>
             <th class="numeric sortable" data-sort="num" title="Daily hit rate: fraction of trading days with positive return. Correlated with vol more than skill — see Rebal hit for the slow-strategy-relevant view.">Daily hit</th>
             <th class="numeric sortable" data-sort="num" title="Per-rebalance hit rate: fraction of rebalance intervals where the equity at the next rebalance is above the equity at the current one. Sample size = number of rebalances, so this is the meaningful skill measure for monthly/weekly strategies.">Rebal hit</th>
             <th class="numeric sortable" data-sort="num" title="Annualised L1 turnover: sum of per-rebalance turnovers / years. Directly drives total transaction-cost drag at fixed per-trade cost.">Turnover/yr</th>
+            <th class="numeric sortable" data-sort="num" title="Fraction of rebalance assessments that produced an actual reallocation (turnover > 0). 100% = every rebalance traded; lower = signal often re-confirmed prior holdings or the score-band filter cancelled the swap.">Realloc %</th>
             <th class="numeric sortable" data-sort="num">Final</th>
             <th class="numeric sortable" data-sort="num" title="Cumulative transaction cost (sum of turnover × per-trade pct over the full backtest). Same units as Final — Final + Total cost ≈ no-cost final equity.">Total cost</th>
             <th class="numeric sortable" data-sort="num" title="Average pairwise Pearson correlation of daily returns across the strategy's risky universe. Lower = more decorrelated = better diversification potential.">Avg corr</th>
@@ -272,6 +273,7 @@
             <td class="numeric" data-value="{{ m.hit_rate }}">{{ "%.1f%%"|format(m.hit_rate * 100) }}</td>
             <td class="numeric" data-value="{% if m.rebalance_hit_rate is not none %}{{ m.rebalance_hit_rate }}{% else %}-999{% endif %}">{% if m.rebalance_hit_rate is not none %}{{ "%.1f%%"|format(m.rebalance_hit_rate * 100) }}{% else %}—{% endif %}</td>
             <td class="numeric" data-value="{% if m.turnover_per_year is not none %}{{ m.turnover_per_year }}{% else %}-999{% endif %}">{% if m.turnover_per_year is not none %}{{ "%.2f"|format(m.turnover_per_year) }}{% else %}—{% endif %}</td>
+            <td class="numeric" data-value="{% if m.realloc_pct is not none %}{{ m.realloc_pct }}{% else %}-999{% endif %}">{% if m.realloc_pct is not none %}{{ "%.1f%%"|format(m.realloc_pct * 100) }}{% else %}—{% endif %}</td>
             <td class="numeric" data-value="{{ m.final_equity }}">{{ "%.3f"|format(m.final_equity) }}</td>
             <td class="numeric neg" data-value="{{ m.total_cost }}">{{ "%.3f"|format(m.total_cost) }}</td>
             <td class="numeric" data-value="{% if m.avg_corr is not none %}{{ m.avg_corr }}{% else %}-999{% endif %}">{% if m.avg_corr is not none %}{{ "%.2f"|format(m.avg_corr) }}{% else %}—{% endif %}</td>
