@@ -81,6 +81,26 @@ Active examples in [`pea_universe.yaml`](../pea_universe.yaml):
 - `world` (DCAM.PA): `IWDA.AS` (cleanest, EUR Acc UCITS since 2009-09-25) → `IWRD.L` (same fund, USD Dist share class, +9 months back to 2009-01-02) → `ACWI` (broader MSCI ACWI, ~12% EM contamination, extends to 2008-03-28 capturing the Lehman peak).
 - `em_asia` (PAASI.PA): `EEMA` (pure MSCI EM Asia since 2012-02-09) → `AAXJ` (Asia ex-Japan, ~10% developed-Asia drift, extends to 2008-08-15).
 - `eurostoxx50` (C50.PA): `CSX5.AS` (iShares Core EUR Acc since 2014-04-28, low TER same as live) → `MSE.PA` (Amundi II share class, higher TER, extends to 2008-01-02).
+- `topix_hedged` (PTPXH.PA): `IJPE.L` (real EUR-hedged Japan ETF since 2010-09-30) → `eur_hedged_jp` (synthetic recipe — see below).
+
+### Synthetic-proxy recipes (`kind: synth`)
+
+For assets whose pre-history can't be covered by any single ETF, the chain also accepts a `kind: synth` entry where the `ticker` field is a recipe name (not a Yahoo symbol). The recipe is a small in-process function in [`pea_momentum/fetch.py`](../pea_momentum/fetch.py) that constructs an EUR-denominated `[date, close]` series from longer-history components.
+
+Currently registered:
+
+- **`eur_hedged_jp`** — synthesises EUR-hedged MSCI Japan back to 1996. Construction:
+
+  ```
+  L_synth(t) = (EWJ(t) × USDJPY(t)) / (EWJ(0) × USDJPY(0))
+             × (estr(t) / estr(0))
+  ```
+
+  The product `EWJ_USD × USDJPY` algebraically strips out the JPY/USD FX exposure baked into the unhedged EWJ ETF, leaving a pure JPY-denominated equity level. The `estr / estr(0)` term adds the EUR short-rate compounding (with EONIA splice pre-2019), which is the carry a EUR investor earns by selling JPY forward to hedge.
+
+  **Approximation**: the carry term implicitly assumes the JPY short rate is zero. This matches reality tightly pre-2010 (BOJ ZIRP since 1999) — exactly the period the chain uses the synthetic for (the real `IJPE.L` takes over from 2010-09-30 onward). Empirical validation against `IJPE.L` over its 15.6-year history shows the synthetic drifts ~80bp/yr because of BOJ's NIRP era (2016-2024); in the pre-2010 stub where it actually gets used, the drift is estimated under ~30bp/yr.
+
+  Rows on `prices.parquet` for the synthetic segment carry the standard `source = "stitched_index_proxy"` provenance (the chain mechanism doesn't differentiate synth from yfinance proxies once the EUR `[date, close]` series is built).
 
 ### Caveat: DCAM.PA
 

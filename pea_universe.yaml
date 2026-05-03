@@ -242,8 +242,19 @@ universe:
     est_spread_bps: 30                    # satellite, hedged share class, low AUM
     replication: synthetic
     inception: 2019-04-25
-    index_proxy: IJPE.L                   # iShares MSCI Japan EUR Hedged UCITS ETF Acc LSE, since 2010-09-30
-    index_proxy_kind: eur_tr
+    # Multi-stage chain, cleanest first. IJPE.L (real EUR-hedged Japan ETF)
+    # only goes back to 2010-09-30 — pre-2010 EUR-hedged Japan ETFs simply
+    # don't exist. The `eur_hedged_jp` synth recipe (see fetch.py) extends
+    # history back via L = (EWJ * USDJPY) * (estr/estr_0): the (EWJ * USDJPY)
+    # product strips out unhedged EWJ's JPY/USD FX exposure, leaving JPY-
+    # denominated equity returns; the €STR carry term adds the EUR short-
+    # rate compounding (with EONIA splice pre-2019). Implicitly assumes
+    # r_JPY ≈ 0 — accurate pre-2010 (BOJ ZIRP since 1999), drifts ~80bp/yr
+    # post-2015 — but the chain only uses the synthetic for the pre-
+    # 2010-09 stub where the assumption is best.
+    index_proxy_chain:
+      - { ticker: IJPE.L, kind: eur_tr }            # since 2010-09-30
+      - { ticker: eur_hedged_jp, kind: synth }       # since 1996 via EWJ + USDJPY + ECB
   - { id: cn_pea_china,         name: Amundi PEA Chine (MSCI China) Screened Acc,   isin: FR0011871078, currency: EUR, ter_pct: 0.65, sfdr: Article 8, category: China,        yahoo: PASI.PA }
   - { id: in_pea_india,         name: Amundi PEA Inde (MSCI India) Acc,             isin: FR0011869320, currency: EUR, ter_pct: 0.85, sfdr: Article 6, category: India,        yahoo: PINR.PA }
   - { id: ap_asia_pacific,      name: Amundi PEA Asie Pacifique (MSCI ACAPxJP) Acc, isin: FR0011869312, currency: EUR, ter_pct: 0.60, sfdr: Article 6, category: Asia-Pacific, yahoo: PAEJ.PA, amundi_url: 'https://www.amundietf.fr/fr/particuliers/produits/equity/lyxor-pea-asie-pacifique-msci-ac-asia-pacific-ex-japan-ucits-etf-capi/fr0011869312' }

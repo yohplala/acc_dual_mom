@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import io
 import logging
+from collections.abc import Callable
 from datetime import date
 
 import httpx
@@ -34,11 +35,17 @@ ESTR_BASE_PRICE = 100.0
 ESTR_START = date(2019, 10, 2)
 """First €STR fixing date. Pre-this we splice EONIA."""
 
-# Supported `index_proxy_kind` values. The label encodes only the FX-conversion
-# path; whether the underlying series is PR or TR depends on the chosen ticker.
+# Supported `index_proxy_kind` values.
+# `eur_tr` / `usd_tr` encode the FX-conversion path for ETF tickers (whether
+# the underlying series is PR or TR depends on the chosen ticker).
+# `synth` triggers a recipe-driven construction from other building blocks
+# instead of fetching a single Yahoo ticker — see `_SYNTH_PROXY_RECIPES`.
 PROXY_KIND_EUR_TR = "eur_tr"
 PROXY_KIND_USD_TR = "usd_tr"
-SUPPORTED_PROXY_KINDS: frozenset[str] = frozenset({PROXY_KIND_EUR_TR, PROXY_KIND_USD_TR})
+PROXY_KIND_SYNTH = "synth"
+SUPPORTED_PROXY_KINDS: frozenset[str] = frozenset(
+    {PROXY_KIND_EUR_TR, PROXY_KIND_USD_TR, PROXY_KIND_SYNTH}
+)
 
 
 def fetch_all(config: Config, start: date | None = None) -> pl.DataFrame:
@@ -97,13 +104,26 @@ def _fetch_proxy_in_eur(asset: Asset, start: date) -> pl.DataFrame:
 def _fetch_one_proxy_in_eur(
     ticker: str, kind: str | None, asset_id: str, start: date
 ) -> pl.DataFrame:
-    """Fetch a single proxy ticker and return `[date, close]` in EUR."""
+    """Fetch a single proxy and return `[date, close]` in EUR.
+
+    For `kind=eur_tr` / `usd_tr` the `ticker` is a Yahoo symbol; for
+    `kind=synth` the `ticker` names a synthesis recipe in
+    `_SYNTH_PROXY_RECIPES` instead of being a real ticker.
+    """
     resolved_kind = kind or PROXY_KIND_EUR_TR
     if resolved_kind not in SUPPORTED_PROXY_KINDS:
         raise FetchError(
             f"Unsupported index_proxy_kind {resolved_kind!r} for asset {asset_id} "
             f"(supported: {sorted(SUPPORTED_PROXY_KINDS)})"
         )
+    if resolved_kind == PROXY_KIND_SYNTH:
+        recipe = _SYNTH_PROXY_RECIPES.get(ticker)
+        if recipe is None:
+            raise FetchError(
+                f"Unknown synthetic-proxy recipe {ticker!r} for asset {asset_id} "
+                f"(available: {sorted(_SYNTH_PROXY_RECIPES)})"
+            )
+        return recipe(start)
     idx = _fetch_yahoo_close_only(ticker, start=start)
     if resolved_kind == PROXY_KIND_EUR_TR:
         return idx
@@ -322,6 +342,86 @@ def _rates_to_synthetic_close(rates: pl.DataFrame, asset_id: str) -> pl.DataFram
         )
         .select(["date", "asset_id", "close", "source"])
     )
+
+
+# ── Synthetic-proxy recipes ───────────────────────────────────────────
+# A recipe takes the requested start date and returns a `[date, close]`
+# DataFrame in EUR (same shape as a yfinance-fetched proxy). It's an escape
+# hatch for proxies that can't be fetched as a single Yahoo ticker — e.g.
+# EUR-hedged Japan pre-2010 has no live ETF, so we synthesise it from
+# longer-history components.
+
+
+def _synth_eur_hedged_jp(start: date) -> pl.DataFrame:
+    """Synthesise EUR-hedged MSCI Japan from longer-history components.
+
+    Construction:
+        L_synth(t) = (EWJ(t) * USDJPY(t)) / (EWJ(0) * USDJPY(0))
+                   * (estr(t) / estr(0))
+
+    Decomposition:
+        EWJ_USD * USDJPY = (MSCI_Japan_JPY / USDJPY) * USDJPY = MSCI_Japan_JPY
+        → JPY-denominated equity level — strips out the EWJ ETF's unhedged
+          JPY/USD FX exposure, leaving pure JPY equity returns.
+        € carry term `estr / estr(0)` adds the EUR short-rate compounding
+        (with EONIA splice pre-2019, handled by `fetch_estr` / `fetch_eonia`),
+        which IS the carry a EUR investor earns by selling JPY forward.
+
+    Approximation: the carry term implicitly assumes the JPY short rate is
+    zero. Holds tightly pre-2010 (BOJ ZIRP since 1999, so the assumption
+    matches reality within a few bps); drifts ~80bp/year against the
+    actual IJPE.L (true EUR-hedged Japan) post-2015 because of BOJ's NIRP
+    era. The chain mechanism splices the actual IJPE.L on top from
+    2010-09-30 onward, so the synthetic only sees use in the pre-2010
+    stub where its assumption is best.
+    """
+    # Components — fetch independently, inner-join on common dates.
+    ewj = _fetch_yahoo_close_only("EWJ", start=start).rename({"close": "ewj"})
+    usdjpy = _fetch_yahoo_close_only("USDJPY=X", start=start).rename({"close": "usdjpy"})
+    # ECB EUR short rate compounded into a price level (EONIA pre-2019 splice
+    # already handled by fetch_synth_asset's internal logic). We mimic the
+    # same path here without the asset_id/source columns.
+    if start >= ESTR_START:
+        rates = fetch_estr(start=start)
+    else:
+        eonia = fetch_eonia(start=start)
+        if eonia.is_empty():
+            raise FetchError(
+                f"synth eur_hedged_jp: EONIA fetch returned empty data — "
+                f"cannot construct pre-{ESTR_START} carry term."
+            )
+        estr = fetch_estr(start=ESTR_START)
+        rates = (
+            pl.concat([eonia.filter(pl.col("date") < ESTR_START), estr])
+            .sort("date")
+            .unique(subset=["date"], keep="last")
+        )
+    if rates.is_empty():
+        raise FetchError("synth eur_hedged_jp: ECB EUR short-rate series is empty")
+    estr_level = (
+        rates.with_columns(daily_factor=(1.0 + pl.col("rate_pct") / 100.0 / 360.0))
+        .with_columns(estr=pl.col("daily_factor").cum_prod() * ESTR_BASE_PRICE)
+        .select(["date", "estr"])
+    )
+
+    joined = ewj.join(usdjpy, on="date", how="inner").join(estr_level, on="date", how="inner")
+    if joined.is_empty():
+        raise FetchError(
+            "synth eur_hedged_jp: no overlapping dates between EWJ, USDJPY, and ECB rate series"
+        )
+    joined = joined.sort("date")
+
+    # Compose the synthetic level (rebased to the joined-window's first day).
+    return joined.with_columns(
+        close=(pl.col("ewj") * pl.col("usdjpy"))
+        / (pl.col("ewj").first() * pl.col("usdjpy").first())
+        * (pl.col("estr") / pl.col("estr").first())
+    ).select(["date", "close"])
+
+
+_SYNTH_PROXY_RECIPES: dict[str, Callable[[date], pl.DataFrame]] = {
+    "eur_hedged_jp": _synth_eur_hedged_jp,
+}
 
 
 def _earliest_useful_start() -> date:

@@ -238,6 +238,111 @@ def test_proxy_chain_skips_segment_with_no_pre_handoff_data(
     assert out.get_column("close").to_list() == [100.0, 101.0]
 
 
+def test_proxy_chain_with_synth_kind_dispatches_to_recipe(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A chain entry with kind='synth' looks up the recipe in
+    `_SYNTH_PROXY_RECIPES` instead of fetching a Yahoo ticker. The recipe
+    itself returns a [date, close] DataFrame in EUR, which the splice
+    machinery then handles like any other proxy."""
+    asset = Asset(
+        id="x",
+        isin="x",
+        yahoo="X.PA",
+        inception=date(2025, 1, 1),
+        index_proxy_chain=(
+            ("CLEAN", "eur_tr"),
+            ("toy_recipe", "synth"),  # extends pre-handoff
+        ),
+    )
+    series = {
+        "CLEAN": pl.DataFrame(
+            {"date": [date(2020, 1, 2), date(2020, 1, 3)], "close": [100.0, 101.0]}
+        ),
+    }
+    recipe_calls: list[date] = []
+
+    def toy_recipe(start: date) -> pl.DataFrame:
+        recipe_calls.append(start)
+        return pl.DataFrame(
+            {
+                "date": [date(2018, 1, 2), date(2019, 1, 2), date(2020, 1, 2)],
+                "close": [40.0, 45.0, 50.0],
+            }
+        )
+
+    monkeypatch.setattr(fetch, "_fetch_yahoo_close_only", lambda t, start: series[t])
+    monkeypatch.setitem(fetch._SYNTH_PROXY_RECIPES, "toy_recipe", toy_recipe)
+
+    out = fetch._fetch_proxy_chain_in_eur(asset, start=date(2018, 1, 1))
+
+    # Recipe was invoked once with the requested start.
+    assert recipe_calls == [date(2018, 1, 1)]
+    # Pre-handoff segment is rescaled (50 → 100, scale 2.0): 40→80, 45→90.
+    assert out.get_column("date").to_list() == [
+        date(2018, 1, 2),
+        date(2019, 1, 2),
+        date(2020, 1, 2),
+        date(2020, 1, 3),
+    ]
+    assert out.get_column("close").to_list() == [80.0, 90.0, 100.0, 101.0]
+
+
+def test_synth_proxy_unknown_recipe_raises(monkeypatch: pytest.MonkeyPatch) -> None:
+    asset = Asset(
+        id="x",
+        isin="x",
+        yahoo="X.PA",
+        inception=date(2025, 1, 1),
+        index_proxy="bogus_recipe",
+        index_proxy_kind="synth",
+    )
+    with pytest.raises(FetchError, match="Unknown synthetic-proxy recipe"):
+        fetch._fetch_proxy_in_eur(asset, start=date(2020, 1, 1))
+
+
+def test_synth_eur_hedged_jp_construction_math(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The eur_hedged_jp recipe's level formula:
+    L(t) = (EWJ(t) * USDJPY(t)) / (EWJ(0) * USDJPY(0)) * (estr(t) / estr(0))
+
+    With deterministic toy inputs we can verify the math exactly."""
+    series = {
+        "EWJ": pl.DataFrame(
+            {
+                "date": [date(2020, 1, 2), date(2020, 1, 3), date(2020, 1, 6)],
+                "close": [50.0, 55.0, 60.0],
+            }
+        ),
+        "USDJPY=X": pl.DataFrame(
+            {
+                "date": [date(2020, 1, 2), date(2020, 1, 3), date(2020, 1, 6)],
+                "close": [100.0, 110.0, 120.0],
+            }
+        ),
+    }
+    monkeypatch.setattr(fetch, "_fetch_yahoo_close_only", lambda t, start: series[t])
+    # Mock €STR rate series — daily 0% for simplicity (level constant at base price).
+    monkeypatch.setattr(
+        fetch,
+        "fetch_estr",
+        lambda start: pl.DataFrame(
+            {
+                "date": [date(2020, 1, 2), date(2020, 1, 3), date(2020, 1, 6)],
+                "rate_pct": [0.0, 0.0, 0.0],
+            }
+        ),
+    )
+    # Skip EONIA splice (start is post-ESTR_START)
+    out = fetch._synth_eur_hedged_jp(start=date(2020, 1, 1))
+    # Day 1: rebased to 1.0
+    # Day 2: (55*110)/(50*100) * 1.0 = 6050/5000 = 1.21
+    # Day 3: (60*120)/(50*100) * 1.0 = 7200/5000 = 1.44
+    closes = out.get_column("close").to_list()
+    assert closes[0] == pytest.approx(1.0)
+    assert closes[1] == pytest.approx(1.21)
+    assert closes[2] == pytest.approx(1.44)
+
+
 def test_proxy_chain_handles_handoff_on_non_overlapping_calendar(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
