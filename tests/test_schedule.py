@@ -190,12 +190,19 @@ class TestRebalanceDates:
             date(2024, 10, 6),
         ]
 
-    def test_quarterly_starting_mid_quarter_skips_to_next(self) -> None:
-        # Backtest starting mid-Q1 (Feb): first quarterly rebalance is the
-        # next 1st-Sunday-of-quarter, i.e. the Q2 boundary.
+    def test_quarterly_mid_quarter_start_includes_first_sunday_of_backtest(self) -> None:
+        # Backtest starting mid-Q1 (Feb 1): first rebalance unconditionally
+        # fires on the first Sunday of the backtest range (Feb 4), then
+        # subsequent rebalances pick up at the next calendar-quarter
+        # boundaries (Q2/Q3/Q4 first Sundays).
         s = _strategy("quarterly_first_sunday")
         dates = rebalance_dates(s, date(2024, 2, 1), date(2024, 12, 31))
-        assert dates == [date(2024, 4, 7), date(2024, 7, 7), date(2024, 10, 6)]
+        assert dates == [
+            date(2024, 2, 4),
+            date(2024, 4, 7),
+            date(2024, 7, 7),
+            date(2024, 10, 6),
+        ]
 
     def test_semiannual_yields_two_sundays_per_year(self) -> None:
         s = _strategy("semiannual_first_sunday")
@@ -207,12 +214,34 @@ class TestRebalanceDates:
             date(2025, 7, 6),
         ]
 
-    def test_semiannual_starting_mid_h1_skips_to_h2(self) -> None:
-        # Backtest starting in February: the Jan rebalance has passed, first
-        # rebalance is the next H2 boundary.
+    def test_semiannual_mid_h1_start_includes_first_sunday_of_backtest(self) -> None:
+        # Backtest starting in February: first rebalance fires
+        # unconditionally on the first Sunday of backtest (Feb 4), then
+        # the next semester boundary (Jul 7).
         s = _strategy("semiannual_first_sunday")
         dates = rebalance_dates(s, date(2024, 2, 1), date(2024, 12, 31))
-        assert dates == [date(2024, 7, 7)]
+        assert dates == [date(2024, 2, 4), date(2024, 7, 7)]
+
+    @pytest.mark.parametrize(
+        "cadence",
+        [
+            "weekly_sunday",
+            "monthly_first_sunday",
+            "quarterly_first_sunday",
+            "semiannual_first_sunday",
+        ],
+    )
+    def test_first_sunday_of_backtest_always_fires_regardless_of_cadence(
+        self, cadence: str
+    ) -> None:
+        # Cross-cadence guarantee: every cadence has its first rebalance
+        # on the first Sunday of the backtest range (here, 2024-02-04 for
+        # a backtest starting Feb 1, 2024). This keeps strategies aligned
+        # at "day 1" so cross-cadence comparisons share the same starting
+        # allocation.
+        s = _strategy(cadence)
+        dates = rebalance_dates(s, date(2024, 2, 1), date(2024, 12, 31))
+        assert dates[0] == date(2024, 2, 4)
 
 
 class TestSignalAndFillDates:

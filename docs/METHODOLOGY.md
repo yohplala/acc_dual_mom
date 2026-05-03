@@ -137,6 +137,10 @@ All rotation strategies share the same Sunday-anchored cadence:
 
 This guarantees no look-ahead and matches the realistic case for a French PEA holder reviewing weekly signals over the weekend.
 
+### Cross-cadence start alignment
+
+Every cadence rebalances **unconditionally on the first Sunday of the backtest range**, even when that Sunday isn't a calendar-anchor day for the cadence's natural rule (e.g. `quarterly_first_sunday` with a backtest starting mid-Feb still fires its first rebalance on the first Sunday of February, then resumes the calendar-quarter cadence — Apr / Jul / Oct first Sundays). Every subsequent rebalance follows the cadence's own rule. The result: regardless of whether you compare a `weekly_sunday`, `quarterly_first_sunday`, or `semiannual_first_sunday` strategy, all of them have their first rebalance on the same day-1 Sunday and start trading from the same allocation date — making cross-cadence equity curves directly comparable from t=0.
+
 ## Performance metrics (`pea_momentum/metrics.py`)
 
 Computed on the daily equity curve plus the rebalance log:

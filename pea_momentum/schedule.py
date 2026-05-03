@@ -1,8 +1,18 @@
 """Sunday-anchored rebalancing schedules.
 
-Three cadences are supported. A rebalance date is always a Sunday; the signal
-uses the preceding Friday's close, and execution is assumed at the following
-Monday's close.
+Five cadences are supported (weekly / biweekly / monthly / quarterly /
+semiannual, plus the buy-and-hold mode that ignores cadence). A rebalance
+date is always a Sunday; the signal uses the preceding Friday's close,
+and execution is assumed at the following Monday's close.
+
+Cross-cadence start alignment: every cadence rebalances **unconditionally
+on the first Sunday of the backtest range**, even when that Sunday isn't
+a calendar-anchor day for the cadence's natural rule. Subsequent
+rebalances follow the cadence's own rule (calendar-month / quarter /
+semester boundary, or biweekly anchor). This guarantees that strategies
+with different cadences share the same "day 1" — a backtest starting
+mid-quarter has every cadence's first rebalance on the same Sunday,
+not 0/1/3/5 months apart depending on cadence.
 """
 
 from __future__ import annotations
@@ -44,23 +54,33 @@ def is_rebalance_day(strategy: Strategy, day: date) -> bool:
 
     if strategy.rebalance == QUARTERLY_FIRST_SUNDAY:
         # First Sunday of each calendar quarter (Jan/Apr/Jul/Oct).
-        # Anchored to calendar quarters; if a backtest starts mid-quarter
-        # the first rebalance is naturally the next quarter boundary that
-        # falls within the data range.
+        # `rebalance_dates` separately ensures the first Sunday of the
+        # backtest range fires unconditionally, so a backtest starting
+        # mid-quarter still has its first rebalance on day 1 (then
+        # picks up the next calendar-quarter boundary as usual).
         return day.month in (1, 4, 7, 10) and day.day <= 7
 
     if strategy.rebalance == SEMIANNUAL_FIRST_SUNDAY:
         # First Sunday of January (start of H1) and first Sunday of July
-        # (start of H2). Anchored to calendar semesters; if a backtest starts
-        # mid-semester the first rebalance is naturally the next semester
-        # boundary that falls within the data range.
+        # (start of H2). Same first-Sunday-of-backtest unconditional-fire
+        # guarantee as the other *_first_sunday cadences (see
+        # `rebalance_dates`).
         return day.month in (1, 7) and day.day <= 7
 
     raise ValueError(f"Unknown rebalance cadence: {strategy.rebalance!r}")
 
 
 def rebalance_dates(strategy: Strategy, start: date, end: date) -> list[date]:
-    """Return all rebalance Sundays in [start, end], inclusive."""
+    """Return all rebalance Sundays in [start, end], inclusive.
+
+    Always includes the first Sunday of the backtest range as a rebalance
+    day, even when that Sunday isn't a calendar-anchor for the cadence
+    (e.g. quarterly_first_sunday with a backtest starting mid-Feb still
+    rebalances on the first Sunday of February, not the first Sunday of
+    April). This unconditional first-day fire keeps all cadences aligned
+    at backtest start so cross-cadence comparisons share the same
+    starting allocation.
+    """
     if start > end:
         return []
     first_sunday = start + timedelta(days=(_SUNDAY - start.weekday()) % 7)
@@ -70,6 +90,8 @@ def rebalance_dates(strategy: Strategy, start: date, end: date) -> list[date]:
         if is_rebalance_day(strategy, cursor):
             out.append(cursor)
         cursor += timedelta(days=7)
+    if first_sunday <= end and (not out or out[0] != first_sunday):
+        out.insert(0, first_sunday)
     return out
 
 
