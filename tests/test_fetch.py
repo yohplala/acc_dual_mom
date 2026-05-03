@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from datetime import date
 
+import httpx
 import numpy as np
 import pandas as pd
 import polars as pl
@@ -424,7 +425,7 @@ def test_fetch_eurusd_ecb_returns_eurusd_shape(monkeypatch: pytest.MonkeyPatch) 
             ("2024-01-04", 1.09),
         ]
     )
-    monkeypatch.setattr(fetch.httpx, "Client", lambda timeout: _FakeClient(csv))
+    monkeypatch.setattr(httpx, "Client", lambda timeout: _FakeClient(csv))
     out = fetch.fetch_eurusd_ecb(date(2024, 1, 1))
     assert out.columns == ["date", "close"]
     assert out.get_column("close").to_list() == [1.10, 1.11, 1.09]
@@ -443,7 +444,7 @@ def test_fetch_eurusd_ecb_filters_target2_holiday_nulls(
             ("2024-01-04", 1.11),
         ]
     )
-    monkeypatch.setattr(fetch.httpx, "Client", lambda timeout: _FakeClient(csv))
+    monkeypatch.setattr(httpx, "Client", lambda timeout: _FakeClient(csv))
     out = fetch.fetch_eurusd_ecb(date(2024, 1, 1))
     assert out.height == 2
     assert out.get_column("date").to_list() == [date(2024, 1, 2), date(2024, 1, 4)]
@@ -465,6 +466,6 @@ def test_fetch_eurusd_ecb_raises_on_multi_day_gap(
             ("2024-01-11", 1.09),
         ]
     )
-    monkeypatch.setattr(fetch.httpx, "Client", lambda timeout: _FakeClient(csv))
+    monkeypatch.setattr(httpx, "Client", lambda timeout: _FakeClient(csv))
     with pytest.raises(FetchError, match=r"gap > 5 days"):
         fetch.fetch_eurusd_ecb(date(2024, 1, 1))
