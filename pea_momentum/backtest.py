@@ -25,10 +25,11 @@ import polars as pl
 
 from . import stitching
 from .allocate import CASH_KEY, allocate
+from .discover import dashboard_bucket
 from .schedule import _SUNDAY, fill_date, rebalance_dates, signal_date
 from .score import score_at
 from .store import prices_wide
-from .universe import Config, Strategy
+from .universe import Asset, Config, Strategy
 
 log = logging.getLogger(__name__)
 
@@ -144,6 +145,7 @@ def run(
     n_fill_skips = 0
     n_signal_skips = 0
 
+    asset_by_id = {a.id: a for a in config.assets}
     for r_day in rebalance_dates(strategy, dates[0], dates[-1]):
         s_day = signal_date(r_day)
         f_day = fill_date(r_day)
@@ -151,6 +153,8 @@ def run(
             n_fill_skips += 1
             continue
         scores = score_at(prices_long, asset_ids, s_day, scoring)
+        if strategy.selection_rule == "top_1_per_region":
+            scores = _filter_top_1_per_region(scores, asset_by_id)
         if not scores:
             n_signal_skips += 1
             continue
@@ -196,6 +200,36 @@ def run(
         n_fill_skips=n_fill_skips,
         n_signal_skips=n_signal_skips,
     )
+
+
+_REGIONAL_BUCKETS: tuple[str, ...] = ("us", "europe", "asia")
+
+
+def _filter_top_1_per_region(
+    scores: dict[str, float],
+    asset_by_id: dict[str, Asset],
+) -> dict[str, float]:
+    """Keep only the highest-scoring asset within each {us, europe, asia}
+    bucket. Returns a scores dict with at most 3 entries.
+
+    Region is inferred from `discover.dashboard_bucket(asset.category)`.
+    Assets that don't map to one of `_REGIONAL_BUCKETS` (cash, world,
+    unmapped) are dropped — this rule is for region-rotation strategies
+    only. Ties are broken by asset_id (deterministic, but ties on a
+    floating-point score are vanishingly rare in practice).
+    """
+    best: dict[str, tuple[str, float]] = {}
+    for asset_id, score in scores.items():
+        a = asset_by_id.get(asset_id)
+        if a is None:
+            continue
+        bucket = dashboard_bucket(a.category)
+        if bucket not in _REGIONAL_BUCKETS:
+            continue
+        current = best.get(bucket)
+        if current is None or score > current[1]:
+            best[bucket] = (asset_id, score)
+    return {asset_id: score for asset_id, score in best.values()}
 
 
 def _turnover(prev: dict[str, float], new: dict[str, float]) -> float:

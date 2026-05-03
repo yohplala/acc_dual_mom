@@ -148,6 +148,16 @@ class Strategy:
     # to the bare asset id so the regional pages display "em_asia"
     # instead of the internal "asia/em_asia" namespaced name.
     display_name: str | None = None
+    # Pre-allocate selection step. `top_n` is the canonical "pick the N
+    # highest-scoring assets globally". `top_1_per_region` first groups
+    # assets by `discover.dashboard_bucket(category)` and keeps only the
+    # highest-scoring asset within each {us, europe, asia} bucket — that
+    # filtered scores dict (≤ 3 entries) then enters the regular top-N +
+    # weighting pipeline. Lets a strategy say "best DM-X per region,
+    # weight proportionally to score" without inventing a new scoring
+    # path; the DM / ADM lookback recipe in `lookbacks_days` and the
+    # aggregation in `shared.scoring.aggregation` are reused as-is.
+    selection_rule: str = "top_n"
 
     def effective_scoring(self, shared_scoring: Scoring) -> Scoring:
         if self.lookbacks_days is None:
@@ -197,6 +207,13 @@ class Config:
 
 
 VALID_MODES: frozenset[str] = frozenset({"rotation", "buy_and_hold"})
+
+# Pre-allocate selection rules. `top_n` (default) is the canonical
+# "highest-scoring N globally" pick. `top_1_per_region` groups assets by
+# `discover.dashboard_bucket(category)` and keeps the highest-scoring
+# asset within each {us, europe, asia} bucket — the resulting (≤ 3-entry)
+# scores dict then enters the regular allocate() pipeline.
+VALID_SELECTION_RULES: frozenset[str] = frozenset({"top_n", "top_1_per_region"})
 
 
 def load_config(
@@ -463,6 +480,12 @@ def _parse_strategy(s: dict[str, Any], catalog_by_id: dict[str, Asset]) -> Strat
                 f"exactly. " + "; ".join(details)
             )
         static_weights = items
+    selection_rule = str(s.get("selection_rule", "top_n"))
+    if selection_rule not in VALID_SELECTION_RULES:
+        raise ValueError(
+            f"strategy {s.get('name', '?')!r}: unknown selection_rule {selection_rule!r} "
+            f"(valid: {sorted(VALID_SELECTION_RULES)})"
+        )
     return Strategy(
         name=s["name"],
         asset_ids=tuple(s["assets"]),
@@ -474,6 +497,7 @@ def _parse_strategy(s: dict[str, Any], catalog_by_id: dict[str, Asset]) -> Strat
         lookbacks_days=lookbacks,
         allocation_rule=s.get("allocation_rule"),
         static_weights=static_weights,
+        selection_rule=selection_rule,
     )
 
 

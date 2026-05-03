@@ -355,3 +355,49 @@ strategies:
     rebalance: quarterly_first_sunday
     top_n: 1
     lookbacks_days: [126]
+
+  # ── REGIONAL WINNERS: best DM-X per region, score-proportional ───────
+  # `selection_rule: top_1_per_region` reuses the standard DM/ADM
+  # scoring framework — `lookbacks_days` and the shared aggregation
+  # method drive scoring exactly as for any other strategy — and only
+  # changes the *selection* step: at each rebalance, group all scored
+  # assets by `discover.dashboard_bucket(category)` and keep the
+  # highest-scoring asset within each {us, europe, asia} bucket. The
+  # filtered (≤ 3-entry) scores dict then enters the regular top_n +
+  # score-proportional weighting + largest-remainder rounding pipeline.
+  #
+  # Both strategies share the same 33-asset candidate pool (every
+  # auto-gen-eligible US / Europe / Asia ETF) and the same selection
+  # rule + score-proportional allocation; they differ only in lookback
+  # length (12m vs 18m) and rebalance cadence (quarterly vs monthly).
+  - name: regional_dm12_sp_q_t3
+    description: Best DM 12m per region (US/EU/Asia), score-proportional, quarterly top-3
+    assets: [
+      sp500, russell2000, us_pea_nasdaq, sp500_hedged, sp500_screened, sp500_scr_hed,
+      us_msci_esg, us_pea_us_tech, us_value, us_industrials,
+      eurostoxx50, msci_europe, de_dax_dr, fr_cac40_acc, it_ftse_mib_acc, es_ibex_acc,
+      eu_banks, sec_healthcare_acc, emu_msci_emu_acc, emu_ii_acc, emu_high_div,
+      emu_small, emu_esg_broad_acc, emu_esg_select_acc, it_mib_esg, gr_msci_greece,
+      em_asia, topix, topix_hedged, ap_asia_pacific, in_pea_india, cn_pea_china, em_pea_emerging,
+    ]
+    rebalance: quarterly_first_sunday
+    top_n: 3
+    lookbacks_days: [252]
+    allocation_rule: score_proportional
+    selection_rule: top_1_per_region
+
+  - name: regional_dm18_sp_m_t3
+    description: Best DM 18m per region (US/EU/Asia), score-proportional, monthly top-3
+    assets: [
+      sp500, russell2000, us_pea_nasdaq, sp500_hedged, sp500_screened, sp500_scr_hed,
+      us_msci_esg, us_pea_us_tech, us_value, us_industrials,
+      eurostoxx50, msci_europe, de_dax_dr, fr_cac40_acc, it_ftse_mib_acc, es_ibex_acc,
+      eu_banks, sec_healthcare_acc, emu_msci_emu_acc, emu_ii_acc, emu_high_div,
+      emu_small, emu_esg_broad_acc, emu_esg_select_acc, it_mib_esg, gr_msci_greece,
+      em_asia, topix, topix_hedged, ap_asia_pacific, in_pea_india, cn_pea_china, em_pea_emerging,
+    ]
+    rebalance: monthly_first_sunday
+    top_n: 3
+    lookbacks_days: [378]
+    allocation_rule: score_proportional
+    selection_rule: top_1_per_region

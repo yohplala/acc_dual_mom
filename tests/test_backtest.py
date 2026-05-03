@@ -180,3 +180,72 @@ def test_per_asset_spread_increases_total_cost() -> None:
     cost_tight = sum(r.cost for r in run(prices, _strategy(), cfg_tight).rebalances)
     cost_wide = sum(r.cost for r in run(prices, _strategy(), cfg_wide).rebalances)
     assert cost_wide > cost_tight
+
+
+# ── Per-region selection rule ───────────────────────────────────────────
+
+
+def test_filter_top_1_per_region_keeps_best_in_each_bucket() -> None:
+    """`_filter_top_1_per_region` groups assets by `dashboard_bucket(category)`
+    and keeps the highest-scoring asset per region. Cross-region selection
+    is independent — picking the best in `us` doesn't affect `europe` or
+    `asia`."""
+    from pea_momentum.backtest import _filter_top_1_per_region
+
+    asset_by_id = {
+        "us_a": Asset(id="us_a", isin="x", yahoo="x", category="USA"),
+        "us_b": Asset(id="us_b", isin="x", yahoo="x", category="USA-Tech"),
+        "eu_a": Asset(id="eu_a", isin="x", yahoo="x", category="Eurozone"),
+        "eu_b": Asset(id="eu_b", isin="x", yahoo="x", category="France"),
+        "as_a": Asset(id="as_a", isin="x", yahoo="x", category="Japan"),
+        "world_x": Asset(id="world_x", isin="x", yahoo="x", category="World"),
+        "cash_a": Asset(id="cash_a", isin="x", yahoo="x", category="Cash-Eurozone"),
+    }
+    scores = {
+        "us_a": 0.10,
+        "us_b": 0.20,  # best US
+        "eu_a": 0.05,  # best Europe (eu_b is lower)
+        "eu_b": 0.02,
+        "as_a": -0.05,  # only Asia → wins regardless of sign
+        "world_x": 0.50,  # world bucket → dropped
+        "cash_a": 0.01,  # cash bucket → dropped
+    }
+    result = _filter_top_1_per_region(scores, asset_by_id)
+    assert set(result.keys()) == {"us_b", "eu_a", "as_a"}
+    assert result["us_b"] == 0.20
+    assert result["eu_a"] == 0.05
+    assert result["as_a"] == -0.05
+
+
+def test_filter_top_1_per_region_handles_empty_buckets() -> None:
+    """If a region has no asset in scores, it's simply absent from the
+    result. The downstream allocate then sees fewer than 3 entries."""
+    from pea_momentum.backtest import _filter_top_1_per_region
+
+    asset_by_id = {
+        "us_a": Asset(id="us_a", isin="x", yahoo="x", category="USA"),
+        "as_a": Asset(id="as_a", isin="x", yahoo="x", category="Japan"),
+    }
+    scores = {"us_a": 0.10, "as_a": 0.05}
+    result = _filter_top_1_per_region(scores, asset_by_id)
+    assert set(result.keys()) == {"us_a", "as_a"}
+
+
+def test_filter_top_1_per_region_drops_world_and_cash_buckets() -> None:
+    """Only assets in {us, europe, asia} buckets compete; world and cash
+    are dropped. Region inference uses `discover.dashboard_bucket` —
+    note that uncategorised / catchall categories (e.g. `Thematic-*`,
+    `Sector-*` for European exposures) fall into `europe` per
+    `dashboard_bucket`'s default branch and so DO compete in the europe
+    bucket. If a strategy wants to exclude those, it should leave them
+    out of `assets:`."""
+    from pea_momentum.backtest import _filter_top_1_per_region
+
+    asset_by_id = {
+        "us_a": Asset(id="us_a", isin="x", yahoo="x", category="USA"),
+        "world_x": Asset(id="world_x", isin="x", yahoo="x", category="World"),
+        "cash_a": Asset(id="cash_a", isin="x", yahoo="x", category="Cash-Eurozone"),
+    }
+    scores = {"us_a": 0.10, "world_x": 0.50, "cash_a": 0.30}
+    result = _filter_top_1_per_region(scores, asset_by_id)
+    assert set(result.keys()) == {"us_a"}
