@@ -351,26 +351,42 @@ def splice_at_inception(
     _validate_returns_or_raise(proxy_long, asset_id, "proxy")
     _validate_returns_or_raise(etf_long, asset_id, "live ETF")
 
+    # Splice date = ETF's first real close. The `>= inception` filter is
+    # a defensive floor only: yfinance occasionally returns synthetic /
+    # zero-volume rows BEFORE an ETF's official launch (renamed share
+    # classes, backfilled NAV records — C50.PA hit us with this). The
+    # configured `inception` says "treat anything Yahoo gives us before
+    # this as bogus"; the splice anchor is the first surviving row.
+    #
+    # Many Amundi PEA ETFs also have a multi-week or multi-month *delay*
+    # between official launch and the first day Yahoo carries data for
+    # them (PSP5.PA: 22 days, PAASI.PA: 128 days, PCEU.PA: 135 days).
+    # Anchoring the splice at the configured inception in those cases
+    # would truncate the proxy at inception-1 and leave a hole until live
+    # data starts; driving the cut-over off the actual first close lets
+    # the proxy carry the series through the dark window with no gap.
     etf_at = etf_long.filter(pl.col("date") >= inception).sort("date").head(1)
-    proxy_at = proxy_long.filter(pl.col("date") <= inception).sort("date").tail(1)
     if etf_at.is_empty():
         raise FetchError(f"splice {asset_id}: no ETF data on or after inception date {inception}")
+    splice_date = etf_at.get_column("date")[0]
+
+    proxy_at = proxy_long.filter(pl.col("date") <= splice_date).sort("date").tail(1)
     if proxy_at.is_empty():
         raise FetchError(
-            f"splice {asset_id}: no proxy data on or before inception date {inception} "
-            f"(proxy series begins after the configured inception)"
+            f"splice {asset_id}: no proxy data on or before splice date {splice_date} "
+            f"(proxy series begins after the splice point)"
         )
 
     etf_close = float(etf_at.get_column("close")[0])
     proxy_close = float(proxy_at.get_column("close")[0])
     if proxy_close <= 0:
         raise FetchError(
-            f"splice {asset_id}: proxy close at inception is non-positive ({proxy_close})"
+            f"splice {asset_id}: proxy close at splice date is non-positive ({proxy_close})"
         )
     scale = etf_close / proxy_close
 
     pre = (
-        proxy_long.filter(pl.col("date") < inception)
+        proxy_long.filter(pl.col("date") < splice_date)
         .sort("date")
         .with_columns(
             close=pl.col("close") * scale,
@@ -380,14 +396,10 @@ def splice_at_inception(
         .select(["date", "asset_id", "close", "source"])
     )
 
-    # yfinance occasionally returns synthetic / zero-volume "live" rows for
-    # an ETF dated before its actual inception (renamed share classes,
-    # backfilled NAV records). Keep only post-inception live rows so the
-    # splice contract — proxy for date < inception, ETF for date >=
-    # inception — is honored exactly. Without this, both series can
-    # produce same-date rows that survive concat and corrupt the wide
-    # pivot in the backtest engine.
-    post = etf_long.filter(pl.col("date") >= inception).select(
+    # ETF segment starts at the splice date; any phantom pre-inception
+    # rows have already been excluded by the >= inception filter when
+    # we picked etf_at, so they can't contaminate the post side either.
+    post = etf_long.filter(pl.col("date") >= splice_date).select(
         ["date", "asset_id", "close", "source"]
     )
     return pl.concat([pre, post]).sort("date")

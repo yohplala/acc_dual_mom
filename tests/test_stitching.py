@@ -82,6 +82,50 @@ class TestSplice:
         # Proxy's last date is 2010-01-02, before inception 2015 — splice still works
         assert out.height >= etf.height
 
+    def test_etf_first_date_after_inception_proxy_bridges_gap(self) -> None:
+        """Some Amundi PEA ETFs have a multi-week or multi-month delay
+        between their official launch and the first day Yahoo carries
+        data for them (low volume / synthetic share-class artefacts).
+        The splice cut-over must then track the ETF's actual first
+        close, not the configured inception — otherwise the proxy gets
+        truncated at inception-1 and a hole opens until the live data
+        starts. Real-world cases: PSP5.PA (sp500) 22-day gap,
+        PAASI.PA (em_asia) 128 days, PCEU.PA (msci_europe) 135 days."""
+        # Configured inception: 2015-01-01. Live ETF actually starts 2015-02-01.
+        etf = _etf_long(date(2015, 2, 1), [200.0, 201.0, 202.0])
+        # Proxy covers 2014-12-15 through 2015-02-01 (the dark window plus
+        # a few days either side, level rising from 40 to 50 across the
+        # whole range so the rescaling can be checked).
+        proxy_dates = [date(2014, 12, 15) + timedelta(days=i) for i in range(50)]
+        # Linear ramp 40 → 50 ensures `proxy[2015-02-01] = 50` (every value distinct).
+        proxy_closes = [40.0 + i * (10.0 / 49) for i in range(50)]
+        proxy = pl.DataFrame({"date": proxy_dates, "close": proxy_closes}).with_columns(
+            pl.col("date").cast(pl.Date)
+        )
+
+        out = splice_at_inception(etf, proxy, date(2015, 1, 1), "x").sort("date")
+
+        # No gap: proxy fills 2014-12-15 → 2015-01-31, ETF takes over 2015-02-01.
+        out_dates = out.get_column("date").to_list()
+        assert date(2015, 1, 1) in out_dates  # the previously-missing inception day
+        assert date(2015, 1, 15) in out_dates  # mid-window: previously empty
+        assert date(2015, 1, 31) in out_dates  # day before ETF's first close
+
+        # No same-date duplicates between proxy and ETF segments.
+        assert len(set(out_dates)) == len(out_dates)
+
+        # Continuity at the splice point: the day before ETF's first close
+        # comes from the proxy (rescaled). Proxy[2015-01-31] is the second-
+        # to-last linear-ramp value; rescale = etf[2015-02-01]/proxy[2015-02-01]
+        # = 200 / 50 = 4. So out[2015-01-31] ≈ proxy[2015-01-31] * 4.
+        last_proxy_day = out.filter(pl.col("date") == date(2015, 1, 31))
+        assert last_proxy_day.get_column("source")[0] == "stitched_index_proxy"
+
+        # ETF's first close survives unchanged.
+        first_etf_day = out.filter(pl.col("date") == date(2015, 2, 1))
+        assert first_etf_day.get_column("close")[0] == 200.0
+        assert first_etf_day.get_column("source")[0] == "yfinance"
+
 
 class TestFxConversion:
     def test_usd_to_eur(self) -> None:
