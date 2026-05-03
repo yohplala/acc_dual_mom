@@ -376,3 +376,95 @@ def test_proxy_chain_handles_handoff_on_non_overlapping_calendar(
         date(2020, 1, 6),
     ]
     assert out.get_column("close").to_list() == [100.0, 120.0, 120.0]
+
+
+# ── ECB EUR/USD fetch + gap validation ───────────────────────────────────
+
+
+def _fake_ecb_csv_response(rows: list[tuple[str, float | None]]) -> bytes:
+    """Build a minimal ECB-shaped CSV with TIME_PERIOD + OBS_VALUE columns.
+
+    `None` OBS_VALUE encodes a TARGET-2 holiday (ECB returns these as
+    blank fields). The real ECB response has 30 columns of metadata —
+    we include only what `_fetch_ecb_csv` actually parses."""
+    lines = ["TIME_PERIOD,OBS_VALUE"]
+    for d, v in rows:
+        lines.append(f"{d},{'' if v is None else v}")
+    return ("\n".join(lines) + "\n").encode()
+
+
+class _FakeResponse:
+    def __init__(self, content: bytes) -> None:
+        self.content = content
+
+    def raise_for_status(self) -> None: ...
+
+
+class _FakeClient:
+    def __init__(self, content: bytes) -> None:
+        self._content = content
+
+    def __enter__(self) -> _FakeClient:
+        return self
+
+    def __exit__(self, *_: object) -> None: ...
+
+    def get(self, url: str, headers: dict[str, str] | None = None) -> _FakeResponse:
+        return _FakeResponse(self._content)
+
+
+def test_fetch_eurusd_ecb_returns_eurusd_shape(monkeypatch: pytest.MonkeyPatch) -> None:
+    """`fetch_eurusd_ecb` returns `[date, close]` with `close = USD per
+    1 EUR` — same column shape as the legacy yfinance EURUSD=X output,
+    so `stitching.usd_to_eur` consumes it unchanged."""
+    csv = _fake_ecb_csv_response(
+        [
+            ("2024-01-02", 1.10),
+            ("2024-01-03", 1.11),
+            ("2024-01-04", 1.09),
+        ]
+    )
+    monkeypatch.setattr(fetch.httpx, "Client", lambda timeout: _FakeClient(csv))
+    out = fetch.fetch_eurusd_ecb(date(2024, 1, 1))
+    assert out.columns == ["date", "close"]
+    assert out.get_column("close").to_list() == [1.10, 1.11, 1.09]
+
+
+def test_fetch_eurusd_ecb_filters_target2_holiday_nulls(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """ECB encodes TARGET-2 holidays as blank OBS_VALUE rows. They must be
+    filtered out before gap-validation — otherwise every Easter weekend
+    would look like a valid 0-rate observation."""
+    csv = _fake_ecb_csv_response(
+        [
+            ("2024-01-02", 1.10),
+            ("2024-01-03", None),  # TARGET-2 holiday
+            ("2024-01-04", 1.11),
+        ]
+    )
+    monkeypatch.setattr(fetch.httpx, "Client", lambda timeout: _FakeClient(csv))
+    out = fetch.fetch_eurusd_ecb(date(2024, 1, 1))
+    assert out.height == 2
+    assert out.get_column("date").to_list() == [date(2024, 1, 2), date(2024, 1, 4)]
+
+
+def test_fetch_eurusd_ecb_raises_on_multi_day_gap(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A gap > ECB_FX_MAX_GAP_DAYS (5) in the post-null-filter series
+    means a real data anomaly. Loud-fail rather than letting the
+    backtest silently forward-fill across the gap (which would bake
+    fictitious zero-vol days into every USD-source asset). Mirrors
+    the yfinance EURUSD=X mid-2008 incident this fetcher replaces."""
+    csv = _fake_ecb_csv_response(
+        [
+            ("2024-01-02", 1.10),
+            ("2024-01-03", 1.11),
+            # 8-calendar-day gap — exceeds the 5-day Easter-long-weekend cap
+            ("2024-01-11", 1.09),
+        ]
+    )
+    monkeypatch.setattr(fetch.httpx, "Client", lambda timeout: _FakeClient(csv))
+    with pytest.raises(FetchError, match=r"gap > 5 days"):
+        fetch.fetch_eurusd_ecb(date(2024, 1, 1))

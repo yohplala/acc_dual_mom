@@ -426,7 +426,19 @@ def _convert(idx_local: pl.DataFrame, fx_per_eur: pl.DataFrame, ccy: str) -> pl.
     _validate_returns_or_raise(fx_per_eur, asset_id=f"EUR{ccy}=X", label="FX")
 
     fx = fx_per_eur.select(["date", pl.col("close").alias("_fx")])
-    joined = idx_local.join(fx, on="date", how="inner")
+    # Left join + forward-fill on the FX side: the index calendar (US for
+    # USD-source proxies) and the FX calendar (TARGET-2 for ECB EUR/USD)
+    # diverge a few times a year — Easter Monday, May 1, Dec 24 are
+    # TARGET-2 holidays but US-open. An inner join would silently drop
+    # those rows from the ETF series, accumulating ~5 phantom missing
+    # days per year over a 17-year backtest. Forward-filling the most
+    # recent TARGET-2 fixing into US-only days matches market practice
+    # (a bank rolling a holiday position uses the prior fixing) and
+    # injects no spurious volatility (FX is held flat across the
+    # mismatch day, so the EUR return is the local USD return on that
+    # day, untouched by FX).
+    joined = idx_local.join(fx, on="date", how="left").sort("date")
+    joined = joined.with_columns(pl.col("_fx").forward_fill())
     joined = joined.filter(
         (pl.col("_fx") > 0) & pl.col("_fx").is_not_nan() & pl.col("close").is_not_nan()
     )

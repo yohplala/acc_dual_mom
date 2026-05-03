@@ -93,28 +93,47 @@ class TestFxConversion:
         assert abs(closes[0] - 90.909) < 0.01
         assert abs(closes[2] - 100.0) < 0.01  # 120 / 1.20 = 100
 
-    def test_missing_fx_dates_dropped(self) -> None:
+    def test_fx_forward_fills_across_holiday_gaps(self) -> None:
+        """The index's calendar (US trading days) and the FX calendar
+        (TARGET-2 working days) diverge a few times a year — Easter
+        Monday, May 1, Dec 24 are TARGET-2 holidays but US-open. An
+        inner join would silently drop those days from the converted
+        series. The implementation forward-fills the most recent FX
+        fixing into US-only days instead, matching market practice
+        (banks roll holiday positions at the prior fixing). A US day
+        before the FX series begins still has no rate to forward-fill
+        from and is correctly dropped."""
+        # idx has 3 days, fx only the middle day → first US day must be
+        # dropped (no prior FX), middle and last days get rate 1.10
+        # (forward-filled into 2024-01-03).
         idx = _series(date(2024, 1, 1), [100.0, 110.0, 120.0])
-        fx = _series(date(2024, 1, 2), [1.10])  # only date 2024-01-02 has FX
-        out = usd_to_eur(idx, fx)
-        assert out.height == 1
-        assert out.get_column("date")[0] == date(2024, 1, 2)
+        fx = _series(date(2024, 1, 2), [1.10])
+        out = usd_to_eur(idx, fx).sort("date")
+        dates = out.get_column("date").to_list()
+        assert dates == [date(2024, 1, 2), date(2024, 1, 3)]
+        closes = out.get_column("close").to_list()
+        # 110 / 1.10 = 100.0; 120 / 1.10 (filled) = 109.09…
+        assert abs(closes[0] - 100.0) < 1e-6
+        assert abs(closes[1] - 120 / 1.10) < 1e-6
 
     def test_fx_round_trip_spike_scrubbed(self) -> None:
         """yfinance has been observed to return half/double values for
         EURUSD=X on isolated dates — every cross-currency proxy then
         inherits the same factor as a phantom equity-curve spike. We
         detect the round-trip pattern (jump + opposite-sign reversal)
-        and null-out the corrupt FX day; the inner-join then drops it
-        from the EUR-converted output, and downstream forward-fill in
-        backtest absorbs the gap. Total return preserved, vol corrected."""
+        and null-out the corrupt FX day; the converter then forward-
+        fills the prior valid rate into that day. Net effect: total
+        return preserved, daily vol corrected (the corrupt day shows
+        a 0% return instead of a +100% / -50% pair)."""
         idx = _series(date(2024, 1, 1), [100.0, 100.0, 100.0])
         # Day 2 FX doubles (1.10 → 2.20 → 1.10) — round-trip spike.
         fx = _series(date(2024, 1, 1), [1.10, 2.20, 1.10])
         out = usd_to_eur(idx, fx).sort("date")
-        # Bad FX day is dropped by the inner-join after scrubbing; the
-        # remaining 2 days are correctly converted at 1.10.
-        assert out.height == 2
+        # All 3 days retained; the bad day's FX is forward-filled to
+        # 1.10 (yesterday's valid fixing) and the converted close is
+        # 90.909 throughout — preserving total return without the
+        # spurious daily move.
+        assert out.height == 3
         for c in out.get_column("close").to_list():
             assert abs(c - 90.909) < 0.01
 

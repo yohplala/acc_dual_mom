@@ -29,6 +29,19 @@ ECB_EONIA_URL = "https://data-api.ecb.europa.eu/service/data/EON/D.EONIA_TO.RATE
 2022-01-03, overlaps with €STR from 2019-10-02. We use EONIA pre-2019-10-02
 and €STR after."""
 
+ECB_EURUSD_URL = "https://data-api.ecb.europa.eu/service/data/EXR/D.USD.EUR.SP00.A?format=csvdata"
+"""ECB daily EUR/USD reference rate (USD per 1 EUR, 14:15 CET fixing).
+Series key `EXR.D.USD.EUR.SP00.A`. Continuous TARGET-2 working-day
+coverage from 1999-01-04 onwards — used in place of yfinance
+`EURUSD=X` (which has multi-week mid-2008 gaps in particular)."""
+
+# Maximum allowed gap between consecutive non-null FX observations after
+# null-filtering. TARGET-2 closes for ~6 holidays per year, the longest
+# being the Easter long weekend (Good Friday + Easter Monday) which
+# bridges Thu → Tue = 5 calendar days. Anything above is unexpected
+# (data anomaly) and raises rather than getting silently forward-filled.
+ECB_FX_MAX_GAP_DAYS: int = 5
+
 ESTR_BASE_PRICE = 100.0
 """Synthetic price level on the first available safe-asset fixing."""
 
@@ -127,7 +140,14 @@ def _fetch_one_proxy_in_eur(
     idx = _fetch_yahoo_close_only(ticker, start=start)
     if resolved_kind == PROXY_KIND_EUR_TR:
         return idx
-    fx = _fetch_yahoo_close_only("EURUSD=X", start=start)
+    # ECB reference rates instead of yfinance EURUSD=X — the Yahoo series
+    # has multi-week mid-2008 gaps that drop USD-source proxies via the
+    # inner-join in stitching.usd_to_eur. Series is fetched a few days
+    # before `start` so the ECB FX has data on `idx`'s first day even
+    # when start lands on a TARGET-2 holiday.
+    from datetime import timedelta
+
+    fx = fetch_eurusd_ecb(start - timedelta(days=10))
     return stitching.usd_to_eur(idx, fx)
 
 
@@ -316,6 +336,59 @@ def fetch_eonia(start: date) -> pl.DataFrame:
     history. Same ACT/360 convention as €STR.
     """
     return _fetch_ecb_csv(ECB_EONIA_URL, start, name="EONIA")
+
+
+def fetch_eurusd_ecb(start: date) -> pl.DataFrame:
+    """Fetch EUR/USD daily reference rates from ECB Data Portal.
+
+    Returns `[date, close]` with the EUR-quoted convention (USD per 1
+    EUR), matching the existing `EURUSD=X` shape so `stitching.usd_to_eur`
+    consumes it unchanged.
+
+    Replaces the legacy yfinance `EURUSD=X` fetch: that source has
+    multi-week gaps in mid-2008 (no rates between 2008-08-08 and
+    2008-08-26) which propagate to every USD-source proxy via the
+    inner-join in `_convert`, pushing the first valid backtest day
+    weeks past the actual ETF inception. ECB's EXR.D.USD.EUR.SP00.A
+    has been continuous (TARGET-2 working days) since 1999-01-04.
+
+    The returned series is gap-validated: any consecutive-day gap in
+    the post-null-filter series above `ECB_FX_MAX_GAP_DAYS` raises
+    `FetchError`, since silently forward-filling a multi-day gap on
+    FX would bake fictitious zero-vol days into every USD-source asset.
+    """
+    raw = _fetch_ecb_csv(ECB_EURUSD_URL, start, name="EUR/USD")
+    fx = raw.rename({"rate_pct": "close"}).select(["date", "close"])
+    _validate_no_gaps(fx, label="ECB EUR/USD", max_gap_days=ECB_FX_MAX_GAP_DAYS)
+    return fx
+
+
+def _validate_no_gaps(df: pl.DataFrame, *, label: str, max_gap_days: int) -> None:
+    """Raise `FetchError` if any consecutive `date` rows are more than
+    `max_gap_days` calendar days apart. `df` must have a sorted `date`
+    column with no nulls.
+
+    This is the counterpart to value-level scrubbing (`_scrub_round_trip_spikes`,
+    `_validate_returns_or_raise` in stitching): catches *missing* days
+    rather than corrupted values. Crucial for daily FX, where an
+    undetected gap silently corrupts every USD-source asset by being
+    inner-joined out of existence.
+    """
+    if df.height < 2:
+        return
+    diffs = df.sort("date").get_column("date").diff().dt.total_days()
+    bad = diffs.filter(diffs > max_gap_days)
+    if bad.is_empty():
+        return
+    # Surface the first offending stretch with both endpoints for
+    # easier diagnosis.
+    df_sorted = df.sort("date").with_columns(diffs.alias("_gap"))
+    offenders = df_sorted.filter(pl.col("_gap") > max_gap_days).head(3)
+    raise FetchError(
+        f"{label}: gap > {max_gap_days} days in series "
+        f"(first {offenders.height} offender(s): "
+        f"{offenders.select(['date', '_gap']).to_dicts()})"
+    )
 
 
 def _rates_to_synthetic_close(rates: pl.DataFrame, asset_id: str) -> pl.DataFrame:
