@@ -24,7 +24,7 @@ from datetime import date, timedelta
 import polars as pl
 
 from . import stitching
-from .allocate import CASH_KEY, allocate
+from .allocate import CASH_KEY, _round_to_granularity, allocate
 from .discover import dashboard_bucket
 from .schedule import _SUNDAY, fill_date, rebalance_dates, signal_date
 from .score import score_at
@@ -158,20 +158,22 @@ def run(
         if not scores:
             n_signal_skips += 1
             continue
-        rule_override = strategy.allocation_rule
         if strategy.regional_weights is not None:
-            scores = _apply_regional_weights(scores, asset_by_id, strategy.regional_weights)
-            # Force score_proportional: with scores set to regional targets,
-            # |score|-prop allocation reproduces the configured split (and
-            # auto-renormalises if a region is missing).
-            rule_override = "score_proportional"
-        new_w = allocate(
-            scores=scores,
-            top_n=strategy.top_n,
-            alloc=config.shared.allocation,
-            rule_override=rule_override,
-            residual_holder=residual_holder,
-        )
+            new_w = _allocate_regional_fixed(
+                scores=scores,
+                asset_by_id=asset_by_id,
+                regional_weights=strategy.regional_weights,
+                granularity_pct=config.shared.allocation.granularity_pct,
+                residual_holder=residual_holder,
+            )
+        else:
+            new_w = allocate(
+                scores=scores,
+                top_n=strategy.top_n,
+                alloc=config.shared.allocation,
+                rule_override=strategy.allocation_rule,
+                residual_holder=residual_holder,
+            )
         turnover = _turnover(prev_weights, new_w)
         cost = _transition_cost(prev_weights, new_w, cost_pct, half_spread_by_id)
         rebalances.append(
@@ -212,24 +214,37 @@ def run(
 _REGIONAL_BUCKETS: tuple[str, ...] = ("us", "europe", "asia")
 
 
-def _apply_regional_weights(
+def _allocate_regional_fixed(
     scores: dict[str, float],
     asset_by_id: dict[str, Asset],
     regional_weights: tuple[tuple[str, float], ...],
+    granularity_pct: int,
+    residual_holder: str,
 ) -> dict[str, float]:
-    """Replace momentum scores with the strategy's fixed per-region target
-    weights. Downstream `allocate(rule=score_proportional)` then
-    reproduces the configured split exactly (all values positive, sums
-    to ≤ 1, |score|-prop = score-prop in the all-positive case).
+    """Static-regional-split allocator: assign each region's selected
+    asset its configured weight, then apply granularity rounding.
 
-    If a configured region has no asset in `scores` (the top-1-per-region
-    filter dropped it because no asset met the history bar), that
-    region's weight is implicitly forfeited and `score_proportional`
-    renormalises across the remaining regions — same shrinkage rule
-    that applies anywhere else when a top-N slot can't be filled.
+    Inputs (after `_filter_top_1_per_region` upstream): `scores` already
+    holds at most one asset per regional bucket (the per-region momentum
+    winner). Scores values are ignored here — they served only to break
+    ties inside each region. This rule's whole job is to weight by
+    configured `regional_weights`, not by signal magnitude.
+
+    Missing-region semantics: if a configured region has no asset in
+    `scores` (the top-1-per-region filter dropped it because no asset
+    met the history bar), the present regions' weights are renormalised
+    to sum to 1.0 — the absent region's slot is forfeited, not parked
+    on cash. This matches the historical `score_proportional` shrinkage
+    rule and keeps the strategy fully invested when at least one region
+    has a winner. If every region drops out, 100% goes to `residual_holder`.
+
+    Granularity: weights are rounded to integer multiples of
+    `granularity_pct / 100` via the same largest-remainder helper
+    `allocate()` uses, so the static rule produces the same kind of
+    discrete weight table (10/20/30…) as the score-driven rules.
     """
     region_to_w = dict(regional_weights)
-    out: dict[str, float] = {}
+    raw: dict[str, float] = {}
     for asset_id in scores:
         a = asset_by_id.get(asset_id)
         if a is None:
@@ -238,8 +253,18 @@ def _apply_regional_weights(
         w = region_to_w.get(bucket)
         if w is None or w <= 0.0:
             continue
-        out[asset_id] = w
-    return out
+        raw[asset_id] = w
+    if not raw:
+        return {residual_holder: 1.0}
+    total = sum(raw.values())
+    if total <= 0.0:
+        return {residual_holder: 1.0}
+    # Renormalise so the present-region weights sum to exactly 1.0
+    # (forfeits any absent region's configured slot).
+    raw = {a: w / total for a, w in raw.items()}
+    return _round_to_granularity(
+        raw, granularity_pct=granularity_pct, residual_holder=residual_holder
+    )
 
 
 def _filter_top_1_per_region(

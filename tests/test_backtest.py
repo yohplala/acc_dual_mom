@@ -254,12 +254,12 @@ def test_filter_top_1_per_region_drops_world_and_cash_buckets() -> None:
 # ── Regional fixed-weight rule ───────────────────────────────────────────
 
 
-def test_apply_regional_weights_replaces_scores_with_targets() -> None:
-    """`_apply_regional_weights` looks up each asset's region via
-    dashboard_bucket and overwrites its score with the configured
-    target. Magnitudes and signs of the original momentum scores are
-    discarded — selection has already happened at this point."""
-    from pea_momentum.backtest import _apply_regional_weights
+def test_allocate_regional_fixed_assigns_configured_weights() -> None:
+    """`_allocate_regional_fixed` ignores score magnitudes and assigns
+    each region's selected asset its configured weight. With all three
+    regions present the result is the configured split exactly,
+    granularity-rounded."""
+    from pea_momentum.backtest import _allocate_regional_fixed
 
     asset_by_id = {
         "us_a": Asset(id="us_a", isin="x", yahoo="x", category="USA"),
@@ -268,24 +268,63 @@ def test_apply_regional_weights_replaces_scores_with_targets() -> None:
     }
     scores = {"us_a": 0.05, "eu_a": -0.02, "as_a": 0.10}
     regional = (("us", 0.6), ("europe", 0.1), ("asia", 0.3))
-    result = _apply_regional_weights(scores, asset_by_id, regional)
+    result = _allocate_regional_fixed(
+        scores, asset_by_id, regional, granularity_pct=10, residual_holder="cash"
+    )
     assert result == {"us_a": 0.6, "eu_a": 0.1, "as_a": 0.3}
 
 
-def test_apply_regional_weights_drops_assets_in_missing_regions() -> None:
+def test_allocate_regional_fixed_renormalises_when_region_absent() -> None:
+    """If only US and Asia have eligible assets (Europe absent from
+    scores), the 0.6/0.3 targets renormalise to ~0.667/0.333. After
+    10% granularity rounding that becomes 70/30 — the absent region's
+    slot is forfeited rather than parked on cash."""
+    from pea_momentum.backtest import _allocate_regional_fixed
+
+    asset_by_id = {
+        "us_a": Asset(id="us_a", isin="x", yahoo="x", category="USA"),
+        "as_a": Asset(id="as_a", isin="x", yahoo="x", category="Japan"),
+    }
+    scores = {"us_a": 0.05, "as_a": 0.02}
+    regional = (("us", 0.6), ("europe", 0.1), ("asia", 0.3))  # europe absent
+    result = _allocate_regional_fixed(
+        scores, asset_by_id, regional, granularity_pct=10, residual_holder="cash"
+    )
+    assert result == {"us_a": 0.7, "as_a": 0.3}
+
+
+def test_allocate_regional_fixed_drops_assets_in_unconfigured_regions() -> None:
     """If a region isn't in `regional_weights`, its picked asset is
-    dropped (target weight 0 = no contribution). Lets a strategy run
-    a 2-region split (e.g. US 70 / Asia 30) without listing Europe."""
-    from pea_momentum.backtest import _apply_regional_weights
+    dropped (skipped at construction). Lets a strategy run a 2-region
+    split (e.g. US 70 / Asia 30) by listing only those regions."""
+    from pea_momentum.backtest import _allocate_regional_fixed
 
     asset_by_id = {
         "us_a": Asset(id="us_a", isin="x", yahoo="x", category="USA"),
         "eu_a": Asset(id="eu_a", isin="x", yahoo="x", category="Eurozone"),
     }
     scores = {"us_a": 0.05, "eu_a": 0.02}
-    regional = (("us", 0.7), ("asia", 0.3))  # europe absent
-    result = _apply_regional_weights(scores, asset_by_id, regional)
-    assert result == {"us_a": 0.7}
+    regional = (("us", 0.7), ("asia", 0.3))
+    result = _allocate_regional_fixed(
+        scores, asset_by_id, regional, granularity_pct=10, residual_holder="cash"
+    )
+    # Only US qualifies (Europe not in regional_weights). Renormalise → 100% US.
+    assert result == {"us_a": 1.0}
+
+
+def test_allocate_regional_fixed_routes_to_residual_when_all_absent() -> None:
+    """Edge case: every scored asset is in an unconfigured region (or
+    scores is empty). Returns 100% on the residual holder rather than
+    raising — matches `allocate()`'s empty-selection path."""
+    from pea_momentum.backtest import _allocate_regional_fixed
+
+    asset_by_id = {"world_x": Asset(id="world_x", isin="x", yahoo="x", category="World")}
+    scores = {"world_x": 0.10}
+    regional = (("us", 0.6), ("europe", 0.1), ("asia", 0.3))
+    result = _allocate_regional_fixed(
+        scores, asset_by_id, regional, granularity_pct=10, residual_holder="safe"
+    )
+    assert result == {"safe": 1.0}
 
 
 def _regional_static_strategy() -> Strategy:
