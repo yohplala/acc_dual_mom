@@ -242,6 +242,7 @@
           <tr>
             <th class="sortable" data-sort="text">Strategy</th>
             <th class="numeric sortable sort-desc" data-sort="num" title="Default sort key: rows pre-sorted by CAGR desc; click any other sortable header to re-rank.">CAGR</th>
+            <th class="numeric sortable" data-sort="num" title="Trailing 12-month return (DM12 score): equity[t]/equity[t-252] - 1, computed as of the most recent equity-curve date. Sort desc to see which strategy is currently leading on momentum. Empty (—) when the curve has fewer than 252 trading days of history.">12m return</th>
             <th class="numeric sortable" data-sort="num">Vol (ann.)</th>
             <th class="numeric sortable" data-sort="num">Sharpe</th>
             <th class="numeric sortable" data-sort="num">Sortino</th>
@@ -260,6 +261,7 @@
           <tr>
             <td data-value="{{ m.name }}"><span class="pill">{{ m.name }}</span></td>
             <td class="numeric {{ 'pos' if m.cagr >= 0 else 'neg' }}" data-value="{{ m.cagr }}">{{ "%.2f%%"|format(m.cagr * 100) }}</td>
+            <td class="numeric {% if m.trailing_12m is not none %}{{ 'pos' if m.trailing_12m >= 0 else 'neg' }}{% endif %}" data-value="{% if m.trailing_12m is not none %}{{ m.trailing_12m }}{% else %}-999{% endif %}">{% if m.trailing_12m is not none %}{{ "%.2f%%"|format(m.trailing_12m * 100) }}{% else %}—{% endif %}</td>
             <td class="numeric" data-value="{{ m.vol_ann }}">{{ "%.2f%%"|format(m.vol_ann * 100) }}</td>
             <td class="numeric" data-value="{{ m.sharpe }}">{{ "%.2f"|format(m.sharpe) }}</td>
             <td class="numeric" data-value="{{ m.sortino }}">{{ "%.2f"|format(m.sortino) }}</td>

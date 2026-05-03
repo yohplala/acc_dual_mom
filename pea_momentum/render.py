@@ -490,7 +490,30 @@ def _metrics_row(
         "avg_corr": avg_corr,
         "turnover_per_year": turnover_per_year(result.equity, turnovers),
         "rebalance_hit_rate": rebalance_hit_rate(result.equity, fill_dates),
+        "trailing_12m": _trailing_12m_return(result.equity),
     }
+
+
+def _trailing_12m_return(equity: pl.DataFrame) -> float | None:
+    """Trailing 12-month return on the equity curve — equity[end] /
+    equity[end - 252_trading_days] - 1.
+
+    Mirrors the DM12 single-12m score used in the rank-only momentum
+    rotation, computed as of the most recent equity-curve date so the
+    metrics table doubles as a live "current momentum" leaderboard.
+    Returns None when the curve has fewer than 252 rows of history.
+    """
+    if equity.is_empty():
+        return None
+    n = equity.height
+    if n < 253:  # need 252 prior rows + the current row to form the ratio
+        return None
+    closes = equity.get_column("equity")
+    end = float(closes[-1])
+    start = float(closes[-253])
+    if start <= 0:
+        return None
+    return end / start - 1.0
 
 
 def _strategy_line_style(strategy: Strategy | None) -> dict[str, Any]:
