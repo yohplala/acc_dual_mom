@@ -6,7 +6,12 @@ from pathlib import Path
 
 import pytest
 
-from pea_momentum.universe import load_config, load_full_universe
+from pea_momentum.universe import (
+    Asset,
+    auto_bh_strategies,
+    load_config,
+    load_full_universe,
+)
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -157,3 +162,120 @@ strategies:
     )
     cfg = load_config(strategies, universe)
     assert cfg.strategies[0].static_weights == (("a", 0.6), ("b", 0.4))
+
+
+# ── auto-generated B&H per catalog asset ─────────────────────────────
+
+
+def _asset(
+    asset_id: str,
+    *,
+    yahoo: str = "X.PA",
+    category: str = "USA",
+    leveraged: bool = False,
+    synth: str | None = None,
+) -> Asset:
+    return Asset(
+        id=asset_id,
+        isin=f"ISIN_{asset_id}",
+        yahoo=yahoo,
+        category=category,
+        leveraged=leveraged,
+        synth_proxy=synth,
+    )
+
+
+class TestAutoBHStrategies:
+    def test_yields_one_bh_per_eligible_asset_with_namespaced_name(self) -> None:
+        catalog = [
+            _asset("sp500", category="USA"),
+            _asset("eurostoxx50", category="Eurozone"),
+            _asset("em_asia", category="Emerging-Asia"),
+        ]
+        out = auto_bh_strategies(catalog)
+        names = [s.name for s in out]
+        assert names == ["asia/em_asia", "europe/eurostoxx50", "us/sp500"]
+        # Display name is the bare asset id (no namespace, no _bh suffix).
+        display = {s.name: s.display_name for s in out}
+        assert display["asia/em_asia"] == "em_asia"
+        assert display["us/sp500"] == "sp500"
+        assert display["europe/eurostoxx50"] == "eurostoxx50"
+        # Every auto-gen entry is buy_and_hold + auto_generated=True.
+        for s in out:
+            assert s.mode == "buy_and_hold"
+            assert s.auto_generated is True
+            assert s.asset_ids == (s.display_name,)
+
+    def test_skips_assets_without_yahoo_ticker(self) -> None:
+        catalog = [
+            _asset("sp500", yahoo="SP500.AS", category="USA"),
+            _asset("em_emea", yahoo="", category="Emerging-EMEA"),  # no ticker
+        ]
+        out = auto_bh_strategies(catalog)
+        assert [s.name for s in out] == ["us/sp500"]
+
+    def test_skips_leveraged_assets(self) -> None:
+        catalog = [
+            _asset("sp500", category="USA"),
+            _asset("dax_2x", category="Leveraged-Germany", leveraged=True),
+        ]
+        out = auto_bh_strategies(catalog)
+        assert [s.name for s in out] == ["us/sp500"]
+
+    def test_skips_thematic_categories(self) -> None:
+        catalog = [
+            _asset("sp500", category="USA"),
+            _asset("thm_water", category="Thematic-Water"),
+        ]
+        out = auto_bh_strategies(catalog)
+        assert [s.name for s in out] == ["us/sp500"]
+
+    def test_skips_emerging_latam_and_emea(self) -> None:
+        """LatAm and EMEA both match the dashboard_bucket "EMERGING" prefix
+        but they're not Asia exposures — explicitly skipped."""
+        catalog = [
+            _asset("em_asia", category="Emerging-Asia"),
+            _asset("em_latam", category="Emerging-LatAm"),
+            _asset("em_emea", category="Emerging-EMEA"),
+        ]
+        out = auto_bh_strategies(catalog)
+        assert [s.name for s in out] == ["asia/em_asia"]
+
+    def test_dedups_dist_share_class_when_acc_twin_exists(self) -> None:
+        """When both `<base>_acc` and `<base>_dist` exist, the `_dist`
+        sibling is dropped — they track the same fund and produce
+        near-identical equity curves on the regional page."""
+        catalog = [
+            _asset("ftse_mib_acc", category="Italy"),
+            _asset("ftse_mib_dist", category="Italy"),
+            _asset("dax_acc", category="Germany"),  # no dist twin
+        ]
+        out = auto_bh_strategies(catalog)
+        names = [s.name for s in out]
+        assert "europe/ftse_mib_acc" in names
+        assert "europe/ftse_mib_dist" not in names
+        assert "europe/dax_acc" in names
+
+    def test_keeps_dist_when_no_acc_twin(self) -> None:
+        catalog = [_asset("solo_dist", category="USA")]
+        out = auto_bh_strategies(catalog)
+        assert [s.name for s in out] == ["us/solo_dist"]
+
+    def test_world_bucket_assets_excluded(self) -> None:
+        """World-bucket assets aren't auto-generated — they live on the
+        main page only as part of the curated strategies."""
+        catalog = [
+            _asset("world", category="World"),
+            _asset("sp500", category="USA"),
+        ]
+        out = auto_bh_strategies(catalog)
+        assert [s.name for s in out] == ["us/sp500"]
+
+    def test_safe_asset_excluded(self) -> None:
+        """The synthetic safe sleeve has a Cash-* category; not auto-gen-able."""
+        catalog = [
+            _asset("cash_estr", yahoo="", category="Cash-Eurozone", synth="estr"),
+            _asset("sp500", category="USA"),
+        ]
+        out = auto_bh_strategies(catalog)
+        assert [s.name for s in out] == ["us/sp500"]

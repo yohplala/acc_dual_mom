@@ -19,6 +19,7 @@ referenced by at least one strategy). The full catalog is available via
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
@@ -137,6 +138,16 @@ class Strategy:
     allocation_rule: str | None = None
     # Optional explicit weights (asset_id → weight) for buy_and_hold mode.
     static_weights: tuple[tuple[str, float], ...] | None = None
+    # True when this Strategy was synthesised at config-load time from a
+    # catalog asset (vs declared in strategies.yaml). Auto-generated
+    # entries are routed onto regional pages only — never the main
+    # dashboard, which is reserved for the user's curated lineup.
+    auto_generated: bool = False
+    # Optional user-facing label (legend, tables, chip text). When None,
+    # consumers fall back to `name`. Auto-generated strategies set this
+    # to the bare asset id so the regional pages display "em_asia"
+    # instead of the internal "asia/em_asia" namespaced name.
+    display_name: str | None = None
 
     def effective_scoring(self, shared_scoring: Scoring) -> Scoring:
         if self.lookbacks_days is None:
@@ -148,6 +159,11 @@ class Strategy:
 
     def effective_allocation_rule(self, shared_rule: str) -> str:
         return self.allocation_rule or shared_rule
+
+    @property
+    def label(self) -> str:
+        """User-facing label — `display_name` when set, else `name`."""
+        return self.display_name or self.name
 
 
 @dataclass(frozen=True, slots=True)
@@ -267,7 +283,27 @@ def _parse(raw: dict[str, Any], catalog_by_id: dict[str, Asset]) -> Config:
         execution=execution,
     )
 
-    strategies = tuple(_parse_strategy(s, catalog_by_id) for s in raw["strategies"])
+    manual_strategies = tuple(_parse_strategy(s, catalog_by_id) for s in raw["strategies"])
+
+    # Auto-generated single-asset B&H strategies for the regional pages.
+    # The user populates strategies.yaml with cross-region / curated entries
+    # for the main dashboard; the regional pages auto-generate one B&H
+    # per eligible catalog asset (yahoo-tickered, single-region category,
+    # not leveraged, with `_acc` preferred over `_dist` siblings).
+    auto_strategies = auto_bh_strategies(catalog_by_id.values())
+    manual_names = {s.name for s in manual_strategies}
+    collisions = manual_names & {a.name for a in auto_strategies}
+    if collisions:
+        # Shouldn't happen — auto names are namespaced as `<region>/<id>`
+        # and manual names follow the user's free convention. Loud-fail
+        # if a user happens to write `asia/em_asia` manually so the
+        # collision is visible.
+        raise ValueError(
+            f"Auto-generated strategy names collide with manual entries: {sorted(collisions)}. "
+            f"Auto names use the `<region>/<asset_id>` namespace — pick a different "
+            f"name for the manual entry."
+        )
+    strategies = manual_strategies + auto_strategies
 
     # Active asset set: union of strategy assets + static_weights keys.
     active_ids: set[str] = set()
@@ -288,6 +324,103 @@ def _parse(raw: dict[str, Any], catalog_by_id: dict[str, Asset]) -> Config:
         assets=assets,
         strategies=strategies,
     )
+
+
+def auto_bh_strategies(catalog: Iterable[Asset]) -> tuple[Strategy, ...]:
+    """Generate one buy-and-hold `Strategy` per eligible catalog asset.
+
+    Eligibility (filters compounded):
+    - Has a `yahoo` ticker (so a price series can be fetched)
+    - Not leveraged (B&H comparison is between unlevered building blocks)
+    - Maps to a region bucket via `discover.dashboard_bucket(category)` —
+      i.e. `us` / `europe` / `asia` (world bucket is handled separately
+      via the regional-page reference line, not auto-gen).
+    - Not in a category that dashboard_bucket misroutes (Emerging-LatAm
+      and Emerging-EMEA both match the "EMERGING" prefix and would land
+      on the asia page despite not being Asia exposure).
+    - Not a Thematic-* category (off-topic for a regional ETF
+      comparison — the asia page is for regional benchmarks, not
+      single-theme bets).
+    - Not a `_dist` share-class twin of an `_acc` sibling — duplicate
+      curves muddy the regional-page comparison.
+
+    Naming:
+    - Internal `name`: `<region>/<asset_id>` (e.g. `asia/em_asia`).
+      Namespaced so it can never collide with a manual `strategies.yaml`
+      entry, and persisted to `data/history/<region>/<asset_id>.parquet`
+      for tidy filesystem grouping.
+    - User-facing `display_name`: `<asset_id>` only (e.g. `em_asia`).
+      Drives the chart legend, metrics-table row, and chip text on the
+      regional page.
+
+    The `auto_generated=True` flag is what render.py uses to keep these
+    off the main dashboard.
+    """
+    # Lazy import: avoid the universe → discover → fetch → universe cycle.
+    from .discover import dashboard_bucket
+
+    by_id = {a.id: a for a in catalog}
+    out: list[Strategy] = []
+    for asset in by_id.values():
+        if not asset.yahoo:
+            continue
+        if asset.leveraged:
+            continue
+        if asset.category in _AUTO_BH_SKIP_CATEGORIES:
+            continue
+        if any(asset.category.startswith(p) for p in _AUTO_BH_SKIP_PREFIXES):
+            continue
+        if _is_dist_share_class_with_acc_twin(asset, by_id):
+            continue
+        bucket = dashboard_bucket(asset.category)
+        # Only auto-route into the three regional pages we render. World
+        # auto-B&H (e.g. `world` / `world_pea_monde`) skipped — they live
+        # on the main page only as multi-asset strategies and serve as
+        # the cross-page reference line via render._REGIONAL_REFERENCE_STRATEGIES.
+        if bucket not in ("us", "europe", "asia"):
+            continue
+        out.append(
+            Strategy(
+                name=f"{bucket}/{asset.id}",
+                asset_ids=(asset.id,),
+                rebalance="monthly_first_sunday",  # ignored by buy_and_hold mode
+                top_n=1,
+                description=f"100% {asset.id} buy-and-hold (auto-generated for {bucket} page)",
+                mode="buy_and_hold",
+                auto_generated=True,
+                display_name=asset.id,
+            )
+        )
+    return tuple(sorted(out, key=lambda s: s.name))
+
+
+# Categories `dashboard_bucket` lumps into a region that don't actually
+# belong on that regional page. Emerging-LatAm and Emerging-EMEA both
+# match the "EMERGING" prefix and otherwise land on the asia page.
+_AUTO_BH_SKIP_CATEGORIES: frozenset[str] = frozenset(
+    {
+        "Emerging-LatAm",
+        "Emerging-EMEA",
+    }
+)
+
+# Category prefixes that don't fit a regional B&H comparison page.
+# Thematic ETFs (Thematic-Water, Thematic-Climate, etc.) are
+# single-theme bets, not regional benchmarks — the regional pages
+# stay focused on broad-market and sector candidates.
+_AUTO_BH_SKIP_PREFIXES: tuple[str, ...] = ("Thematic",)
+
+
+def _is_dist_share_class_with_acc_twin(asset: Asset, by_id: dict[str, Asset]) -> bool:
+    """True iff `asset.id` ends in `_dist` AND `<id-without-_dist>_acc`
+    exists in the catalog. Heuristic dedup so the regional pages don't
+    show two essentially-identical curves for the same fund's Acc and
+    Dist share classes (the Acc twin is preferred — it absorbs the
+    distributions and is what most PEA holders use)."""
+    if not asset.id.endswith("_dist"):
+        return False
+    acc_twin_id = asset.id[: -len("_dist")] + "_acc"
+    return acc_twin_id in by_id
 
 
 def _parse_strategy(s: dict[str, Any], catalog_by_id: dict[str, Asset]) -> Strategy:

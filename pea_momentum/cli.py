@@ -104,6 +104,11 @@ def _run_backtests(
         result = backtest.run(prices, strategy, cfg, start=start, end=end)
         store.write_history(result.equity, data_root, strategy_name=strategy.name)
         rebal_path = results_root / f"{strategy.name}.rebalances.json"
+        # Auto-generated strategies use namespaced names like
+        # `asia/em_asia` → the rebalances JSON path becomes
+        # `data/results/asia/em_asia.rebalances.json`. Ensure the
+        # subdirectory exists before writing.
+        rebal_path.parent.mkdir(parents=True, exist_ok=True)
         rebal_path.write_text(backtest.rebalances_to_json(result.rebalances))
         last_w = result.rebalances[-1].weights if result.rebalances else {}
         click.echo(

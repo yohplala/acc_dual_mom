@@ -27,7 +27,7 @@ from .metrics import (
     rebalance_hit_rate,
     turnover_per_year,
 )
-from .universe import Asset, Config, Strategy
+from .universe import Config, Strategy
 
 TEMPLATES_DIR = Path(__file__).parent / "templates"
 
@@ -78,6 +78,20 @@ def render(
 
     strategy_by_name: dict[str, Strategy] = {s.name: s for s in config.strategies}
     asset_meta = _build_asset_meta(config)
+
+    # Main page is curated: drop auto-generated B&Hs (they live on the
+    # regional pages instead). Region pages call this same function but
+    # with `results` already filtered to auto-only by `render_region`,
+    # so this filter is the no-op for the regional path.
+    if output_filename == "index.html":
+        results = [
+            r
+            for r in results
+            if not (
+                strategy_by_name.get(r.strategy_name)
+                and strategy_by_name[r.strategy_name].auto_generated
+            )
+        ]
 
     # Default presentation order: highest CAGR first. Drives the signal
     # table, the metrics table (rendered in this same loop), and the
@@ -136,31 +150,11 @@ _NAV_LINKS_ORDER: tuple[tuple[str, str, str], ...] = (
     ("correlations", "Correlation", "correlations.html"),
 )
 
-# Reference strategies added to every regional page. `world_bh` (MSCI World
-# B&H) gives a single global benchmark line so the regional ETF candidates
-# can be eyeballed against the broader equity baseline without leaving
-# the page.
-_REGIONAL_REFERENCE_STRATEGIES: tuple[str, ...] = ("world_bh",)
-
-
-def _strategy_region(strategy: Strategy, asset_by_id: dict[str, Asset]) -> str | None:
-    """Return the region key (`us` / `europe` / `asia` / `world`) for a
-    strategy iff every non-cash sleeve in its universe falls in that
-    region's bucket. Returns None for multi-region (cross-regional)
-    strategies, which belong on the main dashboard, not a region page."""
-    risky_buckets: set[str] = set()
-    for aid in strategy.asset_ids:
-        a = asset_by_id.get(aid)
-        if a is None:
-            continue
-        bucket = dashboard_bucket(a.category)
-        if bucket != "cash":
-            risky_buckets.add(bucket)
-    if len(risky_buckets) == 1:
-        only = next(iter(risky_buckets))
-        if only in _REGION_PAGE_LABELS:
-            return only
-    return None
+# Reference strategies added to every regional page. Empty by default —
+# the regional pages stay focused on the regional B&H comparison alone,
+# without an injected global benchmark line to muddy the apples-to-apples
+# read of "which ETF in this region performed best since 2008".
+_REGIONAL_REFERENCE_STRATEGIES: tuple[str, ...] = ()
 
 
 def _build_nav_links(current_page: str) -> list[dict[str, object]]:
@@ -196,19 +190,26 @@ def render_region(
 
     Returns the output path; returns None only when neither the region
     filter nor the reference list yield any result (true empty page)."""
-    asset_by_id = {a.id: a for a in config.assets}
     strategy_by_name = {s.name: s for s in config.strategies}
 
+    # Auto-generated B&H strategies are namespaced as `<region>/<asset_id>`.
+    # The regional page filters to entries whose strategy name starts with
+    # `<region>/` AND whose Strategy is flagged `auto_generated=True`. This
+    # gives a strict region/auto-only subset — the main page handles the
+    # user's curated strategies in `strategies.yaml`.
+    region_prefix = f"{region}/"
     region_results: list[BacktestResult] = []
     for r in results:
         s = strategy_by_name.get(r.strategy_name)
-        if s is None:
+        if s is None or not s.auto_generated:
             continue
-        if _strategy_region(s, asset_by_id) == region:
+        if r.strategy_name.startswith(region_prefix):
             region_results.append(r)
 
-    # Append reference strategies (world_bh by default) so each regional
-    # page carries a global benchmark line for visual comparison.
+    # Optional reference strategies (default: none). Kept for forward-
+    # compat when a user wants to inject a benchmark line into a regional
+    # page; today the regional pages stay focused on the regional B&H
+    # comparison only.
     seen = {r.strategy_name for r in region_results}
     for r in results:
         if r.strategy_name in include_reference and r.strategy_name not in seen:
@@ -313,7 +314,7 @@ def _signal_row(
     current_chips = _alloc_chips(last.weights if last else {}, asset_meta)
     universe_buckets = _universe_buckets(strategy, config, asset_meta)
     return {
-        "name": result.strategy_name,
+        "name": strategy.label,
         "cadence": _CADENCE_LABELS.get(strategy.rebalance, strategy.rebalance),
         "scoring": _scoring_label(strategy, config.shared.scoring.lookbacks_days),
         "allocation_top": alloc_top,
@@ -483,7 +484,7 @@ def _metrics_row(
         else None
     )
     return {
-        "name": result.strategy_name,
+        "name": strategy.label,
         **m.to_dict(),
         "total_cost": total_cost,
         "avg_corr": avg_corr,
@@ -516,12 +517,13 @@ def _equity_figure(
     for i, r in enumerate(results):
         if r.equity.is_empty():
             continue
-        style = _strategy_line_style(strategy_by_name.get(r.strategy_name))
+        s = strategy_by_name.get(r.strategy_name)
+        style = _strategy_line_style(s)
         traces.append(
             {
                 "type": "scatter",
                 "mode": "lines",
-                "name": r.strategy_name,
+                "name": s.label if s else r.strategy_name,
                 "x": [d.isoformat() for d in r.equity.get_column("date").to_list()],
                 "y": r.equity.get_column("equity").to_list(),
                 "line": {**style, "color": PALETTE[i % len(PALETTE)]},
@@ -542,7 +544,8 @@ def _drawdown_figure(
         if r.equity.is_empty():
             continue
         dd = drawdown_series(r.equity)
-        style = _strategy_line_style(strategy_by_name.get(r.strategy_name))
+        s = strategy_by_name.get(r.strategy_name)
+        style = _strategy_line_style(s)
         # Drawdown lines stay slimmer than equity-curve lines so the chart
         # doesn't get visually cluttered, but the dash pattern is preserved.
         dd_style = {"width": max(1.0, style["width"] * 0.75), "dash": style["dash"]}
@@ -550,7 +553,7 @@ def _drawdown_figure(
             {
                 "type": "scatter",
                 "mode": "lines",
-                "name": r.strategy_name,
+                "name": s.label if s else r.strategy_name,
                 "x": [d.isoformat() for d in dd.get_column("date").to_list()],
                 "y": [v * 100 for v in dd.get_column("drawdown").to_list()],
                 "line": {**dd_style, "color": PALETTE[i % len(PALETTE)]},
