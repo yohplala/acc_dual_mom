@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 
 from pea_momentum.allocate import CASH_KEY, _round_to_granularity, allocate
-from pea_momentum.universe import Allocation
+from pea_momentum.universe import Allocation, Asset
 
 
 def _alloc(rule: str = "score_proportional", granularity: int = 10) -> Allocation:
@@ -202,3 +202,117 @@ class TestEqualWeight:
         # Equal weight means a and b should be ~50/50 (at 10% granularity, exact)
         assert risky.get("a") == pytest.approx(0.5)
         assert risky.get("b") == pytest.approx(0.5)
+
+
+class TestRegionalFixedWeights:
+    """`allocate(regional_weights=…)` dispatches to a static-regional split:
+    each region's selected asset gets its configured weight, scores are
+    ignored for sizing, and present-region weights renormalise if a
+    region is absent."""
+
+    @staticmethod
+    def _asset(asset_id: str, category: str) -> Asset:
+        return Asset(id=asset_id, isin="x", yahoo="x", category=category)
+
+    def test_assigns_configured_weights_when_all_regions_present(self) -> None:
+        asset_by_id = {
+            "us_a": self._asset("us_a", "USA"),
+            "eu_a": self._asset("eu_a", "Eurozone"),
+            "as_a": self._asset("as_a", "Japan"),
+        }
+        scores = {"us_a": 0.05, "eu_a": -0.02, "as_a": 0.10}
+        w = allocate(
+            scores,
+            top_n=3,
+            alloc=_alloc(),
+            regional_weights=(("us", 0.6), ("europe", 0.1), ("asia", 0.3)),
+            asset_by_id=asset_by_id,
+        )
+        assert w == {"us_a": 0.6, "eu_a": 0.1, "as_a": 0.3}
+
+    def test_renormalises_when_a_region_is_absent(self) -> None:
+        # Europe has no asset in scores: 0.6 / 0.3 → 2/3, 1/3 → 70/30 after
+        # 10% granularity rounding.
+        asset_by_id = {
+            "us_a": self._asset("us_a", "USA"),
+            "as_a": self._asset("as_a", "Japan"),
+        }
+        scores = {"us_a": 0.05, "as_a": 0.02}
+        w = allocate(
+            scores,
+            top_n=3,
+            alloc=_alloc(),
+            regional_weights=(("us", 0.6), ("europe", 0.1), ("asia", 0.3)),
+            asset_by_id=asset_by_id,
+        )
+        assert w == {"us_a": 0.7, "as_a": 0.3}
+
+    def test_unconfigured_region_assets_are_dropped(self) -> None:
+        # Strategy maps only us + asia; the europe-bucket asset is skipped.
+        asset_by_id = {
+            "us_a": self._asset("us_a", "USA"),
+            "eu_a": self._asset("eu_a", "Eurozone"),
+        }
+        scores = {"us_a": 0.05, "eu_a": 0.02}
+        w = allocate(
+            scores,
+            top_n=3,
+            alloc=_alloc(),
+            regional_weights=(("us", 0.7), ("asia", 0.3)),
+            asset_by_id=asset_by_id,
+        )
+        # europe is silently dropped; us renormalises to 100%.
+        assert w == {"us_a": 1.0}
+
+    def test_routes_to_residual_when_no_qualifying_region(self) -> None:
+        # World and cash buckets aren't in regional_weights → skipped → 100%
+        # to residual holder. Mirrors allocate()'s empty-selection branch.
+        asset_by_id = {"world_x": self._asset("world_x", "World")}
+        scores = {"world_x": 0.10}
+        w = allocate(
+            scores,
+            top_n=3,
+            alloc=_alloc(),
+            regional_weights=(("us", 0.6), ("europe", 0.1), ("asia", 0.3)),
+            asset_by_id=asset_by_id,
+            residual_holder="safe",
+        )
+        assert w == {"safe": 1.0}
+
+    def test_score_magnitudes_do_not_change_weights(self) -> None:
+        """Two scores dicts with very different magnitudes but the same
+        per-region pick should yield identical weights — the static rule
+        must ignore signal strength once selection is done."""
+        asset_by_id = {
+            "us_a": self._asset("us_a", "USA"),
+            "eu_a": self._asset("eu_a", "Eurozone"),
+            "as_a": self._asset("as_a", "Japan"),
+        }
+        regional = (("us", 0.6), ("europe", 0.1), ("asia", 0.3))
+        w_small = allocate(
+            {"us_a": 0.001, "eu_a": -0.50, "as_a": 0.0001},
+            top_n=3,
+            alloc=_alloc(),
+            regional_weights=regional,
+            asset_by_id=asset_by_id,
+        )
+        w_huge = allocate(
+            {"us_a": 5.0, "eu_a": 0.40, "as_a": 8.0},
+            top_n=3,
+            alloc=_alloc(),
+            regional_weights=regional,
+            asset_by_id=asset_by_id,
+        )
+        assert w_small == w_huge == {"us_a": 0.6, "eu_a": 0.1, "as_a": 0.3}
+
+    def test_requires_asset_by_id(self) -> None:
+        """`regional_weights` needs region info → must come with
+        `asset_by_id`. Loud-fail if a caller forgot."""
+        with pytest.raises(ValueError, match="requires asset_by_id"):
+            allocate(
+                {"a": 0.10},
+                top_n=1,
+                alloc=_alloc(),
+                regional_weights=(("us", 1.0),),
+                asset_by_id=None,
+            )

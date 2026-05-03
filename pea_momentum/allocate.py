@@ -38,7 +38,7 @@ Pure function — no I/O, no side effects.
 
 from __future__ import annotations
 
-from .universe import Allocation
+from .universe import Allocation, Asset
 
 # Sentinel id for un-allocated weight when the strategy has no yielding cash
 # sleeve. Treated as 0%-return inside the backtest's compounding kernel (no
@@ -59,8 +59,25 @@ def allocate(
     *,
     rule_override: str | None = None,
     residual_holder: str = CASH_KEY,
+    regional_weights: tuple[tuple[str, float], ...] | None = None,
+    asset_by_id: dict[str, Asset] | None = None,
 ) -> dict[str, float]:
     """Return target weights summing to 1.0 across selected assets + residual.
+
+    Three weighting paths:
+
+    - ``equal_weight`` / ``score_proportional`` (default): rank-only top-N
+      across all `scores`, then 1/N or |score|-prop with rank attribution.
+    - ``regional_weights`` set: dispatch to a static-regional split. Each
+      region's selected asset (one per `dashboard_bucket`) gets its
+      configured weight; absent regions are forfeited and present-region
+      weights renormalise. Score magnitudes are not used — selection has
+      already happened upstream (`top_1_per_region`). `asset_by_id` is
+      required (region inference needs each asset's `category`).
+
+    All three paths apply the same largest-remainder rounding to integer
+    multiples of `alloc.granularity_pct / 100` and route any shortfall to
+    `residual_holder`.
 
     Selection: pick the top-N highest-scoring assets in `scores`, irrespective
     of the sign of their scores. If `scores` is empty (no asset had enough
@@ -83,14 +100,26 @@ def allocate(
     - or `CASH_KEY` (0%-return placeholder) when the strategy has no
       yielding cash sleeve listed.
     """
+    if alloc.rounding != "largest_remainder":
+        raise ValueError(f"Unsupported rounding: {alloc.rounding!r}")
+
+    if regional_weights is not None:
+        if asset_by_id is None:
+            raise ValueError("allocate(regional_weights=...) requires asset_by_id")
+        return _allocate_regional_fixed(
+            scores=scores,
+            asset_by_id=asset_by_id,
+            regional_weights=regional_weights,
+            granularity_pct=alloc.granularity_pct,
+            residual_holder=residual_holder,
+        )
+
     rule = rule_override or alloc.rule
     if rule not in SUPPORTED_ALLOCATION_RULES:
         raise ValueError(
             f"Unsupported allocation rule: {rule!r} "
             f"(supported: {sorted(SUPPORTED_ALLOCATION_RULES)})"
         )
-    if alloc.rounding != "largest_remainder":
-        raise ValueError(f"Unsupported rounding: {alloc.rounding!r}")
 
     # Rank-only top-N: keep all scored assets, sort descending, take the head.
     selected = sorted(scores.items(), key=lambda kv: kv[1], reverse=True)[:top_n]
@@ -127,6 +156,56 @@ def allocate(
 
     return _round_to_granularity(
         raw, granularity_pct=alloc.granularity_pct, residual_holder=residual_holder
+    )
+
+
+def _allocate_regional_fixed(
+    scores: dict[str, float],
+    asset_by_id: dict[str, Asset],
+    regional_weights: tuple[tuple[str, float], ...],
+    granularity_pct: int,
+    residual_holder: str,
+) -> dict[str, float]:
+    """Static regional split: each region's selected asset gets its
+    configured weight, present-region weights renormalise if a region
+    is absent, then granularity rounding.
+
+    Inputs (after `_filter_top_1_per_region` upstream): `scores` already
+    holds at most one asset per regional bucket — score values are
+    ignored here, they only served to break ties inside each region
+    upstream. Region inference goes through `dashboard_bucket(category)`,
+    so each asset must resolve in `asset_by_id`.
+
+    Missing-region semantics: if a configured region has no asset in
+    `scores`, the present regions' weights are renormalised to sum to
+    1.0 — the absent region's slot is forfeited, not parked on cash.
+    Keeps the strategy fully invested when at least one region has a
+    winner. If every region drops out, 100% goes to `residual_holder`.
+    """
+    # Lazy import: keep allocate.py free of the universe → discover →
+    # fetch → universe cycle that an eager `from .discover import …` would
+    # introduce at module load time.
+    from .discover import dashboard_bucket
+
+    region_to_w = dict(regional_weights)
+    raw: dict[str, float] = {}
+    for asset_id in scores:
+        a = asset_by_id.get(asset_id)
+        if a is None:
+            continue
+        bucket = dashboard_bucket(a.category)
+        w = region_to_w.get(bucket)
+        if w is None or w <= 0.0:
+            continue
+        raw[asset_id] = w
+    if not raw:
+        return {residual_holder: 1.0}
+    total = sum(raw.values())
+    if total <= 0.0:
+        return {residual_holder: 1.0}
+    raw = {a: w / total for a, w in raw.items()}
+    return _round_to_granularity(
+        raw, granularity_pct=granularity_pct, residual_holder=residual_holder
     )
 
 
