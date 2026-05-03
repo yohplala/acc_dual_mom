@@ -278,15 +278,22 @@ def _scoring_label(strategy: Strategy, shared_lookbacks: tuple[int, ...]) -> str
 def _allocation_label(strategy: Strategy, shared_rule: str) -> tuple[str, str]:
     """Two-line allocation spec: (line1, line2).
 
-    Rotation: ('top-N', 'equal' | 'score-prop')
+    Rotation: ('top-N', 'equal' | 'score-prop' | 'static')
     Buy-and-hold: ('equal' | 'static', '')  — `B&H` is dropped from the
     label because the Scoring column already says `Buy & Hold` for these
     strategies; only the weighting kind ('equal' = implicit 1/N across
     `assets:`, 'static' = explicit `static_weights:` from YAML) is
     informative here.
+
+    For rotation strategies, `regional_weights` overrides the configured
+    `allocation_rule` at runtime — when set, the per-region split is
+    fixed regardless of |score|, so the label shows 'static' rather
+    than the underlying score_proportional plumbing.
     """
     if strategy.mode == "buy_and_hold":
         return ("static" if strategy.static_weights is not None else "equal", "")
+    if strategy.regional_weights is not None:
+        return (f"top-{strategy.top_n}", "static")
     rule = strategy.allocation_rule or shared_rule
     rule_short = "equal" if rule == "equal_weight" else "score-prop"
     return (f"top-{strategy.top_n}", rule_short)

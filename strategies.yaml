@@ -513,3 +513,20 @@ strategies:
       us: 0.6
       asia: 0.3
       europe: 0.1
+
+  # ── Two-asset growth pair: US tech + EM Asia (DM 6m, score-prop, qtly) ──
+  # Concentrated 2-asset rotation between two of the strongest 15-year
+  # leaders. With top_n=2 and only two assets, score_proportional always
+  # holds both — weights tilt toward whichever has the stronger 6m
+  # momentum, with a |s|-prop split (rank-attribution preserves "stronger
+  # signal → larger weight" if either score goes negative). Quarterly
+  # cadence keeps turnover and cost low. Caveat: no Europe / cash
+  # diversifier — both legs are high-beta growth, so the pair can crash
+  # in lockstep in synchronised bear regimes (2008, 2022).
+  - name: pair_dm6_sp_q_t2
+    description: US tech + EM Asia, DM 6m, score-proportional, quarterly top-2
+    assets: [us_pea_us_tech, em_asia]
+    rebalance: quarterly_first_sunday
+    top_n: 2
+    lookbacks_days: [126]
+    allocation_rule: score_proportional
