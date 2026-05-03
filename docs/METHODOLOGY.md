@@ -4,24 +4,23 @@ This document describes how strategies are scored, allocated, costed, and stitch
 
 ## Framework label
 
-The framework is **rank-only momentum rotation with a positive-momentum floor**. It is *inspired by* Antonacci's accelerated dual momentum (ADM) and his GEM (Global Equities Momentum), but it is **not strict Antonacci**: there is no two-stage filter against a benchmark. Every asset (including the safe sleeve, when listed) competes purely on score. References to "ADM" / "DM" elsewhere in the doc and dashboard label the *score recipe* (e.g. accelerated 1m/3m/6m mean vs single 12-month lookback), not the filter design.
+The framework is **rank-only momentum rotation — no positive-momentum filter, no absolute-momentum filter**. It is *inspired by* Antonacci's accelerated dual momentum (ADM) and his GEM (Global Equities Momentum), but it is **not strict Antonacci**: there's no two-stage filter against a benchmark and no `score > 0` floor. Every asset (including the safe sleeve, when listed) competes purely on rank. References to "ADM" / "DM" elsewhere in the doc and dashboard label the *score recipe* (e.g. accelerated 1m/3m/6m mean vs single 12-month lookback), not any filter design.
 
 ## Strategy modes
 
 Two execution modes coexist:
 
-- **`rotation`** — the default. At each rebalance, score every listed asset, drop those with score ≤ 0, pick the top-N, and weight them. The cadence (`weekly_sunday`, `biweekly_sunday`, `monthly_first_sunday`, `quarterly_first_sunday`, `semiannual_first_sunday`) drives when this fires.
+- **`rotation`** — the default. At each rebalance, score every listed asset, pick the top-N highest scores, and weight them. The cadence (`weekly_sunday`, `biweekly_sunday`, `monthly_first_sunday`, `quarterly_first_sunday`, `semiannual_first_sunday`) drives when this fires.
 - **`buy_and_hold`** — equal-weight (or explicit `static_weights`) on `assets`, allocated on day one and never rebalanced. No transaction cost. Used as zero-cost reference benchmarks (`world_bh`, `sp500_bh`, `wld3_noeu_uh_bh`, `world_60_40_bh`). Buy-and-hold ignores the cadence field.
 
 ### Rotation pipeline (per rebalance day)
 
 ```
 raw close prices ─▶ score (per asset, including safe if listed)
-  ──▶ positive-momentum filter (score > 0)
-  ──▶ top-N selection (by score, descending)
+  ──▶ top-N selection (by score, descending — sign-agnostic)
   ──▶ weighting rule (equal_weight or score_proportional)
   ──▶ largest-remainder rounding to granularity_pct
-  ──▶ residual (only when no candidate passes) ─▶ residual_holder
+  ──▶ rounding shortfall ─▶ residual_holder
        (= safe asset if listed in `assets:`, else CASH 0%-return placeholder)
 ```
 
@@ -36,28 +35,28 @@ score(asset) = aggregate_over_lookbacks(close(t) / close(t - L) - 1)
 - **Lookbacks** are configured in trading days via the `lookbacks_days` field. The default accelerated set is `[21, 63, 126]` (≈ 1, 3, 6 months). A per-strategy override `lookbacks_days: [252]` produces the single-12-month variant; `[126]` produces the single-6-month variant.
 - **Aggregations**: `mean` (default), `median` (robust to a single anomalous lookback), `min` (pessimistic — every lookback must be positive). The latter two are documented sensitivity exhibits, not the recommended live setup.
 
-### Positive-momentum filter
+### Selection: rank-only top-N (no filter)
 
-A candidate asset is kept iff its score is strictly positive (`> 0`). Anything with non-positive momentum is dropped before top-N ranking. Pure rank-only methodology — there is **no separate "absolute-momentum" filter** against the safe asset.
+The top-N highest-scoring assets are picked **regardless of the sign of their scores**. Even in a synchronised bear regime where every score is negative, the strategy still allocates to the least-negative top-N — "hold the leader" rather than "go to cash via filter".
 
-The safe asset (€STR-derived synthetic) is **just another listable asset**: include it in a strategy's `assets:` list and it competes on score with the equity sleeves. During a deep crash where every equity score collapses below zero, the safe asset (whose €STR yield gives it a small positive score) will dominate the top-N selection naturally — that's the rank-only equivalent of the old "absolute filter ⇒ 100% safe" behaviour, and it falls out of the rules for free.
+Defensive cash behaviour comes from **ranking**, not filtering. List `cash_estr` (or any low-volatility yielding sleeve) in a strategy's `assets:` and its small €STR-positive score will naturally win the top-N rank when every equity score collapses below zero, producing a 100%-cash defensive allocation organically. Strategies that don't list `cash_estr` forgo this defence and stay equity-allocated through bears (holding the least-bad equity sleeve).
 
-This is **inspired by Antonacci's ADM** but simpler — we keep the >0 floor and the top-N ranking, but drop the explicit two-stage filter (safe-relative + positive). For a strategy without `safe` listed in its universe, the residual (see below) goes to a 0%-return cash placeholder.
+This was a deliberate methodology choice: the previous version had a `score > 0` filter that dumped 100% to the residual holder when nothing passed. Removing the filter means the strategy always commits to a top-N allocation — defensive behaviour is opt-in via the universe composition, not enforced by the engine. Strategies that *want* cash defence are explicit about it (`cash_estr` in `assets:`); strategies that don't get full pass-through to whichever equity is least-bad in stress.
 
 ### Allocation rules (`pea_momentum/allocate.py`)
 
 Two rules are supported:
 
-- **`equal_weight`** (the framework default): `1/N` across the selected top-N assets. This is the canonical Antonacci-style weighting and the recommended live setup.
-- **`score_proportional`**: `w_i = s_i / Σ s_j` over selected. Amplifies the asset with the loudest momentum number — exactly the asset most likely to mean-revert. Kept as an opt-in sensitivity exhibit (`core_monthly_score_prop`).
+- **`equal_weight`** (the framework default): `1/N` across the selected top-N assets. This is the canonical Antonacci-style weighting and the recommended live setup. Robust to negative scores.
+- **`score_proportional`**: |score|-proportional weights with **rank-based attribution** — the highest-scoring asset always gets the largest weight, the lowest-scoring the smallest. For all-positive selections this collapses to the canonical `w_i = s_i / Σ s_j` formula (because score-rank == |score|-rank). For mixed-sign or all-negative selections (reachable now that the top-N has no filter), the formula stays well-defined: no negative weights (shorts), no inverted ranks. Concretely with selected scores `[-0.05, -0.10, -0.20]`, the pure formula `s/Σs = [0.143, 0.286, 0.571]` would give the *worst* score the largest weight; we instead assign the |score|-magnitudes by rank → `[0.571, 0.286, 0.143]` so the *least-crashing* asset gets the highest conviction. Kept as an opt-in sensitivity exhibit (`core_sp_m_t3`).
 
 After raw weights are computed, they are rounded via **largest-remainder (Hare quota)** to integer multiples of `granularity_pct` (10% by default). Largest-remainder is exact-summing by construction, so when there are selected candidates the rounded weights total 100% — no residual.
 
-When **no candidate** passes the positive-momentum filter (every asset score ≤ 0), the residual = 100% goes to the **residual holder**:
+The **residual holder** catches both rounding shortfalls (rare under largest-remainder) and the early-history "no scores yet at this rebalance" path (when no asset has enough lookback to produce a signal):
 - the **safe asset** if it's listed in the strategy's `assets:` (residual earns €STR yield), OR
 - a **`cash`** placeholder (0%-return, no yield) when the strategy has no yielding cash sleeve listed.
 
-The "list safe explicitly to get the defensive crash behaviour" pattern is the YAML-honesty corollary of removing the auto-injection: what you list is what you get.
+The "list safe explicitly to get the defensive crash behaviour" pattern is the YAML-honesty corollary: what you list is what you get.
 
 ## Stitching (`pea_momentum/stitching.py`, `pea_momentum/fetch.py`)
 
@@ -141,6 +140,8 @@ This guarantees no look-ahead and matches the realistic case for a French PEA ho
 
 Every cadence rebalances **unconditionally on the first Sunday of the backtest range**, even when that Sunday isn't a calendar-anchor day for the cadence's natural rule (e.g. `quarterly_first_sunday` with a backtest starting mid-Feb still fires its first rebalance on the first Sunday of February, then resumes the calendar-quarter cadence — Apr / Jul / Oct first Sundays). Every subsequent rebalance follows the cadence's own rule. The result: regardless of whether you compare a `weekly_sunday`, `quarterly_first_sunday`, or `semiannual_first_sunday` strategy, all of them have their first rebalance on the same day-1 Sunday and start trading from the same allocation date — making cross-cadence equity curves directly comparable from t=0.
 
+**Buy-and-hold benchmarks share the same alignment**: a `buy_and_hold` strategy's equity curve is also slid forward to the first Sunday of the backtest range (same day rotations fire), so static benchmarks plot apples-to-apples against the rotation lineup on the dashboard. Falls back to the latest-listed-sleeve's first available date if some held asset has no data on that Sunday — alignment is achievable only when the data permits.
+
 ## Performance metrics (`pea_momentum/metrics.py`)
 
 Computed on the daily equity curve plus the rebalance log:
@@ -189,9 +190,9 @@ For future readers: the canonical vocabulary used across YAML, code, and dashboa
 | Rebalance cadence | `rebalance: monthly_first_sunday` | `Strategy.rebalance` | `Cadence` (e.g. `monthly`, `weekly`, `biweekly`, `quarterly`, `semiannual`) | Sunday-anchored only. |
 | Strategy mode | `mode: rotation` (default) or `mode: buy_and_hold` | `Strategy.mode` | Reflected in `Scoring` label (`Buy & Hold`) | |
 | Static buy-and-hold weights | `static_weights: {world: 0.6, safe: 0.4}` | `Strategy.static_weights` | (folded into `B&H static` label) | Optional; absent ⇒ equal-weight. |
-| Pre-selection filter | `filter: { type: positive_momentum }` | `Filter.type` | (implicit) | `score > 0` floor. The historical `absolute_momentum` (vs safe-score) is gone. |
+| Pre-selection filter | (removed) | (removed) | — | The historical `positive_momentum` (`score > 0`) and `absolute_momentum` (vs safe-score) filters are both gone — selection is rank-only. |
 | Safe asset | `universe.safe_asset:` block | `Config.safe_asset`, `SafeAsset` | `safe` chip in the **Cash** column | Just another listable asset under the rank-only methodology — list it in a strategy's `assets:` to give it a chance to win the top-N. |
-| Cash residual | (n/a) | `allocate.CASH_KEY` | `cash` chip | 0%-return placeholder used when no candidate passes the >0 floor AND `safe` isn't listed in the strategy. |
+| Cash residual | (n/a) | `allocate.CASH_KEY` | `cash` chip | 0%-return placeholder for rounding-shortfall residuals (rare under largest-remainder) and the early-history "no scores yet at this rebalance" path when `safe` isn't listed. |
 | Per-asset bid-ask spread (bps) | `est_spread_bps: 5` | `Asset.est_spread_bps` | (folded into `total_cost`) | Half-spread added per traded notional. |
 | Asset region (geographic bucket) | `region: us` | `Asset.region` | Drives the **World / US / Europe / Asia** signal-table columns. | Coarse buckets: `world` / `us` / `europe` (incl. eurozone/france/germany) / `asia` (incl. japan/em_asia/em). Safe ⇒ `cash` column. |
 

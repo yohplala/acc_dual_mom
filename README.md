@@ -1,6 +1,6 @@
 # acc_dual_mom
 
-**Rank-only momentum rotation on PEA-eligible UCITS ETFs.**
+**Rank-only momentum rotation on PEA-eligible UCITS ETFs (no positive-momentum filter — rank decides everything).**
 
 A multi-strategy backtester and weekly signal generator inspired by Antonacci's accelerated dual momentum (ADM), restricted to ETFs eligible for the French PEA wrapper. Sunday-anchored rotation cadences (weekly / biweekly / monthly-first-Sunday / quarterly-first-Sunday / semiannual-first-Sunday) plus buy-and-hold benchmarks are backtested in parallel so the rebalance-frequency, lookback, and concentration effects can each be isolated on the same asset slice. Live ETF history is stitched onto pre-inception index-proxy data — single-stage or multi-stage chains where a longer-history proxy extends a cleaner one's pre-handoff range — so backtests span the GFC (2008-08+ across the active universe). See [`docs/METHODOLOGY.md`](docs/METHODOLOGY.md) for the canonical methodology reference.
 
@@ -9,7 +9,7 @@ A multi-strategy backtester and weekly signal generator inspired by Antonacci's 
 - 📈 EUR-denominated closes for 7 PEA-eligible Amundi UCITS ETFs (yfinance) + €STR-derived synthetic safe asset (ECB Data Portal, with EONIA splice for pre-2019 history)
 - 🪡 Index-proxy stitching: TR proxies extend every strategy ETF's history pre-inception, with **multi-stage chains** for `world` (IWDA.AS → IWRD.L → ACWI) and `em_asia` (EEMA → AAXJ) and `eurostoxx50` (CSX5.AS → MSE.PA); single proxies for `sp500` (SPY since 1993), `russell2000` (IWM since 2000), `topix` (EWJ since 1996), `eu_banks` (EXX1.DE since 2008). Active-universe coverage spans 2008-08 onward, gated by AAXJ.
 - 🧮 Accelerated scoring: mean of 1m / 3m / 6m ROC on EUR closes; per-strategy `lookbacks_days` override supports classic single-12m / single-6m variants. `mean` / `median` / `min` aggregations.
-- 🛡 Positive-momentum floor (score > 0). Safe is just another listable asset — include it in `assets:` to give it a chance to win the top-N during crashes; otherwise residual goes to a 0%-return CASH placeholder.
+- 🛡 Defensive cash via ranking, not filtering. There is **no positive-momentum floor** — the top-N picks the highest-scoring assets regardless of sign (in synchronised bears, the strategy holds the least-negative leader). To get cash defence in crashes, include `cash_estr` in the strategy's `assets:` — its small €STR-positive score naturally wins top-N when every equity score collapses below zero.
 - 🥇 Top-N selection with `equal_weight` (default) or `score_proportional` weighting; largest-remainder rounding to 10% steps. Buy-and-hold mode for zero-cost benchmarks.
 - 📅 Sunday-anchored cadences: `weekly_sunday`, `biweekly_sunday`, `monthly_first_sunday`, `quarterly_first_sunday`, `semiannual_first_sunday`, plus `buy_and_hold` mode
 - ⚙️ Vectorized polars backtest engine with one-trading-day execution lag (Friday signal → Monday fill); per-asset cost model: shared broker fee + per-asset bid-ask spread half (configurable via `est_spread_bps`)

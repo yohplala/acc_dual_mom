@@ -1,30 +1,44 @@
-"""Portfolio allocation: positive-momentum filter, top-N selection, weighting.
+"""Portfolio allocation: rank-only top-N selection + weighting + rounding.
 
 Pipeline at each rebalance:
 
-    raw scores  ──filter(score > 0)──▶          candidates
-    candidates  ──top-N by score──▶              selected
+    raw scores  ──top-N by score──▶              selected
     selected    ──equal_weight or score_prop──▶  raw weights
     raw weights ──largest-remainder rounding──▶  final weights (granularity steps)
     residual    ──▶ residual_holder (caller-provided; safe asset or cash)
 
+Selection is **purely rank-based**: the top-N highest-scoring assets are
+chosen regardless of the sign of their scores. There is no positive-
+momentum floor — even in a synchronised bear regime where every score
+is negative, the strategy still allocates to the least-negative top-N
+assets ("hold the leader" rather than "go to cash by filter").
+
+Defensive cash behaviour comes from ranking, not filtering. List
+`cash_estr` (or any low-volatility yielding sleeve) in the strategy's
+`assets:` and its small positive €STR-driven score will naturally win
+the top-N rank when every equity score collapses below zero, producing
+a 100%-cash defensive allocation organically. Strategies that don't
+list cash forgo this defence and stay equity-allocated through bears.
+
 Two weighting rules are supported:
 - ``equal_weight``       1/N across selected assets — canonical Antonacci ADM.
-- ``score_proportional`` w_i = s_i / Σs_j over selected — amplifies the loudest
-                         score; useful as a sensitivity exhibit.
-
-Note: this module no longer auto-injects a "safe" sentinel. The caller decides
-which asset id catches rounding residuals (typically the safe asset if listed
-in the strategy's universe, otherwise a 0%-return CASH placeholder). Whether
-the safe asset participates in the score → top-N ranking is also the caller's
-choice — list it in the strategy's `assets:` and it competes naturally.
+- ``score_proportional`` |score|-proportional weights with rank-based
+                         attribution: the highest-scoring asset always
+                         gets the largest weight, the lowest-scoring the
+                         smallest. For all-positive selections this is the
+                         canonical w_i = s_i / Σs_j formula; for mixed-sign
+                         or all-negative selections (reachable now that the
+                         top-N has no filter) the formula stays well-defined
+                         with no negative weights and no sign-flipped ranks.
+                         "Least-crashing → highest conviction, sharpest-
+                         crashing → lowest conviction" by construction.
 
 Pure function — no I/O, no side effects.
 """
 
 from __future__ import annotations
 
-from .universe import Allocation, Filter
+from .universe import Allocation
 
 # Sentinel id for un-allocated weight when the strategy has no yielding cash
 # sleeve. Treated as 0%-return inside the backtest's compounding kernel (no
@@ -42,24 +56,29 @@ def allocate(
     scores: dict[str, float],
     top_n: int,
     alloc: Allocation,
-    flt: Filter,
     *,
     rule_override: str | None = None,
     residual_holder: str = CASH_KEY,
 ) -> dict[str, float]:
     """Return target weights summing to 1.0 across selected assets + residual.
 
-    Selection: from the assets in `scores` whose score exceeds 0 (the
-    positive-momentum floor), pick the top-N highest. If none qualify, the
-    full 100% goes to `residual_holder`.
+    Selection: pick the top-N highest-scoring assets in `scores`, irrespective
+    of the sign of their scores. If `scores` is empty (no asset had enough
+    history for a signal at this rebalance), the full 100% goes to
+    `residual_holder`.
 
     Weighting: equal-weight or score-proportional, then rounded to integer
     multiples of `alloc.granularity_pct / 100` via largest-remainder. Any
-    rounding shortfall goes to `residual_holder`.
+    rounding shortfall goes to `residual_holder`. ``score_proportional``
+    uses |score|-magnitudes with rank-based attribution (best score →
+    largest weight, worst → smallest), which collapses to the canonical
+    w_i = s_i / Σs_j when all selected scores are positive and stays
+    well-defined (no shorts, no inverted ranks) for mixed or negative
+    sums.
 
-    `residual_holder` is the asset id that catches both the "no candidate"
-    fallback and rounding residuals. Typically:
-    - the strategy's safe-asset id, if `safe` is listed in the strategy's
+    `residual_holder` is the asset id that catches rounding residuals.
+    Typically:
+    - the strategy's safe-asset id, if it's listed in the strategy's
       universe → the residual earns €STR yield;
     - or `CASH_KEY` (0%-return placeholder) when the strategy has no
       yielding cash sleeve listed.
@@ -72,11 +91,9 @@ def allocate(
         )
     if alloc.rounding != "largest_remainder":
         raise ValueError(f"Unsupported rounding: {alloc.rounding!r}")
-    if flt.type != "positive_momentum":
-        raise ValueError(f"Unsupported filter: {flt.type!r} (expected 'positive_momentum')")
 
-    candidates = {a: s for a, s in scores.items() if s > 0}
-    selected = sorted(candidates.items(), key=lambda kv: kv[1], reverse=True)[:top_n]
+    # Rank-only top-N: keep all scored assets, sort descending, take the head.
+    selected = sorted(scores.items(), key=lambda kv: kv[1], reverse=True)[:top_n]
 
     if not selected:
         return {residual_holder: 1.0}
@@ -85,8 +102,28 @@ def allocate(
         n = len(selected)
         raw = {a: 1.0 / n for a, _ in selected}
     else:  # score_proportional
-        total = sum(s for _, s in selected)
-        raw = {a: s / total for a, s in selected}
+        # |score|-proportional weights with rank-based reverse attribution:
+        # the highest-scoring asset gets the largest |score|-derived weight,
+        # the lowest-scoring gets the smallest. For all-positive selections
+        # this collapses to the canonical w_i = s_i / Σs_j formula (because
+        # score-rank == |score|-rank when everything is positive). For
+        # mixed-sign or all-negative selections (reachable now that the
+        # rank-only top-N has no filter), this preserves the
+        # "least-crashing → highest conviction" intent without producing
+        # negative weights (shorts) or sign-flipped rankings the pure
+        # formula yields when sum ≤ 0 or any selected score is negative.
+        abs_total = sum(abs(s) for _, s in selected)
+        if abs_total == 0:
+            # Degenerate: every selected score is exactly zero. Equal-weight
+            # is the only well-defined fallback.
+            n = len(selected)
+            raw = {a: 1.0 / n for a, _ in selected}
+        else:
+            # `selected` is sorted by score descending (best first); pair
+            # each asset with the |score|-magnitudes sorted descending.
+            sorted_abs_desc = sorted(abs(s) for _, s in selected)
+            sorted_abs_desc.reverse()
+            raw = {a: sorted_abs_desc[i] / abs_total for i, (a, _) in enumerate(selected)}
 
     return _round_to_granularity(
         raw, granularity_pct=alloc.granularity_pct, residual_holder=residual_holder

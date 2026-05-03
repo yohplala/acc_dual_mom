@@ -12,7 +12,6 @@ from pea_momentum.universe import (
     Asset,
     Config,
     Costs,
-    Filter,
     Scoring,
     Shared,
     Strategy,
@@ -28,7 +27,6 @@ def _config() -> Config:
                 granularity_pct=10,
                 rounding="largest_remainder",
             ),
-            filter=Filter(type="positive_momentum"),
             costs=Costs(per_trade_pct=0.10),
         ),
         assets=(

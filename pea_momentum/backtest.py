@@ -19,13 +19,13 @@ from __future__ import annotations
 import json
 import logging
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, timedelta
 
 import polars as pl
 
 from . import stitching
 from .allocate import CASH_KEY, allocate
-from .schedule import fill_date, rebalance_dates, signal_date
+from .schedule import _SUNDAY, fill_date, rebalance_dates, signal_date
 from .score import score_at
 from .store import prices_wide
 from .universe import Config, Strategy
@@ -83,10 +83,12 @@ def run(
 ) -> BacktestResult:
     asset_ids = list(strategy.asset_ids)
     safe_id = config.safe_asset_id  # None if no asset has synth_proxy=estr
-    # Residual-holder rule: rounding shortfalls and the "no candidate passed
-    # the >0 filter" fallback go to the safe asset *if it is listed* in the
-    # strategy's universe (so the residual earns €STR yield), otherwise to
-    # CASH_KEY (a 0%-return placeholder).
+    # Residual-holder rule: rounding shortfalls and the "no scores at all
+    # at this rebalance" early-history fallback go to the safe asset *if
+    # it is listed* in the strategy's universe (so the residual earns
+    # €STR yield), otherwise to CASH_KEY (a 0%-return placeholder).
+    # (Under the rank-only methodology there is no "no candidate passed
+    # the filter" path; even all-negative scores get allocated.)
     residual_holder = safe_id if safe_id is not None and safe_id in asset_ids else CASH_KEY
 
     # Defensive scrub: even if upstream prices.parquet has bad data
@@ -117,7 +119,7 @@ def run(
         wide = wide.filter(pl.any_horizontal([pl.col(c).is_not_null() for c in relevant_cols]))
 
     if strategy.mode == "buy_and_hold":
-        return _run_buy_and_hold(wide, strategy, asset_ids, safe_id)
+        return _run_buy_and_hold(wide, strategy, asset_ids, safe_id, backtest_start=start)
 
     if wide.is_empty():
         log.warning("backtest %s: no usable price data", strategy.name)
@@ -156,7 +158,6 @@ def run(
             scores=scores,
             top_n=strategy.top_n,
             alloc=config.shared.allocation,
-            flt=config.shared.filter,
             rule_override=strategy.allocation_rule,
             residual_holder=residual_holder,
         )
@@ -223,11 +224,22 @@ def _run_buy_and_hold(
     strategy: Strategy,
     asset_ids: list[str],
     safe_id: str | None,
+    backtest_start: date | None = None,
 ) -> BacktestResult:
     """Buy-and-hold benchmark. Default = equal-weight across `asset_ids`;
     when `strategy.static_weights` is set (e.g. 60/40), use those instead.
     Static weights may reference the safe asset id. No rebalances, no
-    transaction costs."""
+    transaction costs.
+
+    Equity curve start alignment: when `backtest_start` is provided the
+    curve is aligned to the first Sunday of the backtest range — the
+    same "day 1" rotation strategies use for their first rebalance.
+    This makes B&H benchmarks directly comparable to rotation strategies
+    in cross-strategy charts. If some held asset has no data on the
+    first Sunday, the curve falls back to the first day all assets are
+    available (latest-listed-sleeve's first day) — alignment is
+    achievable only when the data permits.
+    """
     if strategy.static_weights is not None:
         weights = dict(strategy.static_weights)
         asset_cols = [a for a in weights if a in wide.columns]
@@ -252,6 +264,16 @@ def _run_buy_and_hold(
     wide = wide.drop_nulls(subset=asset_cols)
     if wide.is_empty():
         return _empty_result(strategy.name)
+
+    # Cross-strategy start alignment: slide the equity curve forward to
+    # the first Sunday of the backtest range when possible (no-op when
+    # the latest-listed sleeve's first available day is already past
+    # that Sunday). Same first-Sunday-of-backtest day rotations fire on.
+    if backtest_start is not None:
+        first_sunday = backtest_start + timedelta(days=(_SUNDAY - backtest_start.weekday()) % 7)
+        wide_aligned = wide.filter(pl.col("date") >= first_sunday)
+        if not wide_aligned.is_empty():
+            wide = wide_aligned
 
     dates = wide.get_column("date").to_list()
     equity_df = _compound(wide, asset_cols, init_weights=weights, fills=[])
