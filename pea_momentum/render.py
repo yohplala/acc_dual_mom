@@ -27,7 +27,7 @@ from .metrics import (
     rebalance_hit_rate,
     turnover_per_year,
 )
-from .universe import Config, Strategy
+from .universe import Asset, Config, Strategy
 
 TEMPLATES_DIR = Path(__file__).parent / "templates"
 
@@ -150,12 +150,6 @@ _NAV_LINKS_ORDER: tuple[tuple[str, str, str], ...] = (
     ("correlations", "Correlation", "correlations.html"),
 )
 
-# Reference strategies added to every regional page. Empty by default —
-# the regional pages stay focused on the regional B&H comparison alone,
-# without an injected global benchmark line to muddy the apples-to-apples
-# read of "which ETF in this region performed best since 2008".
-_REGIONAL_REFERENCE_STRATEGIES: tuple[str, ...] = ()
-
 
 def _build_nav_links(current_page: str) -> list[dict[str, object]]:
     """Top-nav for any rendered page. Always returns the same fixed
@@ -176,20 +170,13 @@ def render_region(
     output_dir: str | Path,
     region: str,
     prices_long: pl.DataFrame | None = None,
-    include_reference: tuple[str, ...] = _REGIONAL_REFERENCE_STRATEGIES,
 ) -> Path | None:
     """Render a per-region dashboard page (e.g. `asia.html`) using the
-    same template as the main dashboard, filtered to strategies whose
-    risky universe is entirely within the region's bucket.
+    same template as the main dashboard, filtered to auto-generated B&H
+    strategies whose name starts with `<region>/`.
 
-    `include_reference` lists strategy names that are appended as
-    reference lines regardless of region (default: `world_bh`, the MSCI
-    World benchmark). Reference strategies are de-duplicated against
-    region-matched strategies so they aren't double-listed if a strategy
-    is both regional and a reference.
-
-    Returns the output path; returns None only when neither the region
-    filter nor the reference list yield any result (true empty page)."""
+    Returns the output path; returns None when no strategies match the
+    region filter (true empty page)."""
     strategy_by_name = {s.name: s for s in config.strategies}
 
     # Auto-generated B&H strategies are namespaced as `<region>/<asset_id>`.
@@ -206,16 +193,6 @@ def render_region(
         if r.strategy_name.startswith(region_prefix):
             region_results.append(r)
 
-    # Optional reference strategies (default: none). Kept for forward-
-    # compat when a user wants to inject a benchmark line into a regional
-    # page; today the regional pages stay focused on the regional B&H
-    # comparison only.
-    seen = {r.strategy_name for r in region_results}
-    for r in results:
-        if r.strategy_name in include_reference and r.strategy_name not in seen:
-            region_results.append(r)
-            seen.add(r.strategy_name)
-
     if not region_results:
         return None
 
@@ -226,7 +203,7 @@ def render_region(
         output_dir=output_dir,
         prices_long=prices_long,
         page_title=f"{label} — buy-and-hold benchmarks",
-        page_subtitle=f"{label}-region strategies + global reference",
+        page_subtitle=f"{label}-region buy-and-hold strategies",
         nav_links=_build_nav_links(current_page=region),
         output_filename=f"{region}.html",
     )
@@ -285,10 +262,9 @@ def _allocation_label(strategy: Strategy, shared_rule: str) -> tuple[str, str]:
     `assets:`, 'static' = explicit `static_weights:` from YAML) is
     informative here.
 
-    For rotation strategies, `regional_weights` overrides the configured
-    `allocation_rule` at runtime — when set, the per-region split is
-    fixed regardless of |score|, so the label shows 'static' rather
-    than the underlying score_proportional plumbing.
+    For rotation strategies, `regional_weights` dispatches the allocator
+    to a fixed-per-region split (scores ignored for sizing), so the
+    label shows 'static' rather than 'equal' / 'score-prop'.
     """
     if strategy.mode == "buy_and_hold":
         return ("static" if strategy.static_weights is not None else "equal", "")
@@ -607,7 +583,7 @@ def render_correlations(
     threshold: float,
     output_dir: str | Path,
     diagnostics: list[Any] | None = None,
-    entries: list[Any] | None = None,
+    entries: list[Asset] | None = None,
     template_name: str = "correlations.html.j2",
 ) -> Path:
     """Render the PEA-universe correlation matrix to `correlations.html`.
@@ -617,7 +593,7 @@ def render_correlations(
     `threshold`    the correlation cutoff used to form groups (for display)
     `diagnostics`  optional list of `StrategyDiagnostic` rows to render in
                    the per-strategy "remove / replace" recommendations table
-    `entries`      optional list of `DiscoveryEntry` — used to render each
+    `entries`      optional list of `Asset` — used to render each
                    asset id in the redundancy-groups table as a link to
                    its Amundi product page
     """

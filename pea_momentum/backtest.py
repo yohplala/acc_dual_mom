@@ -25,7 +25,7 @@ import polars as pl
 
 from . import stitching
 from .allocate import CASH_KEY, allocate
-from .discover import dashboard_bucket
+from .discover import assets_by_region
 from .schedule import _SUNDAY, fill_date, rebalance_dates, signal_date
 from .score import score_at
 from .store import prices_wide
@@ -90,7 +90,7 @@ def run(
     # €STR yield), otherwise to CASH_KEY (a 0%-return placeholder).
     # (Under the rank-only methodology there is no "no candidate passed
     # the filter" path; even all-negative scores get allocated.)
-    residual_holder = safe_id if safe_id is not None and safe_id in asset_ids else CASH_KEY
+    residual_holder = safe_id if safe_id in asset_ids else CASH_KEY
 
     # Defensive scrub: even if upstream prices.parquet has bad data
     # (round-trip spikes from yfinance bad days, or sustained-flat
@@ -120,7 +120,7 @@ def run(
         wide = wide.filter(pl.any_horizontal([pl.col(c).is_not_null() for c in relevant_cols]))
 
     if strategy.mode == "buy_and_hold":
-        return _run_buy_and_hold(wide, strategy, asset_ids, safe_id, backtest_start=start)
+        return _run_buy_and_hold(wide, strategy, asset_ids, backtest_start=start)
 
     if wide.is_empty():
         log.warning("backtest %s: no usable price data", strategy.name)
@@ -165,7 +165,7 @@ def run(
             rule_override=strategy.allocation_rule,
             residual_holder=residual_holder,
             regional_weights=strategy.regional_weights,
-            asset_by_id=asset_by_id if strategy.regional_weights is not None else None,
+            asset_by_id=asset_by_id,
         )
         turnover = _turnover(prev_weights, new_w)
         cost = _transition_cost(prev_weights, new_w, cost_pct, half_spread_by_id)
@@ -204,9 +204,6 @@ def run(
     )
 
 
-_REGIONAL_BUCKETS: tuple[str, ...] = ("us", "europe", "asia")
-
-
 def _filter_top_1_per_region(
     scores: dict[str, float],
     asset_by_id: dict[str, Asset],
@@ -215,23 +212,19 @@ def _filter_top_1_per_region(
     bucket. Returns a scores dict with at most 3 entries.
 
     Region is inferred from `discover.dashboard_bucket(asset.category)`.
-    Assets that don't map to one of `_REGIONAL_BUCKETS` (cash, world,
+    Assets that don't map to one of `REGIONAL_BUCKETS` (cash, world,
     unmapped) are dropped — this rule is for region-rotation strategies
     only. Ties are broken by asset_id (deterministic, but ties on a
     floating-point score are vanishingly rare in practice).
     """
-    best: dict[str, tuple[str, float]] = {}
-    for asset_id, score in scores.items():
-        a = asset_by_id.get(asset_id)
-        if a is None:
+    grouped = assets_by_region(scores, asset_by_id)
+    out: dict[str, float] = {}
+    for bucket_assets in grouped.values():
+        if not bucket_assets:
             continue
-        bucket = dashboard_bucket(a.category)
-        if bucket not in _REGIONAL_BUCKETS:
-            continue
-        current = best.get(bucket)
-        if current is None or score > current[1]:
-            best[bucket] = (asset_id, score)
-    return {asset_id: score for asset_id, score in best.values()}
+        best_id = max(bucket_assets, key=lambda aid: scores[aid])
+        out[best_id] = scores[best_id]
+    return out
 
 
 def _turnover(prev: dict[str, float], new: dict[str, float]) -> float:
@@ -259,7 +252,6 @@ def _run_buy_and_hold(
     wide: pl.DataFrame,
     strategy: Strategy,
     asset_ids: list[str],
-    safe_id: str | None,
     backtest_start: date | None = None,
 ) -> BacktestResult:
     """Buy-and-hold benchmark. Default = equal-weight across `asset_ids`;
@@ -278,13 +270,15 @@ def _run_buy_and_hold(
     """
     if strategy.static_weights is not None:
         weights = dict(strategy.static_weights)
-        asset_cols = [a for a in weights if a in wide.columns]
-        if len(asset_cols) != len(weights):
-            missing = [a for a in weights if a not in wide.columns]
-            log.warning(
-                "buy_and_hold %s: static_weights references unavailable assets %s",
-                strategy.name,
-                missing,
+        asset_cols = list(weights)
+        missing = [a for a in asset_cols if a not in wide.columns]
+        if missing:
+            raise ValueError(
+                f"buy_and_hold {strategy.name!r}: static_weights references "
+                f"asset(s) {missing} that have no fetched price data. "
+                f"YAML validation enforces static_weights keys == assets:, so "
+                f"this means the fetch step is incomplete — re-run fetch or "
+                f"remove the asset from the strategy."
             )
     else:
         asset_cols = [c for c in asset_ids if c in wide.columns]
@@ -313,7 +307,6 @@ def _run_buy_and_hold(
 
     dates = wide.get_column("date").to_list()
     equity_df = _compound(wide, asset_cols, init_weights=weights, fills=[])
-    _ = safe_id  # unused for now; kept for symmetry with rotation entry-point
 
     # Single synthetic rebalance at start so the dashboard shows the static
     # weights in "New allocation". turnover and cost are zero by definition.

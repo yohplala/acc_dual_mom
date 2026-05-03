@@ -175,9 +175,6 @@ class Strategy:
             aggregation=shared_scoring.aggregation,
         )
 
-    def effective_allocation_rule(self, shared_rule: str) -> str:
-        return self.allocation_rule or shared_rule
-
     @property
     def label(self) -> str:
         """User-facing label — `display_name` when set, else `name`."""
@@ -201,8 +198,7 @@ class Config:
 
     @property
     def safe_asset(self) -> Asset | None:
-        """The asset with `synth_proxy: estr` set (or `None` if none).
-        Convenience for callers that previously used `Config.safe_asset`."""
+        """The asset with `synth_proxy: estr` set (or `None` if none)."""
         for a in self.assets:
             if a.synth_proxy == "estr":
                 return a
@@ -222,14 +218,6 @@ VALID_MODES: frozenset[str] = frozenset({"rotation", "buy_and_hold"})
 # asset within each {us, europe, asia} bucket — the resulting (≤ 3-entry)
 # scores dict then enters the regular allocate() pipeline.
 VALID_SELECTION_RULES: frozenset[str] = frozenset({"top_n", "top_1_per_region"})
-
-# Regions a strategy's `regional_weights:` mapping may reference. Mirrors
-# `backtest._REGIONAL_BUCKETS` — the set `dashboard_bucket()` returns for
-# the three regional pages (us / europe / asia). World and cash are
-# intentionally excluded: regional-rotation strategies don't earmark
-# fixed weight to "world" (it's a meta-region) or to "cash" (which lives
-# in the asset list as a synthetic-€STR sleeve, not a region).
-VALID_REGIONAL_WEIGHT_REGIONS: frozenset[str] = frozenset({"us", "europe", "asia"})
 
 
 def load_config(
@@ -338,12 +326,12 @@ def _parse(raw: dict[str, Any], catalog_by_id: dict[str, Asset]) -> Config:
         )
     strategies = manual_strategies + auto_strategies
 
-    # Active asset set: union of strategy assets + static_weights keys.
+    # Active asset set: union of every strategy's `asset_ids`. `_parse_strategy`
+    # already enforces `static_weights` keys == `asset_ids`, so we don't need
+    # to union them in separately.
     active_ids: set[str] = set()
     for s in strategies:
         active_ids.update(s.asset_ids)
-        if s.static_weights is not None:
-            active_ids.update(k for k, _ in s.static_weights)
     missing = active_ids - catalog_by_id.keys()
     if missing:
         raise ValueError(
@@ -390,7 +378,7 @@ def auto_bh_strategies(catalog: Iterable[Asset]) -> tuple[Strategy, ...]:
     off the main dashboard.
     """
     # Lazy import: avoid the universe → discover → fetch → universe cycle.
-    from .discover import dashboard_bucket
+    from .discover import REGIONAL_BUCKETS, dashboard_bucket
 
     by_id = {a.id: a for a in catalog}
     out: list[Strategy] = []
@@ -410,7 +398,7 @@ def auto_bh_strategies(catalog: Iterable[Asset]) -> tuple[Strategy, ...]:
         # auto-B&H (e.g. `world` / `world_pea_monde`) skipped — they live
         # on the main page only as multi-asset strategies and serve as
         # the cross-page reference line via render._REGIONAL_REFERENCE_STRATEGIES.
-        if bucket not in ("us", "europe", "asia"):
+        if bucket not in REGIONAL_BUCKETS:
             continue
         out.append(
             Strategy(
@@ -510,12 +498,15 @@ def _parse_strategy(s: dict[str, Any], catalog_by_id: dict[str, Asset]) -> Strat
                 f"strategy {s['name']!r}: regional_weights requires "
                 f"selection_rule: top_1_per_region (got {selection_rule!r})"
             )
+        # Lazy import: universe → discover → universe would cycle at module load.
+        from .discover import REGIONAL_BUCKETS
+
         items = tuple((str(k), float(v)) for k, v in raw_regional.items())
-        unknown = {k for k, _ in items} - VALID_REGIONAL_WEIGHT_REGIONS
+        unknown = {k for k, _ in items} - set(REGIONAL_BUCKETS)
         if unknown:
             raise ValueError(
                 f"strategy {s['name']!r}: regional_weights has unknown regions "
-                f"{sorted(unknown)} (valid: {sorted(VALID_REGIONAL_WEIGHT_REGIONS)})"
+                f"{sorted(unknown)} (valid: {sorted(REGIONAL_BUCKETS)})"
             )
         total = sum(w for _, w in items)
         if abs(total - 1.0) > 1e-6:

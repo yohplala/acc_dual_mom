@@ -218,7 +218,7 @@ def _render_results(
         prices_long=prices_long,
         nav_links=main_nav,
     )
-    for region in ("us", "europe", "asia"):
+    for region in discover.REGIONAL_BUCKETS:
         out = render.render_region(results, cfg, site_root, region=region, prices_long=prices_long)
         if out is not None:
             click.echo(f"  · regional page: {out}")

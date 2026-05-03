@@ -65,11 +65,8 @@ def diagnose_strategies(
 
         for asset_id in strategy.asset_ids:
             # Skip the safe asset: it's a synthetic €STR series, not a real
-            # PEA ETF, and it lives on `config.safe_asset` rather than in
-            # `config.assets` — `asset_by_id` would raise KeyError. The
-            # discovery universe likewise doesn't carry safe in its
-            # correlation groups, so there are no diagnostics to emit
-            # for it anyway.
+            # PEA ETF, so the discovery universe doesn't carry it in any
+            # correlation group — no diagnostics to emit either way.
             if asset_id == safe_id:
                 continue
             asset = config.asset_by_id(asset_id)

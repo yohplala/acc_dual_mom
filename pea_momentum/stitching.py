@@ -79,15 +79,13 @@ def scrub_long_format(
     day whose value is implausible:
 
     1. **Round-trip spikes (1 to ``max_spike_days`` days long)** — close
-       jumps by more than ``threshold`` (default 15%) from a real-looking
-       baseline, stays at the spurious level for up to ``max_spike_days``
-       consecutive days, then snaps back to within ``threshold`` of the
-       baseline. All days inside the spike interval are nulled; the
-       baseline (day before) and the recovery day (day after) are kept.
-       The 15% pair-threshold is intentionally below the 30% plausibility
-       ceiling because real high-vol days (Black Monday -22.6%, COVID
-       2020 -12%) do NOT immediately reverse; only data corruption
-       produces the round-trip pattern.
+       jumps by more than ``threshold`` (default ``ROUND_TRIP_THRESHOLD``
+       = 6%) from a real-looking baseline, stays at the spurious level
+       for up to ``max_spike_days`` consecutive days, then snaps back to
+       within ``threshold/2`` of the baseline. All days inside the spike
+       interval are nulled; the baseline (day before) and the recovery
+       day (day after) are kept. See the ``ROUND_TRIP_THRESHOLD``
+       constant for the rationale behind the 6% trigger.
 
     2. **Sustained flat runs** — ``min_flat_run`` or more consecutive
        trading days with the *exact* same close (to full float

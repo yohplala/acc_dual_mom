@@ -132,7 +132,7 @@ def test_buy_and_hold_tracks_underlying_uptrend() -> None:
 def _static_60_40_strategy() -> Strategy:
     return Strategy(
         name="static_60_40",
-        asset_ids=("up",),
+        asset_ids=("up", "safe"),
         rebalance="monthly_first_sunday",
         top_n=1,
         reference_date=None,

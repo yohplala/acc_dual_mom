@@ -38,6 +38,7 @@ Pure function — no I/O, no side effects.
 
 from __future__ import annotations
 
+from .discover import assets_by_region
 from .universe import Allocation, Asset
 
 # Sentinel id for un-allocated weight when the strategy has no yielding cash
@@ -182,22 +183,15 @@ def _allocate_regional_fixed(
     Keeps the strategy fully invested when at least one region has a
     winner. If every region drops out, 100% goes to `residual_holder`.
     """
-    # Lazy import: keep allocate.py free of the universe → discover →
-    # fetch → universe cycle that an eager `from .discover import …` would
-    # introduce at module load time.
-    from .discover import dashboard_bucket
-
     region_to_w = dict(regional_weights)
+    grouped = assets_by_region(scores, asset_by_id)
     raw: dict[str, float] = {}
-    for asset_id in scores:
-        a = asset_by_id.get(asset_id)
-        if a is None:
-            continue
-        bucket = dashboard_bucket(a.category)
+    for bucket, bucket_assets in grouped.items():
         w = region_to_w.get(bucket)
         if w is None or w <= 0.0:
             continue
-        raw[asset_id] = w
+        for asset_id in bucket_assets:
+            raw[asset_id] = w
     if not raw:
         return {residual_holder: 1.0}
     total = sum(raw.values())

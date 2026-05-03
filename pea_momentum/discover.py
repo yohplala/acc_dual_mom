@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import logging
 import re
+from collections.abc import Iterable, Mapping
 from datetime import date
 from pathlib import Path
 
@@ -24,11 +25,6 @@ from .errors import FetchError
 from .universe import Asset, load_full_universe
 
 log = logging.getLogger(__name__)
-
-
-# Backwards-compat alias: external code that imported `DiscoveryEntry` keeps
-# working — every catalog row is now just an `Asset`.
-DiscoveryEntry = Asset
 
 
 def coarse_region(category: str) -> str:
@@ -59,6 +55,15 @@ def coarse_region(category: str) -> str:
     return "EUROPE"
 
 
+# Canonical ordered tuple of the three regional dashboard buckets used by
+# regional-rotation strategies. World and cash are intentionally excluded:
+# regional-rotation only earmarks weight to the three concrete regions.
+# Used by backtest.py (top-1-per-region filter), allocate.py (regional
+# fixed-weight split), universe.py (regional_weights validation), and
+# cli.py (per-region page rendering).
+REGIONAL_BUCKETS: tuple[str, ...] = ("us", "europe", "asia")
+
+
 def dashboard_bucket(category: str) -> str:
     """Coarser bucket used by the signal-table region columns.
     Returns one of `world` / `us` / `europe` / `asia` / `cash`.
@@ -79,6 +84,23 @@ def dashboard_bucket(category: str) -> str:
         return "asia"
     # Default for Eurozone, Europe, individual EU countries, EU sectors.
     return "europe"
+
+
+def assets_by_region(
+    asset_ids: Iterable[str],
+    asset_by_id: Mapping[str, Asset],
+) -> dict[str, list[str]]:
+    """Group asset ids by their dashboard region bucket. Order: REGIONAL_BUCKETS."""
+    buckets: dict[str, list[str]] = {b: [] for b in REGIONAL_BUCKETS}
+    for asset_id in asset_ids:
+        a = asset_by_id.get(asset_id)
+        if a is None:
+            continue
+        bucket = dashboard_bucket(a.category)
+        if bucket not in buckets:
+            continue
+        buckets[bucket].append(asset_id)
+    return buckets
 
 
 def load_discovery_universe(path: str | Path = "pea_universe.yaml") -> list[Asset]:

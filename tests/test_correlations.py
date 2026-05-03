@@ -16,7 +16,6 @@ from pea_momentum.correlations import (
     find_groups,
 )
 from pea_momentum.diagnostics import diagnose_strategies
-from pea_momentum.discover import DiscoveryEntry
 from pea_momentum.universe import (
     Allocation,
     Asset,
@@ -152,7 +151,7 @@ class TestDiagnoseStrategies:
     """Cross-strategy diagnostics: 'remove' (redundant pair) + 'replace'
     (suboptimal pick within a group)."""
 
-    def _make_setup(self) -> tuple[Config, list[DiscoveryEntry], list[GroupRepresentative]]:
+    def _make_setup(self) -> tuple[Config, list[Asset], list[GroupRepresentative]]:
         """A 3-strategy / 3-group setup for testing both diagnostic types."""
 
         # 4 active assets + safe sleeve, ISINs that overlap with the
@@ -202,7 +201,7 @@ class TestDiagnoseStrategies:
 
         # Discovery universe — same ISINs, different ids
         entries = [
-            DiscoveryEntry(
+            Asset(
                 id="d_us",
                 name="us",
                 isin="ISIN_US",
@@ -211,7 +210,7 @@ class TestDiagnoseStrategies:
                 category="USA",
                 yahoo="x",
             ),
-            DiscoveryEntry(
+            Asset(
                 id="d_us_alt",
                 name="us_alt",
                 isin="ISIN_US_ALT",
@@ -220,7 +219,7 @@ class TestDiagnoseStrategies:
                 category="USA",
                 yahoo="x",
             ),
-            DiscoveryEntry(
+            Asset(
                 id="d_eu",
                 name="eu",
                 isin="ISIN_EU",
@@ -229,7 +228,7 @@ class TestDiagnoseStrategies:
                 category="Europe",
                 yahoo="x",
             ),
-            DiscoveryEntry(
+            Asset(
                 id="d_jp",
                 name="jp",
                 isin="ISIN_JP",
@@ -307,11 +306,9 @@ class TestDiagnoseStrategies:
 
     def test_strategy_listing_safe_does_not_raise(self) -> None:
         """Regression: under the new rank-only methodology, strategies list
-        `safe` directly in `assets:`. `safe` is the synthetic €STR sleeve
-        (lives on `config.safe_asset`, not in `config.assets`), so
-        `config.asset_by_id("safe")` raises KeyError. The diagnostics loop
-        must skip safe — it has no entry in the discovery universe and no
-        diagnostics to emit anyway."""
+        `safe` directly in `assets:`. The synthetic €STR sleeve has no
+        entry in the discovery universe, so the diagnostics loop must
+        skip it — there are no diagnostics to emit either way."""
         cfg, entries, groups = self._make_setup()
         # Build a strategy that lists safe alongside risky assets.
         strat_with_safe = Strategy(
