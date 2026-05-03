@@ -338,11 +338,18 @@ universe:
     sfdr: Article 6
     category: Eurozone-Div
     inception: 2009-02-26
-    index_proxy: IDVY.L                    # iShares EuroStoxx Select Dividend 30 UCITS ETF LSE, since 2009-01-02
-    index_proxy_kind: usd_tr
-    # EuroStoxx Select Dividend 30 (proxy) and MSCI EMU High Dividend
-    # (live) are both broad eurozone dividend-screened universes. Slight
-    # composition drift; near-identical factor exposure.
+    # Multi-stage chain. IDVY.L (cleanest — EuroStoxx Select Dividend 30,
+    # eurozone-only high-div, since 2009-01-02) → IDV (iShares
+    # International Select Dividend, USD, since 2007-06-21). IDV extends
+    # pre-Lehman coverage with same factor exposure (high-dividend
+    # yield) but broader geography (international developed ex-US:
+    # EMU + UK + Australia + Canada + Switzerland — UK is the largest
+    # non-EMU weight ~25-35%). Geographic drift accepted in the
+    # pre-handoff segment; high-div factor exposure preserved through
+    # the 2007-2009 GFC peak/trough.
+    index_proxy_chain:
+      - { ticker: IDVY.L, kind: usd_tr }   # iShares EuroStoxx Select Dividend 30 UCITS ETF LSE, since 2009-01-02
+      - { ticker: IDV,    kind: usd_tr }   # iShares International Select Dividend ETF, NYSE Arca, since 2007-06-21
   - { id: emu_value,            name: Amundi MSCI EMU Value Factor Dist,            isin: LU1598690169, currency: EUR, ter_pct: 0.40, sfdr: Article 6, category: Eurozone-Value, yahoo: null }
   - id: emu_small
     name: Amundi MSCI EMU Small Cap ESG BT Dist
@@ -356,13 +363,20 @@ universe:
     est_spread_bps: 30                    # satellite, small-cap, thinner book
     replication: physical
     inception: 2024-02-08
-    index_proxy: SXRJ.DE                  # iShares MSCI EMU Small Cap UCITS ETF EUR Acc Xetra, since 2009-11-27
-    index_proxy_kind: eur_tr
-    # XXSC.DE (Xtrackers MSCI EMU Small Cap) was probed as a pre-Lehman
-    # extension tier but yfinance returns 6+ implausible single-day
-    # returns (>30%) on its early history that don't match the round-
-    # trip-spike scrub pattern. Chain extension disabled until a clean
-    # pre-2009 proxy can be sourced; emu_small starts 2009-11 for now.
+    # Multi-stage chain. SXRJ.DE (cleanest, MSCI EMU Small Cap exactly,
+    # EUR Acc, since 2009-11-27) → IEUS (iShares MSCI Europe Small-Cap,
+    # USD-listed, since 2007-11-19). IEUS extends pre-Lehman GFC
+    # coverage with same factor exposure (small-cap) but broader
+    # geography — MSCI Europe Small ≈ MSCI EMU Small + UK Small +
+    # Swiss Small (~30% non-EMU). Geographic drift accepted in the
+    # pre-handoff segment; small-cap factor returns were strongly
+    # correlated across these markets in the 2007-2009 stress period.
+    # XXSC.DE was the natural EUR-native candidate but yfinance returns
+    # implausible early-history days that fail the round-trip-spike
+    # scrub; using IEUS instead.
+    index_proxy_chain:
+      - { ticker: SXRJ.DE, kind: eur_tr }   # iShares MSCI EMU Small Cap UCITS ETF EUR Acc Xetra, since 2009-11-27
+      - { ticker: IEUS,    kind: usd_tr }   # iShares MSCI Europe Small-Cap ETF, NASDAQ, since 2007-11-19
   - { id: emu_lev_2x,           name: Amundi EURO STOXX 50 Daily (2x) Leveraged Acc, isin: FR0010468983, currency: EUR, ter_pct: 0.40, sfdr: Article 6, category: Leveraged-Eurozone, yahoo: null, leveraged: true }
   - { id: emu_inv_1x,           name: Amundi EURO STOXX 50 Daily (-1x) Inverse Acc, isin: FR0010424135, currency: EUR, ter_pct: 0.40, sfdr: Article 6, category: Inverse-Eurozone, yahoo: null, leveraged: true }
 
